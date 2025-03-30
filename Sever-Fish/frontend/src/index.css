@@ -1,0 +1,396 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    height: 100%;
+  }
+
+  body {
+    @apply font-sans text-gray-800 bg-gray-50 min-h-screen;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-blue-900;
+  }
+
+  h1 {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl font-bold;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl font-bold;
+  }
+
+  img {
+    @apply max-w-full h-auto;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-800 text-white py-2 px-6 rounded hover:bg-blue-900 transition-colors duration-300 font-medium inline-block text-center;
+  }
+
+  .btn-outline {
+    @apply border border-blue-800 text-blue-800 py-2 px-6 rounded hover:bg-blue-800 hover:text-white transition-colors duration-300 font-medium inline-block text-center;
+  }
+
+  .section {
+    @apply py-12 md:py-16;
+  }
+
+  .container {
+    @apply px-4 mx-auto max-w-7xl;
+  }
+
+  .hero {
+    @apply relative bg-cover bg-center text-white;
+  }
+
+  .hero-overlay {
+    @apply absolute inset-0 bg-black bg-opacity-50;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  .icon-circle {
+    @apply w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-800;
+  }
+
+  .form-input {
+    @apply w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-800;
+  }
+
+  .form-label {
+    @apply block text-gray-700 font-medium mb-2;
+  }
+}
+
+/* Custom Cyrillic font support */
+/*
+@font-face {
+  font-family: 'CyrillicSerif';
+  src: url('/fonts/cyrillic-serif.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+*/
+
+
+.text-shadow {
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Выделение активного пункта меню */
+.nav-link.active {
+  @apply text-blue-800 font-bold;
+}
+
+/* Анимации для элементов */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Обработка изображений-заглушек */
+.img-placeholder {
+  @apply bg-gray-200 flex items-center justify-center;
+}
+
+.img-placeholder::before {
+  content: '🖼️';
+  @apply text-4xl text-gray-400;
+}
+
+/* Fix dla mobilnego menu */
+.mobile-menu-open {
+  overflow: hidden;
+}
+
+/* Fix dla wyświetlania kart produktów */
+.product-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card-footer {
+  margin-top: auto;
+}
+
+/* Fix for duplicate menu issue */
+.menu-section {
+  display: none !important;
+}
+
+/* Only show one MENU title */
+.menu-title:not(:first-of-type) {
+  display: none;
+}
+
+/* Fix for mobile links */
+.nav-links {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-links li {
+  margin-bottom: 0.75rem;
+}
+
+.nav-links a {
+  display: block;
+  padding: 0.5rem 0;
+  text-decoration: none;
+  color: #1f2937;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+  color: #1e3fa8;
+}
+
+/* Fix for logo */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 0;
+}
+
+.logo-container img {
+  max-height: 80px;
+  width: auto;
+}
+
+/* Ensure images have proper fallbacks */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+img[src*="undefined"],
+img[src=""],
+img:not([src]) {
+  visibility: hidden;
+  position: relative;
+}
+
+img[src*="undefined"]::before,
+img[src=""]::before,
+img:not([src])::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f3f4f6;
+}
+
+/* Fix for header spacing */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Fix for main content area */
+main {
+  min-height: calc(100vh - 80px - 250px); /* Subtract header and footer heights */
+  width: 100%;
+}
+
+/* Fix for footer */
+footer {
+  background-color: #1e3fa8;
+  color: white;
+  padding: 2rem 0;
+}
+
+/* Fix for mobile menu */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 80%;
+  max-width: 300px;
+  height: 100vh;
+  background-color: white;
+  z-index: 200;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+  overflow-y: auto;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-menu.open {
+  transform: translateX(0);
+}
+
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 199;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+.mobile-menu-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Fix for buttons */
+.btn {
+  display: inline-block;
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 0.25rem;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: #1e3fa8;
+  color: white;
+  border: 1px solid #1e3fa8;
+}
+
+.btn-primary:hover {
+  background-color: #1d2f72;
+  border-color: #1d2f72;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #1e3fa8;
+  border: 1px solid #1e3fa8;
+}
+
+.btn-outline:hover {
+  background-color: #1e3fa8;
+  color: white;
+}
+
+/* Fix for links in the header */
+.header-links {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .header-links {
+    display: flex;
+  }
+}
+
+/* Полностью скрыть старый HTML-контент */
+body > ul,
+body > .МЕНЮ,
+body > h1,
+body > h2,
+body > h3,
+body > p,
+body > a,
+body > div:not(#root) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  z-index: -999 !important;
+}
+
+/* Обеспечить, что #root получает полную видимость */
+#root {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 1 !important;
+  position: relative !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Добавьте в конец index.css */
+body > *:not(#root) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  z-index: -9999 !important;
+  pointer-events: none !important;
+}
+
+#root {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Исправление для корректного отображения на мобильных устройствах */
+@media (max-width: 768px) {
+  .mobile-menu {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .mobile-menu.open {
+    transform: translateX(0);
+  }
+}
+
+@keyframes moveWave {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}

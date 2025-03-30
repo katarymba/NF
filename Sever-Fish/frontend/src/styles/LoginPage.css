@@ -1,0 +1,26 @@
+.login-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-color);
+}
+
+.dark .login-page {
+    background-color: #1a1a1a;
+}
+
+.login-container {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    padding: 2rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .login-container {
+    background: #2d2d2d;
+}

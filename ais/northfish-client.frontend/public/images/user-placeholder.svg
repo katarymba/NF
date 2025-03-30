@@ -1,0 +1,6 @@
+<!-- Add this to your public/images directory as user-placeholder.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" fill="none">
+    <rect width="200" height="200" fill="#E5E7EB"/>
+    <path d="M100 100C117.673 100 132 85.6731 132 68C132 50.3269 117.673 36 100 36C82.3269 36 68 50.3269 68 68C68 85.6731 82.3269 100 100 100Z" fill="#9CA3AF"/>
+    <path d="M100 116C66.8631 116 40 142.863 40 176H160C160 142.863 133.137 116 100 116Z" fill="#9CA3AF"/>
+</svg>
