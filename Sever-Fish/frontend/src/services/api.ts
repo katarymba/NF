@@ -1,4 +1,5 @@
-export const API_BASE_URL = 'http://localhost:8000';
+// Sever-Fish/frontend/src/services/api.ts
+export const API_BASE_URL = 'http://localhost:8080/sever-ryba';
 
 const API_ENDPOINTS = {
     auth: `${API_BASE_URL}/auth`,

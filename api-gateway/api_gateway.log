@@ -1,0 +1,40 @@
+2025-03-30 20:01:57,713 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-03-30 20:02:12,970 - api_gateway - INFO - Request 1743350532970-9abb4e1e: GET /
+2025-03-30 20:02:12,971 - api_gateway - INFO - Request 1743350532970-9abb4e1e completed: Status 200, Time 0.001s
+2025-03-30 20:02:13,055 - api_gateway - INFO - Request 1743350533055-7383fb2d: GET /favicon.ico
+2025-03-30 20:02:13,056 - api_gateway - INFO - Request 1743350533055-7383fb2d completed: Status 404, Time 0.001s
+2025-03-30 20:02:27,311 - api_gateway - INFO - Request 1743350547311-555b0be7: GET /docs
+2025-03-30 20:02:27,311 - api_gateway - INFO - Request 1743350547311-555b0be7 completed: Status 200, Time 0.001s
+2025-03-30 20:02:27,959 - api_gateway - INFO - Request 1743350547959-572decd6: GET /openapi.json
+2025-03-30 20:02:27,968 - api_gateway - INFO - Request 1743350547959-572decd6 completed: Status 200, Time 0.009s
+2025-03-30 19:44:12,832 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-03-30 19:44:51,539 - api_gateway - INFO - Request 1743353091538-ca215140: GET /
+2025-03-30 19:44:51,545 - api_gateway - INFO - Request 1743353091538-ca215140 completed: Status 200, Time 0.006s
+2025-03-30 19:44:51,900 - api_gateway - INFO - Request 1743353091900-5cdbbecc: GET /favicon.ico
+2025-03-30 19:44:51,901 - api_gateway - INFO - Request 1743353091900-5cdbbecc completed: Status 404, Time 0.001s
+2025-03-30 19:45:18,981 - api_gateway - INFO - Request 1743353118981-9856fc6e: GET /docs
+2025-03-30 19:45:18,982 - api_gateway - INFO - Request 1743353118981-9856fc6e completed: Status 200, Time 0.001s
+2025-03-30 19:45:19,920 - api_gateway - INFO - Request 1743353119920-7d56ef10: GET /openapi.json
+2025-03-30 19:45:20,140 - api_gateway - INFO - Request 1743353119920-7d56ef10 completed: Status 200, Time 0.220s
+2025-03-31 16:56:28,576 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-03-31 16:57:00,163 - api_gateway - INFO - Request 1743429420162-1ed57be8: GET /
+2025-03-31 16:57:00,176 - api_gateway - INFO - Request 1743429420162-1ed57be8 completed: Status 200, Time 0.013s
+2025-03-31 16:57:00,397 - api_gateway - INFO - Request 1743429420397-76e72936: GET /favicon.ico
+2025-03-31 16:57:00,398 - api_gateway - INFO - Request 1743429420397-76e72936 completed: Status 404, Time 0.002s
+2025-03-31 16:59:19,810 - api_gateway - INFO - Request 1743429559810-ea5efd54: GET /docs
+2025-03-31 16:59:19,811 - api_gateway - INFO - Request 1743429559810-ea5efd54 completed: Status 200, Time 0.002s
+2025-03-31 16:59:20,544 - api_gateway - INFO - Request 1743429560543-ccecec08: GET /openapi.json
+2025-03-31 16:59:20,599 - api_gateway - INFO - Request 1743429560543-ccecec08 completed: Status 200, Time 0.056s
+2025-04-01 11:12:10,600 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-04-01 11:16:47,472 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-04-01 11:26:17,992 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-04-01 11:27:33,061 - api_gateway - INFO - Request 1743496053061-c1f76b4a: GET /docs
+2025-04-01 11:27:33,070 - api_gateway - INFO - Request 1743496053061-c1f76b4a completed: Status 200, Time 0.009s
+2025-04-01 11:27:36,528 - api_gateway - INFO - Request 1743496056528-dd83a266: GET /openapi.json
+2025-04-01 11:27:37,444 - api_gateway - INFO - Request 1743496056528-dd83a266 completed: Status 200, Time 0.917s
+2025-04-01 11:28:07,685 - api_gateway - INFO - Request 1743496087685-5d265827: GET /
+2025-04-01 11:28:07,722 - api_gateway - INFO - Request 1743496087685-5d265827 completed: Status 200, Time 0.037s
+2025-04-01 11:28:08,131 - api_gateway - INFO - Request 1743496088131-874394be: GET /favicon.ico
+2025-04-01 11:28:08,144 - api_gateway - INFO - Request 1743496088131-874394be completed: Status 404, Time 0.013s
+2025-04-01 11:43:55,333 - api_gateway - INFO - Request 1743497035329-7e39e602: GET /login
+2025-04-01 11:43:55,601 - api_gateway - INFO - Request 1743497035329-7e39e602 completed: Status 404, Time 0.273s

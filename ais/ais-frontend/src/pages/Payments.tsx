@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import {getPayments } from '../services/api';
+import {API_BASE_URL, getPayments } from '../services/api';
 
 interface Payment {
     id: number;
@@ -16,7 +16,7 @@ export default function Payments() {
 
     useEffect(() => {
         axios
-            .get("http://localhost:8000/api/payments")
+            .get(`${API_BASE_URL}/api/payments`)
             .then((response) => setPayments(response.data))
             .catch((error) => console.error("Ошибка загрузки платежей", error));
     }, []);

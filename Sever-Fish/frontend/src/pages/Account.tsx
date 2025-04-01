@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../services/api';
 
 interface UserProfile {
   id: number;
@@ -93,7 +94,7 @@ const Account: React.FC = () => {
         return;
       }
       
-      const response = await fetch('http://127.0.0.1:8000/auth/profile', {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         headers: {
           ...authHeader
         }
@@ -139,7 +140,7 @@ const Account: React.FC = () => {
         return;
       }
       
-      const response = await fetch('http://127.0.0.1:8000/orders/', {
+      const response = await fetch(`${API_BASE_URL}/orders/`, {
         headers: {
           ...authHeader
         }
@@ -232,7 +233,7 @@ const Account: React.FC = () => {
       }
       
       // Отправка данных на сервер
-      const response = await fetch('http://127.0.0.1:8000/auth/profile', {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT', // Можно заменить на 'PATCH', если сервер поддерживает
         headers: {
           'Content-Type': 'application/json',
@@ -250,7 +251,7 @@ const Account: React.FC = () => {
           phone: formData.phone
         };
         
-        const retryResponse = await fetch('http://127.0.0.1:8000/auth/profile', {
+        const retryResponse = await fetch(`${API_BASE_URL}/auth/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -310,7 +311,7 @@ const Account: React.FC = () => {
         return;
       }
       
-      const response = await fetch('http://127.0.0.1:8000/auth/change-password', {
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

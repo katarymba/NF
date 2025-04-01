@@ -14,13 +14,31 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
         try {
-            const token = await login(username, password);
-            onToken(token);
+            const response = await fetch('http://localhost:8080/ais/auth/token', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    username: username,
+                    password: password,
+                    grant_type: 'password'
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Ошибка авторизации');
+            }
+            
+            const data = await response.json();
+            onToken(data.access_token);
             navigate('/dashboard', { replace: true });
-        } catch (err: any) {
-            console.error(err);
-            setError(err.message || 'Ошибка авторизации');
+        } catch (err) {
+            console.error('Ошибка входа:', err);
+            setError(err instanceof Error ? err.message : 'Произошла ошибка при входе');
         }
     };
 
@@ -37,6 +55,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full p-2 border rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        required
                     />
                 </div>
                 <div className="mb-4">
@@ -49,6 +68,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full p-2 border rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        required
                     />
                 </div>
                 <button

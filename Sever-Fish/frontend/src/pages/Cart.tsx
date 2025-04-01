@@ -13,6 +13,9 @@ const cartItemTransition = {
 // Константа для максимального количества
 const MAX_QUANTITY = 99;
 
+// API URL
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
 interface CartItem {
   id: number;
   product_id: number;
@@ -76,7 +79,7 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       
       if (token && tokenType) {
         try {
-          const response = await fetch('http://127.0.0.1:8000/auth/profile', {
+          const response = await fetch(`${API_BASE_URL}/auth/profile`, {
             headers: {
               'Authorization': `${tokenType} ${token}`
             }
@@ -137,7 +140,7 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // таймаут 5 секунд
       
-      const data = await safeFetch(`http://127.0.0.1:8000/cart/?_=${cacheBuster}`, {
+      const data = await safeFetch(`${API_BASE_URL}/cart/?_=${cacheBuster}`, {
         signal: controller.signal
       });
       
@@ -212,7 +215,7 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       );
       
       // Отправляем запрос на сервер
-      await safeFetch(`http://127.0.0.1:8000/cart/${itemId}?quantity=${newQuantity}`, {
+      await safeFetch(`${API_BASE_URL}/cart/${itemId}?quantity=${newQuantity}`, {
         method: 'PUT',
       });
       
@@ -239,7 +242,7 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
       
       // Отправляем запрос
-      await safeFetch(`http://127.0.0.1:8000/cart/${itemId}`, {
+      await safeFetch(`${API_BASE_URL}/cart/${itemId}`, {
         method: 'DELETE',
       });
       
@@ -318,7 +321,7 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       };
       
       // Отправляем запрос с заголовком авторизации
-      const response = await fetch('http://127.0.0.1:8000/orders/', {
+      const response = await fetch(`${API_BASE_URL}/orders/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

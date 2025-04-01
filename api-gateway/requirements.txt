@@ -1,0 +1,7 @@
+fastapi == 0.103.2
+uvicorn == 0.23.2
+httpx == 0.25.0
+python-dotenv == 1.0.0
+pydantic
+pytest == 7.4.2
+pytest-asyncio == 0.21.1

@@ -1,4 +1,5 @@
-export const API_BASE_URL = 'http://localhost:8000';
+// ais/ais-frontend/src/services/api.ts
+export const API_BASE_URL = 'http://localhost:8080/ais';
 
 const API_ENDPOINTS = {
     auth: `${API_BASE_URL}/auth`,
