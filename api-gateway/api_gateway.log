@@ -38,3 +38,5 @@
 2025-04-01 11:28:08,144 - api_gateway - INFO - Request 1743496088131-874394be completed: Status 404, Time 0.013s
 2025-04-01 11:43:55,333 - api_gateway - INFO - Request 1743497035329-7e39e602: GET /login
 2025-04-01 11:43:55,601 - api_gateway - INFO - Request 1743497035329-7e39e602 completed: Status 404, Time 0.273s
+2025-04-01 15:49:35,514 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-04-01 17:08:48,935 - api_gateway - INFO - ✅ CORS middleware подключен!

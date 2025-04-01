@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Интерфейсы для форм
@@ -21,7 +21,7 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Форма регистрации (убрано поле username)
+  // Форма регистрации
   const [registerForm, setRegisterForm] = useState<RegisterFormData>({
     email: '',
     phone: '',
@@ -174,8 +174,18 @@ const Auth: React.FC = () => {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('tokenType', data.token_type);
 
-      // Перенаправляем на страницу аккаунта
-      navigate('/account');
+      // Проверяем, есть ли сохраненный путь для перенаправления
+      const redirectPath = localStorage.getItem('redirectAfterAuth');
+      
+      if (redirectPath) {
+        // Очищаем сохраненный путь
+        localStorage.removeItem('redirectAfterAuth');
+        // Перенаправляем на сохраненный путь
+        navigate(redirectPath);
+      } else {
+        // Перенаправляем на страницу аккаунта если нет сохраненного пути
+        navigate('/account');
+      }
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);

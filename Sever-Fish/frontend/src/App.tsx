@@ -22,10 +22,32 @@ function App() {
 
     const updateCartCount = async () => {
         try {
-            const response = await fetch('http://localhost:8000/cart/');
-            const data = await response.json();
-            const totalCount = data.reduce((sum, item) => sum + item.quantity, 0);
-            setCartCount(totalCount);
+            // Получаем токен из localStorage
+            const token = localStorage.getItem('token');
+            const tokenType = localStorage.getItem('tokenType');
+            
+            // Если пользователь не авторизован, устанавливаем количество 0
+            if (!token || !tokenType) {
+                setCartCount(0);
+                return;
+            }
+            
+            const response = await fetch('http://localhost:8000/cart/', {
+                headers: {
+                    'Authorization': `${tokenType} ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const totalCount = data.reduce((sum, item) => sum + item.quantity, 0);
+                setCartCount(totalCount);
+            } else {
+                // Если ошибка авторизации, сбрасываем счетчик
+                if (response.status === 401) {
+                    setCartCount(0);
+                }
+            }
         } catch (error) {
             console.error('Ошибка при загрузке корзины:', error);
         }
@@ -55,6 +77,19 @@ function App() {
             document.body.classList.remove('mobile-menu-open');
         };
     }, [isMobileMenuOpen]);
+
+    // Проверяем, нужно ли перенаправить пользователя после авторизации
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const redirectPath = localStorage.getItem('redirectAfterAuth');
+        
+        if (token && redirectPath) {
+            // Очищаем информацию о перенаправлении
+            localStorage.removeItem('redirectAfterAuth');
+            // Обновляем количество товаров в корзине
+            updateCartCount();
+        }
+    }, []);
 
     return (
         <Router>

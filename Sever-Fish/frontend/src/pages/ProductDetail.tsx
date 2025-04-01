@@ -26,6 +26,7 @@ const ProductDetail: React.FC<{ updateCartCount: () => void }> = ({ updateCartCo
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -83,12 +84,28 @@ const ProductDetail: React.FC<{ updateCartCount: () => void }> = ({ updateCartCo
   const addToCart = async () => {
     if (!product) return;
     
+    // Получаем токен из localStorage
+    const token = localStorage.getItem('token');
+    const tokenType = localStorage.getItem('tokenType');
+    
+    // Проверяем, авторизован ли пользователь
+    if (!token || !tokenType) {
+      // Показываем модальное окно или перенаправляем на страницу авторизации
+      setShowAuthModal(true);
+      return;
+    }
+    
     try {
       setIsAdding(true);
       
+      // Отправляем запрос с токеном авторизации
       await axios.post("http://127.0.0.1:8000/cart/", {
         product_id: product.id,
         quantity,
+      }, {
+        headers: {
+          'Authorization': `${tokenType} ${token}`
+        }
       });
       
       updateCartCount();
@@ -101,7 +118,19 @@ const ProductDetail: React.FC<{ updateCartCount: () => void }> = ({ updateCartCo
       console.error('Ошибка добавления в корзину:', error);
       setError("Не удалось добавить товар в корзину. Пожалуйста, попробуйте позже.");
       setIsAdding(false);
+      
+      // Если ошибка связана с авторизацией (401), показываем модальное окно
+      if (error.response && error.response.status === 401) {
+        setShowAuthModal(true);
+      }
     }
+  };
+  
+  // Обработчик для перехода на страницу авторизации
+  const handleGoToAuth = () => {
+    // Сохраняем текущее состояние, чтобы вернуться после авторизации
+    localStorage.setItem('redirectAfterAuth', `/products/${id}`);
+    navigate('/auth');
   };
 
   // Форматирование цены
@@ -271,6 +300,32 @@ const ProductDetail: React.FC<{ updateCartCount: () => void }> = ({ updateCartCo
           </div>
         </div>
       </div>
+      
+      {/* Модальное окно для авторизации */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Требуется авторизация</h2>
+            <p className="text-gray-600 mb-6">
+              Для добавления товаров в корзину необходимо войти в аккаунт или зарегистрироваться.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button 
+                onClick={() => setShowAuthModal(false)} 
+                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100"
+              >
+                Отмена
+              </button>
+              <button 
+                onClick={handleGoToAuth}
+                className="px-4 py-2 bg-blue-700 rounded text-white hover:bg-blue-800"
+              >
+                Войти / Зарегистрироваться
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

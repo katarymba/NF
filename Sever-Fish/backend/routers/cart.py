@@ -73,12 +73,12 @@ def add_to_cart(
         return new_cart_item
 
 @router.get("/", response_model=List[CartItemResponse])
-def get_cart(db: Session = Depends(get_db)):
+def get_cart(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
-    Получение всех товаров в корзине с подробной информацией о продукте.
+    Получение всех товаров в корзине текущего пользователя с подробной информацией о продукте.
     """
-    # Жестко прописанный ID пользователя (TODO: заменить на авторизованного)
-    user_id = 1
+    # Используем ID текущего пользователя
+    user_id = current_user.id
 
     # Используем joinedload для эффективной загрузки связанных данных о продукте
     cart_items = (
@@ -93,7 +93,8 @@ def get_cart(db: Session = Depends(get_db)):
 def update_cart_quantity(
     cart_id: int, 
     quantity: int, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Обновление количества товара в корзине.
@@ -111,8 +112,8 @@ def update_cart_quantity(
             detail=f"Количество товара не может превышать {MAX_QUANTITY}"
         )
         
-    # Жестко прописанный ID пользователя (TODO: заменить на авторизованного)
-    user_id = 1
+    # Используем ID текущего пользователя
+    user_id = current_user.id
 
     # Находим элемент корзины с проверкой принадлежности пользователю
     cart_item = (
@@ -136,12 +137,16 @@ def update_cart_quantity(
     return cart_item
 
 @router.delete("/{cart_id}")
-def remove_from_cart(cart_id: int, db: Session = Depends(get_db)):
+def remove_from_cart(
+    cart_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Удаление товара из корзины.
     """
-    # Жестко прописанный ID пользователя (TODO: заменить на авторизованного)
-    user_id = 1
+    # Используем ID текущего пользователя
+    user_id = current_user.id
 
     # Находим элемент корзины с проверкой принадлежности пользователю
     cart_item = (
@@ -164,12 +169,15 @@ def remove_from_cart(cart_id: int, db: Session = Depends(get_db)):
     return {"message": "Товар удален из корзины"}
 
 @router.delete("/clear")
-def clear_cart(db: Session = Depends(get_db)):
+def clear_cart(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Очистить всю корзину пользователя.
     """
-    # Жестко прописанный ID пользователя (TODO: заменить на авторизованного)
-    user_id = 1
+    # Используем ID текущего пользователя
+    user_id = current_user.id
 
     # Удаляем все товары из корзины пользователя
     db.query(Cart).filter(Cart.user_id == user_id).delete()

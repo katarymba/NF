@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 // Компонент, отображающий уведомление об авторизации
 const AuthNotification = () => {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 my-8 border border-gray-200">
+    <div className="bg-white rounded-lg shadow-md p-6 my-8 border border-gray-200 max-w-2xl mx-auto">
       <div className="text-center mb-4">
-        <h2 className="text-xl font-medium text-blue-900 mb-3">Для оформления заказа необходимо 
+        <h2 className="text-xl font-medium text-blue-900 mb-3">Для просмотра корзины необходимо 
           <Link to="/auth" className="text-blue-700 hover:text-blue-900 hover:underline mx-1">войти в аккаунт</Link> 
           или 
           <Link to="/auth" className="text-blue-700 hover:text-blue-900 hover:underline mx-1">зарегистрироваться</Link>.

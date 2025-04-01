@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import './Cart.css';
 import CheckoutForm, { CheckoutFormData } from '../components/CheckoutForm';
 import '../components/CheckoutForm.css';
+import AuthNotification from './AuthNotification';
 
 // Добавляем стили для плавных переходов
 const cartItemTransition = {
@@ -64,12 +65,9 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showCheckoutForm, setShowCheckoutForm] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const navigate = useNavigate();
-  
-  // Добавляем состояние для отображения формы оформления заказа
-  const [showCheckoutForm, setShowCheckoutForm] = useState(false);
 
   // Проверка аутентификации пользователя
   useEffect(() => {
@@ -110,7 +108,25 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
   // Функция для безопасной работы с fetch
   const safeFetch = async (url: string, options?: RequestInit) => {
     try {
-      const response = await fetch(url, options);
+      // Получаем токен из localStorage
+      const token = localStorage.getItem('token');
+      const tokenType = localStorage.getItem('tokenType');
+      
+      // Если пользователь не авторизован, выбрасываем ошибку
+      if (!token || !tokenType) {
+        throw new Error('Вы не авторизованы');
+      }
+      
+      // Добавляем заголовок авторизации
+      const headers = {
+        ...options?.headers,
+        'Authorization': `${tokenType} ${token}`
+      };
+      
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
       
       if (!response.ok) {
         // Пытаемся получить сообщение ошибки от сервера
@@ -133,6 +149,14 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Если пользователь не авторизован, возвращаем пустой массив
+      if (!isAuthenticated) {
+        setCartItems([]);
+        setLoading(false);
+        return;
+      }
+      
       // Добавляем случайный параметр к запросу, чтобы избежать кэширования
       const cacheBuster = new Date().getTime();
       
@@ -159,6 +183,8 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       // Более конкретное сообщение об ошибке
       if (error.name === 'AbortError') {
         setError('Превышено время ожидания ответа от сервера. Пожалуйста, попробуйте позже.');
+      } else if (error.message === 'Вы не авторизованы') {
+        setCartItems([]);
       } else {
         setError('Не удалось загрузить корзину. Пожалуйста, попробуйте позже.');
       }
@@ -185,8 +211,13 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       }
     };
 
-    loadCart();
-  }, []);
+    if (isAuthenticated) {
+      loadCart();
+    } else {
+      setCartItems([]);
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
   const handleQuantityChange = useDebounce(async (itemId: number, newQuantity: number) => {
     // Проверка на допустимые значения
@@ -263,17 +294,7 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
   const handleShowCheckoutForm = () => {
     if (isAuthenticated) {
       setShowCheckoutForm(true);
-    } else {
-      // Показываем модальное окно с предложением авторизоваться
-      setShowAuthModal(true);
     }
-  };
-  
-  // Обработка перехода на страницу авторизации
-  const handleGoToAuth = () => {
-    // Сохраняем текущее состояние, чтобы вернуться после авторизации
-    localStorage.setItem('redirectAfterAuth', '/cart');
-    navigate('/auth');
   };
   
   // Функция для обработки отмены оформления заказа
@@ -367,7 +388,7 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
     return sum + (item.product?.price || 0) * item.quantity;
   }, 0);
 
-  if (loading) {
+  if (loading && !cartItems.length) {
     return <div className="cart-container">Загрузка...</div>;
   }
 
@@ -377,6 +398,11 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
       <div className="error">{error}</div>
     </div>
   );
+
+  // Если пользователь не авторизован, показываем уведомление
+  if (!isAuthenticated) {
+    return <AuthNotification />;
+  }
 
   // Если отображается форма оформления заказа
   if (showCheckoutForm) {
@@ -399,30 +425,6 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
     );
   }
 
-  // Модальное окно авторизации
-  const authModal = showAuthModal && (
-    <div className="auth-modal-overlay">
-      <div className="auth-modal">
-        <h2>Требуется авторизация</h2>
-        <p>Для оформления заказа необходимо войти в аккаунт или зарегистрироваться.</p>
-        <div className="auth-modal-buttons">
-          <button 
-            onClick={() => setShowAuthModal(false)} 
-            className="cancel-button"
-          >
-            Отмена
-          </button>
-          <button 
-            onClick={handleGoToAuth}
-            className="auth-button"
-          >
-            Войти / Зарегистрироваться
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   if (cartItems.length === 0) {
     return (
       <div className="cart-container">
@@ -434,7 +436,6 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
             Перейти в каталог
           </button>
         </div>
-        {authModal}
       </div>
     );
   }
@@ -555,8 +556,6 @@ const Cart: React.FC<CartProps> = ({ updateCartCount }) => {
           </button>
         </div>
       </div>
-      
-      {authModal}
     </div>
   );
 };

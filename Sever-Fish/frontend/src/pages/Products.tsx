@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 const Products = ({ updateCartCount }) => {
   const [products, setProducts] = useState([]);
@@ -8,6 +8,8 @@ const Products = ({ updateCartCount }) => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const navigate = useNavigate();
   const productsPerPage = 12;
 
   useEffect(() => {
@@ -40,15 +42,31 @@ const Products = ({ updateCartCount }) => {
   const addToCart = async (productId, event) => {
     event.preventDefault(); // Предотвращаем переход по ссылке
     
+    // Получаем токен из localStorage
+    const token = localStorage.getItem('token');
+    const tokenType = localStorage.getItem('tokenType');
+    
+    // Проверяем, авторизован ли пользователь
+    if (!token || !tokenType) {
+      // Показываем модальное окно для авторизации
+      setShowAuthModal(true);
+      return;
+    }
+    
     try {
       const button = event.currentTarget;
       // Анимация для кнопки
       button.innerText = "Добавлено ✓";
       button.classList.add("bg-green-600");
       
+      // Отправляем запрос с токеном авторизации
       await axios.post("http://127.0.0.1:8000/cart/", {
         product_id: productId,
         quantity: 1,
+      }, {
+        headers: {
+          'Authorization': `${tokenType} ${token}`
+        }
       });
       
       updateCartCount();
@@ -60,7 +78,18 @@ const Products = ({ updateCartCount }) => {
       }, 1500);
     } catch (error) {
       console.error("Ошибка при добавлении в корзину:", error);
+      // Если ошибка связана с авторизацией (401), показываем модальное окно
+      if (error.response && error.response.status === 401) {
+        setShowAuthModal(true);
+      }
     }
+  };
+
+  // Обработчик для перехода на страницу авторизации
+  const handleGoToAuth = () => {
+    // Сохраняем текущее состояние, чтобы вернуться после авторизации
+    localStorage.setItem('redirectAfterAuth', '/products');
+    navigate('/auth');
   };
 
   const filteredProducts = selectedCategory
@@ -251,6 +280,32 @@ const Products = ({ updateCartCount }) => {
           )}
         </main>
       </div>
+
+      {/* Модальное окно для авторизации */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Требуется авторизация</h2>
+            <p className="text-gray-600 mb-6">
+              Для добавления товаров в корзину необходимо войти в аккаунт или зарегистрироваться.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button 
+                onClick={() => setShowAuthModal(false)} 
+                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100"
+              >
+                Отмена
+              </button>
+              <button 
+                onClick={handleGoToAuth}
+                className="px-4 py-2 bg-blue-700 rounded text-white hover:bg-blue-800"
+              >
+                Войти / Зарегистрироваться
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
