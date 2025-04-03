@@ -1,32 +1,32 @@
-import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
-from dotenv import load_dotenv
+import os
+import sys
 
-load_dotenv()  # Загружаем переменные окружения из .env
-db_url = os.getenv("DATABASE_URL")
-print("DATABASE_URL:", db_url)
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-# Экранируем символы '%' для корректной работы интерполяции в ConfigParser
-if db_url:
-    db_url = db_url.replace("%", "%%")
-
-config = context.config
-config.set_main_option("sqlalchemy.url", db_url)
-
-from app.database import Base
-import app.models  # Импортируем все модели, чтобы они были зарегистрированы
-
+from app.models import Base
 target_metadata = Base.metadata
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# Импортируйте Base и модели
+from app.database import Base
+from app.models import (
+    User, Product, Category, Order, 
+    OrderItem, Payment, Shipment, 
+    Administrator  # Добавьте импорт Administrator
+)
+
+config = context.config
+
+# Установите URL базы данных из переменных окружения или .env
+config.set_main_option('sqlalchemy.url', 'postgresql+psycopg2://katarymba:root@localhost:5432/sever_ryba_db')
+
+# Устанавливаем метаданные для миграций
+target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -34,17 +34,24 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
+
     with context.begin_transaction():
         context.run_migrations()
 
 def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection, 
+            target_metadata=target_metadata
+        )
+
         with context.begin_transaction():
             context.run_migrations()
 

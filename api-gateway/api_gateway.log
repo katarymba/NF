@@ -39,4 +39,33 @@
 2025-04-01 11:43:55,333 - api_gateway - INFO - Request 1743497035329-7e39e602: GET /login
 2025-04-01 11:43:55,601 - api_gateway - INFO - Request 1743497035329-7e39e602 completed: Status 404, Time 0.273s
 2025-04-01 15:49:35,514 - api_gateway - INFO - ✅ CORS middleware подключен!
-2025-04-01 17:08:48,935 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-04-01 16:08:54,539 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-04-01 16:09:41,631 - api_gateway - INFO - Request 1743512981630-ec95a3ba: OPTIONS /sever-ryba/auth/profile
+2025-04-01 16:09:41,689 - api_gateway - INFO - Request 1743512981689-745515b0: OPTIONS /sever-ryba/orders/
+2025-04-01 16:09:41,691 - api_gateway - INFO - Request 1743512981691-1bdbbf57: OPTIONS /sever-ryba/orders/
+2025-04-01 16:09:41,693 - api_gateway - INFO - Request 1743512981693-70cb2f6e: OPTIONS /sever-ryba/auth/profile
+2025-04-01 16:09:41,696 - api_gateway - INFO - Request 1743512981630-ec95a3ba completed: Status 200, Time 0.065s
+2025-04-01 16:09:41,880 - api_gateway - INFO - Request 1743512981689-745515b0 completed: Status 200, Time 0.191s
+2025-04-01 16:09:41,971 - api_gateway - INFO - Request 1743512981691-1bdbbf57 completed: Status 200, Time 0.280s
+2025-04-01 16:09:41,977 - api_gateway - INFO - Request 1743512981693-70cb2f6e completed: Status 200, Time 0.284s
+2025-04-01 16:09:42,029 - api_gateway - INFO - Request 1743512982028-25d3e71d: GET /sever-ryba/auth/profile
+2025-04-01 16:09:42,077 - api_gateway - INFO - Проксирование запроса: GET /sever-ryba/auth/profile -> http://localhost:8000/auth/profile
+2025-04-01 16:09:44,376 - api_gateway - INFO - Request 1743512984376-a2de81e5: GET /sever-ryba/orders/
+2025-04-01 16:09:44,523 - api_gateway - INFO - Проксирование запроса: GET /sever-ryba/orders/ -> http://localhost:8000/orders/
+2025-04-01 16:09:47,289 - httpx - INFO - HTTP Request: GET http://localhost:8000/auth/profile "HTTP/1.1 200 OK"
+2025-04-01 16:09:47,357 - api_gateway - INFO - Проксирование завершено: GET /sever-ryba/auth/profile -> http://localhost:8000/auth/profile | Статус: 200, Время: 5.280s
+2025-04-01 16:09:47,361 - api_gateway - INFO - Request 1743512982028-25d3e71d completed: Status 200, Time 5.333s
+2025-04-01 16:09:47,511 - httpx - INFO - HTTP Request: GET http://localhost:8000/orders/ "HTTP/1.1 200 OK"
+2025-04-01 16:09:47,555 - api_gateway - INFO - Проксирование завершено: GET /sever-ryba/orders/ -> http://localhost:8000/orders/ | Статус: 200, Время: 3.032s
+2025-04-01 16:09:47,575 - api_gateway - INFO - Request 1743512984376-a2de81e5 completed: Status 200, Time 3.198s
+2025-04-01 16:09:47,659 - api_gateway - INFO - Request 1743512987659-4471dc28: GET /sever-ryba/auth/profile
+2025-04-01 16:09:47,706 - api_gateway - INFO - Проксирование запроса: GET /sever-ryba/auth/profile -> http://localhost:8000/auth/profile
+2025-04-01 16:09:49,213 - api_gateway - INFO - Request 1743512989213-9b613af6: GET /sever-ryba/orders/
+2025-04-01 16:09:49,288 - api_gateway - INFO - Проксирование запроса: GET /sever-ryba/orders/ -> http://localhost:8000/orders/
+2025-04-01 16:09:50,972 - httpx - INFO - HTTP Request: GET http://localhost:8000/auth/profile "HTTP/1.1 200 OK"
+2025-04-01 16:09:50,989 - api_gateway - INFO - Проксирование завершено: GET /sever-ryba/auth/profile -> http://localhost:8000/auth/profile | Статус: 200, Время: 3.283s
+2025-04-01 16:09:50,993 - api_gateway - INFO - Request 1743512987659-4471dc28 completed: Status 200, Time 3.334s
+2025-04-01 16:09:51,169 - httpx - INFO - HTTP Request: GET http://localhost:8000/orders/ "HTTP/1.1 200 OK"
+2025-04-01 16:09:51,172 - api_gateway - INFO - Проксирование завершено: GET /sever-ryba/orders/ -> http://localhost:8000/orders/ | Статус: 200, Время: 1.883s
+2025-04-01 16:09:51,174 - api_gateway - INFO - Request 1743512989213-9b613af6 completed: Status 200, Time 1.961s
+2025-04-01 16:22:51,427 - api_gateway - INFO - ✅ CORS middleware подключен!

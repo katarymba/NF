@@ -22,34 +22,20 @@ function App() {
 
     const updateCartCount = async () => {
         try {
-            // Получаем токен из localStorage
-            const token = localStorage.getItem('token');
-            const tokenType = localStorage.getItem('tokenType');
-            
-            // Если пользователь не авторизован, устанавливаем количество 0
-            if (!token || !tokenType) {
-                setCartCount(0);
-                return;
-            }
-            
             const response = await fetch('http://localhost:8000/cart/', {
-                headers: {
-                    'Authorization': `${tokenType} ${token}`
-                }
+                credentials: 'include'  // Важно для передачи куки сессии
             });
             
-            if (response.ok) {
-                const data = await response.json();
-                const totalCount = data.reduce((sum, item) => sum + item.quantity, 0);
-                setCartCount(totalCount);
-            } else {
-                // Если ошибка авторизации, сбрасываем счетчик
-                if (response.status === 401) {
-                    setCartCount(0);
-                }
+            if (!response.ok) {
+                throw new Error('Ошибка при загрузке корзины');
             }
+            
+            const data = await response.json();
+            const totalCount = data.reduce((sum, item) => sum + item.quantity, 0);
+            setCartCount(totalCount);
         } catch (error) {
             console.error('Ошибка при загрузке корзины:', error);
+            setCartCount(0);
         }
     };
 

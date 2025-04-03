@@ -1,185 +1,133 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 from database import get_db
-from models import Cart, Product, User
+from models import Product
 from schemas import CartItemCreate, CartItemResponse
 from typing import List
-from routers.auth import get_current_user  # Импортируем функцию получения текущего пользователя
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
-# Константа для максимального количества товара
 MAX_QUANTITY = 99
 
 @router.post("/", response_model=CartItemResponse)
-def add_to_cart(
+async def add_to_cart(
     cart_item: CartItemCreate, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # Получаем текущего пользователя
+    request: Request,
+    db: Session = Depends(get_db)
 ):
-    """
-    Добавление товара в корзину.
-    - Если товар уже есть в корзине, увеличивает количество
-    - Если товара нет, создает новую запись
-    """
-    # Проверка на максимальное количество
-    if cart_item.quantity > MAX_QUANTITY:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Количество товара не может превышать {MAX_QUANTITY}"
-        )
-        
-    # Проверяем существование продукта
+    # Проверка существования продукта
     product = db.query(Product).filter(Product.id == cart_item.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
 
-    # Используем ID текущего пользователя
-    user_id = current_user.id
-
-    # Ищем существующий товар в корзине
-    existing_item = db.query(Cart).filter(
-        and_(
-            Cart.user_id == user_id, 
-            Cart.product_id == cart_item.product_id
-        )
-    ).first()
-
-    if existing_item:
-        # Проверка на максимальное количество с учетом уже имеющегося товара
-        new_quantity = existing_item.quantity + cart_item.quantity
-        if new_quantity > MAX_QUANTITY:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Общее количество товара не может превышать {MAX_QUANTITY}"
-            )
-            
-        # Обновляем количество существующего товара
-        existing_item.quantity = new_quantity
-        db.commit()
-        db.refresh(existing_item)
-        return existing_item
+    # Получаем корзину из сессии
+    cart = request.session.get('cart', [])
+    
+    # Проверяем, есть ли уже такой товар в корзине
+    for item in cart:
+        if item['product_id'] == cart_item.product_id:
+            # Обновляем количество
+            new_quantity = item['quantity'] + cart_item.quantity
+            if new_quantity > MAX_QUANTITY:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Максимальное количество товара - {MAX_QUANTITY}"
+                )
+            item['quantity'] = new_quantity
+            break
     else:
-        # Создаем новую запись в корзине
-        new_cart_item = Cart(
-            user_id=user_id, 
-            product_id=cart_item.product_id, 
-            quantity=cart_item.quantity
-        )
-        db.add(new_cart_item)
-        db.commit()
-        db.refresh(new_cart_item)
-        return new_cart_item
+        # Если товара нет, добавляем новый
+        cart.append({
+            'product_id': cart_item.product_id,
+            'quantity': cart_item.quantity
+        })
+    
+    # Сохраняем корзину в сессии
+    request.session['cart'] = cart
+    
+    # Возвращаем добавленный товар с информацией о продукте
+    return {
+        'id': len(cart),  # Временный суррогатный ID
+        'product_id': cart_item.product_id,
+        'quantity': cart_item.quantity,
+        'user_id': None,
+        'product': product
+    }
 
 @router.get("/", response_model=List[CartItemResponse])
-def get_cart(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """
-    Получение всех товаров в корзине текущего пользователя с подробной информацией о продукте.
-    """
-    # Используем ID текущего пользователя
-    user_id = current_user.id
-
-    # Используем joinedload для эффективной загрузки связанных данных о продукте
-    cart_items = (
-        db.query(Cart)
-        .options(joinedload(Cart.product))
-        .filter(Cart.user_id == user_id)
-        .all()
-    )
-    return cart_items
+async def get_cart(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    cart = request.session.get('cart', [])
+    
+    # Загружаем полную информацию о продуктах
+    cart_with_products = []
+    for item in cart:
+        product = db.query(Product).filter(Product.id == item['product_id']).first()
+        cart_with_products.append({
+            'id': cart.index(item),  # Временный суррогатный ID
+            'product_id': item['product_id'],
+            'quantity': item['quantity'],
+            'user_id': None,
+            'product': product
+        })
+    
+    return cart_with_products
 
 @router.put("/{cart_id}", response_model=CartItemResponse)
-def update_cart_quantity(
+async def update_cart_quantity(
     cart_id: int, 
     quantity: int, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
-    """
-    Обновление количества товара в корзине.
-    """
-    # Валидация количества
-    if quantity < 1:
+    # Проверка количества
+    if quantity < 1 or quantity > MAX_QUANTITY:
         raise HTTPException(
             status_code=400, 
-            detail="Количество товара должно быть не менее 1"
+            detail=f"Количество должно быть от 1 до {MAX_QUANTITY}"
         )
     
-    if quantity > MAX_QUANTITY:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Количество товара не может превышать {MAX_QUANTITY}"
-        )
-        
-    # Используем ID текущего пользователя
-    user_id = current_user.id
-
-    # Находим элемент корзины с проверкой принадлежности пользователю
-    cart_item = (
-        db.query(Cart)
-        .filter(
-            and_(
-                Cart.id == cart_id, 
-                Cart.user_id == user_id
-            )
-        )
-        .first()
-    )
-
-    if not cart_item:
+    cart = request.session.get('cart', [])
+    
+    # Проверяем, что cart_id корректный
+    if cart_id < 0 or cart_id >= len(cart):
         raise HTTPException(status_code=404, detail="Товар в корзине не найден")
     
     # Обновляем количество
-    cart_item.quantity = quantity
-    db.commit()
-    db.refresh(cart_item)
-    return cart_item
+    cart[cart_id]['quantity'] = quantity
+    request.session['cart'] = cart
+    
+    # Загружаем информацию о продукте
+    product = db.query(Product).filter(Product.id == cart[cart_id]['product_id']).first()
+    
+    return {
+        'id': cart_id,
+        'product_id': cart[cart_id]['product_id'],
+        'quantity': quantity,
+        'user_id': None,
+        'product': product
+    }
 
 @router.delete("/{cart_id}")
-def remove_from_cart(
+async def remove_from_cart(
     cart_id: int, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    request: Request
 ):
-    """
-    Удаление товара из корзины.
-    """
-    # Используем ID текущего пользователя
-    user_id = current_user.id
-
-    # Находим элемент корзины с проверкой принадлежности пользователю
-    cart_item = (
-        db.query(Cart)
-        .filter(
-            and_(
-                Cart.id == cart_id, 
-                Cart.user_id == user_id
-            )
-        )
-        .first()
-    )
-
-    if not cart_item:
+    cart = request.session.get('cart', [])
+    
+    # Проверяем, что cart_id корректный
+    if cart_id < 0 or cart_id >= len(cart):
         raise HTTPException(status_code=404, detail="Товар в корзине не найден")
-
+    
     # Удаляем товар
-    db.delete(cart_item)
-    db.commit()
+    del cart[cart_id]
+    request.session['cart'] = cart
+    
     return {"message": "Товар удален из корзины"}
 
 @router.delete("/clear")
-def clear_cart(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Очистить всю корзину пользователя.
-    """
-    # Используем ID текущего пользователя
-    user_id = current_user.id
-
-    # Удаляем все товары из корзины пользователя
-    db.query(Cart).filter(Cart.user_id == user_id).delete()
-    db.commit()
+async def clear_cart(request: Request):
+    request.session['cart'] = []
     return {"message": "Корзина очищена"}

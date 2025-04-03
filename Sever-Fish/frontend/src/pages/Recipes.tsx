@@ -37,7 +37,7 @@ const Recipes = () => {
             {/* Hero Section */}
             <section className="bg-blue-900 text-white py-20">
                 <div className="container mx-auto px-4 text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-6">ВКУСНЫЕ БЛЮДА ИЗ РЫБЫ</h1>
+                <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">Вкусные блюда из рыбы</h1>
                     <p className="text-xl max-w-3xl mx-auto">
                         Откройте для себя лучшие сочетания!
                     </p>

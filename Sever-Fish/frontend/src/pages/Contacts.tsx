@@ -35,7 +35,7 @@ const Contacts = () => {
             {/* Hero Section */}
             <section className="bg-blue-900 text-white py-20">
                 <div className="container mx-auto px-4 text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-6">Контакты</h1>
+                <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">Контакты</h1>
                     <p className="text-xl max-w-3xl mx-auto">
                         Свяжитесь с нами, чтобы узнать больше о нашей продукции или стать нашим партнером
                     </p>

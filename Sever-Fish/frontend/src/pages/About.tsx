@@ -2,14 +2,15 @@ const About = () => {
     return (
         <>
             {/* Hero Section */}
-            <section className="bg-blue-900 text-white py-20">
-                <div className="container mx-auto px-4 text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-6">О компании</h1>
-                    <p className="text-xl max-w-3xl mx-auto">
-                        ООО «Север-Рыба» — ведущий поставщик высококачественных морепродуктов из северных морей России
-                    </p>
-                </div>
-            </section>
+            <section className="bg-blue-900 py-20">
+    <div className="container mx-auto px-4 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">О компании</h1>
+        <p className="text-xl max-w-3xl mx-auto text-white">
+            ООО «Север-Рыба» — ведущий поставщик высококачественных морепродуктов из северных морей России
+        </p>
+    </div>
+</section>
+
 
             {/* Company History */}
             <section className="py-16">
