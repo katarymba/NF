@@ -459,6 +459,38 @@ async def sever_ryba_proxy(path: str, request: Request):
     return await proxy_request(f"{SEVER_RYBA_API}/{path}", request)
 
 
+@app.api_route("/ais/administrators/token", methods=["POST"])
+async def ais_admin_token_proxy(request: Request):
+    try:
+        # Получаем данные из тела запроса
+        form_data = await request.form()
+
+        # Логируем входящие данные
+        logger.info(f"Входящие данные для токена: {dict(form_data)}")
+
+        # Выполняем запрос к AIS Backend
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{AIS_API}/administrators/token",
+                data=form_data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+
+        # Логируем ответ
+        response_content = await response.text()
+        logger.info(f"Ответ от AIS Backend: {response_content}")
+        logger.info(f"Статус ответа: {response.status_code}")
+
+        return Response(
+            content=response_content,
+            status_code=response.status_code,
+            headers=dict(response.headers)
+        )
+    except Exception as e:
+        logger.error(f"Ошибка проксирования токена: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Общая функция для проксирования запросов
 async def proxy_request(target_url: str, request: Request):
     """Проксирует запрос к указанному URL и возвращает ответ"""

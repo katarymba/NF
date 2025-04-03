@@ -31,7 +31,7 @@ class User(Base):
     # Пример связи с заказами (один пользователь - много заказов)
     orders = relationship("Order", back_populates="user")
 
-# Добавляем новый класс Administrator в существующий файл models.py
+
 class Administrator(Base):
     __tablename__ = "administrators"
 
@@ -40,15 +40,13 @@ class Administrator(Base):
     email = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(128), nullable=False)
     full_name = Column(String(100), nullable=False)
-    role = Column(String(20), default="admin", nullable=False)  # admin, super_admin и т.д.
+    role = Column(String(20), default="admin", nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
-
-    # Дополнительные поля для администраторов
-    permissions = Column(String(255), nullable=True)  # Можно хранить разрешения в виде JSON строки
-    position = Column(String(100), nullable=True)  # Должность
-    phone = Column(String(20), nullable=True)  # Телефон
+    permissions = Column(String(255), nullable=True)
+    position = Column(String(100), nullable=True)
+    phone = Column(String(20), nullable=True)
 
 # ------------------------------
 # 2. Товары (products)

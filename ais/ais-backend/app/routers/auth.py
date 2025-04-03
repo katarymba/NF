@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from app import models, schemas
 from app.database import get_db
 from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.models import Administrator
 
 load_dotenv()
 
@@ -23,8 +24,19 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    print("\n--- Проверка пароля ---")
+    print(f"Входящий пароль: {plain_password}")
+    print(f"Длина входящего пароля: {len(plain_password)}")
+    print(f"Хеш из базы: {hashed_password}")
+    print(f"Длина хеша: {len(hashed_password)}")
 
+    try:
+        result = pwd_context.verify(plain_password, hashed_password)
+        print(f"Результат проверки: {result}")
+        return result
+    except Exception as e:
+        print(f"❌ Ошибка при проверке пароля: {e}")
+        return False
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
@@ -40,22 +52,78 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
 
 @router.post("/token")
 def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.password_hash):
+    # Расширенное логирование
+    print("\n--- Попытка входа администратора ---")
+    print(f"Входящий username/email: {form_data.username}")
+    print(f"Длина пароля: {len(form_data.password)}")
+
+    # Поиск администратора
+    user = (
+        db.query(Administrator)
+        .filter(
+            (Administrator.email == form_data.username) |
+            (Administrator.username == form_data.username)
+        )
+        .first()
+    )
+
+    if not user:
+        print("❌ Пользователь не найден")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверные учётные данные",
+            detail="Пользователь не найден",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username, "role": user.role},
-        expires_delta=access_token_expires,
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    # Подробная проверка пароля
+    try:
+        is_password_correct = verify_password(form_data.password, user.password_hash)
+
+        print(f"✅ Найден пользователь: {user.username}")
+        print(f"✅ Хеш пароля из БД: {user.password_hash}")
+        print(f"✅ Результат проверки пароля: {is_password_correct}")
+
+        if not is_password_correct:
+            print("❌ Неверный пароль")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверный пароль",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Создание токена
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role},
+            expires_delta=access_token_expires,
+        )
+
+        print("✅ Вход выполнен успешно")
+        return {"access_token": access_token, "token_type": "bearer"}
+
+    except Exception as e:
+        print(f"❌ Критическая ошибка: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/debug/administrators")
+def debug_list_administrators(db: Session = Depends(get_db)):
+    admins = db.query(Administrator).all()
+    return [
+        {
+            "id": admin.id,
+            "username": admin.username,
+            "email": admin.email,
+            "is_active": admin.is_active,
+            "hash_length": len(admin.password_hash) if admin.password_hash else 0
+        } for admin in admins
+    ]
 
 
 # Зависимость для получения текущего пользователя
@@ -118,3 +186,5 @@ def register(
 @router.get("/me", response_model=schemas.UserResponse)
 def read_current_user(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+

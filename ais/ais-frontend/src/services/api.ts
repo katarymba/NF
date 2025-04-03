@@ -3,25 +3,24 @@ export const API_BASE_URL = 'http://localhost:8080/ais';
 
 const API_ENDPOINTS = {
     auth: `${API_BASE_URL}/auth`,
+    admin: `${API_BASE_URL}/administrators`,
     api: `${API_BASE_URL}/api`,
 };
 
-/**
- * Логин пользователя. Возвращает JWT токен.
- */
-export async function login(username: string, password: string): Promise<string> {
+export async function loginAsAdmin(username: string, password: string): Promise<string> {
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
 
-    const response = await fetch(`${API_ENDPOINTS.auth}/token`, {
+    const response = await fetch(`${API_ENDPOINTS.admin}/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData,
     });
 
     if (!response.ok) {
-        throw new Error('Ошибка авторизации');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Ошибка авторизации администратора');
     }
     const data = await response.json();
     return data.access_token;

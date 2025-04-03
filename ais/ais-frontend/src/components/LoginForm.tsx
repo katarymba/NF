@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../services/api';
 
 interface LoginFormProps {
     onToken: (token: string) => void;
@@ -14,31 +13,49 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         try {
-            const response = await fetch('http://localhost:8080/ais/auth/token', {
+            console.group('Вход администратора');
+            console.log('Входные данные:', {
+                username,
+                passwordLength: password.length
+            });
+
+            const formData = new URLSearchParams({
+                username,
+                password,
+                grant_type: 'password'
+            });
+
+            console.log('Отправляемые данные:', Object.fromEntries(formData));
+
+            const response = await fetch('http://localhost:8080/ais/administrators/token', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-                body: new URLSearchParams({
-                    username: username,
-                    password: password,
-                    grant_type: 'password'
-                })
+                body: formData
             });
-            
+
+            console.log('Статус ответа:', response.status);
+            console.log('Заголовки:', Object.fromEntries(response.headers));
+
+            const responseText = await response.text();
+            console.log('Текст ответа:', responseText);
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Ошибка авторизации');
+                throw new Error(responseText || 'Ошибка авторизации');
             }
-            
-            const data = await response.json();
+
+            const data = JSON.parse(responseText);
             onToken(data.access_token);
             navigate('/dashboard', { replace: true });
+
+            console.groupEnd();
         } catch (err) {
-            console.error('Ошибка входа:', err);
+            console.error('Полная ошибка входа:', err);
             setError(err instanceof Error ? err.message : 'Произошла ошибка при входе');
+            console.groupEnd();
         }
     };
 

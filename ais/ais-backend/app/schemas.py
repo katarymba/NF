@@ -41,13 +41,14 @@ class AdministratorUpdate(BaseModel):
     position: Optional[str] = None
     phone: Optional[str] = None
 
-class AdministratorResponse(AdministratorBase):
-    id: int
-    is_active: bool
-    created_at: datetime
-    token: str
 
-    model_config = ConfigDict(from_attributes=True)
+class AdministratorResponse(AdministratorBase):
+  id: int
+  is_active: bool
+  created_at: datetime
+  token: str
+
+  model_config = ConfigDict(from_attributes=True)
     
 # ------------------------------
 # 2. Статусы заказов (на английском)

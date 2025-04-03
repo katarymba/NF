@@ -69,3 +69,118 @@
 2025-04-01 16:09:51,172 - api_gateway - INFO - Проксирование завершено: GET /sever-ryba/orders/ -> http://localhost:8000/orders/ | Статус: 200, Время: 1.883s
 2025-04-01 16:09:51,174 - api_gateway - INFO - Request 1743512989213-9b613af6 completed: Status 200, Time 1.961s
 2025-04-01 16:22:51,427 - api_gateway - INFO - ✅ CORS middleware подключен!
+2025-04-04 00:05:03,713 - api_gateway - INFO - Request 1743710703713-4c95adfc: POST /ais/administrators/token
+2025-04-04 00:05:03,714 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:05:04,228 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:05:04,228 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.514s
+2025-04-04 00:05:04,228 - api_gateway - INFO - Request 1743710703713-4c95adfc completed: Status 401, Time 0.515s
+2025-04-04 00:05:45,181 - api_gateway - INFO - Request 1743710745181-5c0480a9: POST /ais/administrators/token
+2025-04-04 00:05:45,181 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:05:45,649 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:05:45,649 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.468s
+2025-04-04 00:05:45,650 - api_gateway - INFO - Request 1743710745181-5c0480a9 completed: Status 401, Time 0.469s
+2025-04-04 00:05:49,699 - api_gateway - INFO - Request 1743710749699-fb2c1a91: POST /ais/administrators/token
+2025-04-04 00:05:49,700 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:05:50,162 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:05:50,163 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.463s
+2025-04-04 00:05:50,163 - api_gateway - INFO - Request 1743710749699-fb2c1a91 completed: Status 401, Time 0.464s
+2025-04-04 00:07:12,851 - api_gateway - INFO - Request 1743710832851-50c22bdd: POST /ais/administrators/token
+2025-04-04 00:07:12,851 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:07:13,320 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:07:13,321 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.469s
+2025-04-04 00:07:13,321 - api_gateway - INFO - Request 1743710832851-50c22bdd completed: Status 401, Time 0.470s
+2025-04-04 00:07:53,370 - api_gateway - INFO - Request 1743710873370-0c2f38ec: POST /ais/administrators/token
+2025-04-04 00:07:53,370 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:07:53,860 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:07:53,861 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.490s
+2025-04-04 00:07:53,861 - api_gateway - INFO - Request 1743710873370-0c2f38ec completed: Status 401, Time 0.491s
+2025-04-04 00:07:57,565 - api_gateway - INFO - Request 1743710877565-02a69d7e: POST /ais/administrators/token
+2025-04-04 00:07:57,565 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:07:58,019 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:07:58,019 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.454s
+2025-04-04 00:07:58,019 - api_gateway - INFO - Request 1743710877565-02a69d7e completed: Status 401, Time 0.455s
+2025-04-04 00:08:03,363 - api_gateway - INFO - Request 1743710883363-ec3252f4: POST /ais/administrators/token
+2025-04-04 00:08:03,363 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:08:03,833 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:08:03,834 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.470s
+2025-04-04 00:08:03,834 - api_gateway - INFO - Request 1743710883363-ec3252f4 completed: Status 401, Time 0.472s
+2025-04-04 00:09:14,667 - api_gateway - INFO - Request 1743710954667-804cdd22: POST /ais/administrators/token
+2025-04-04 00:09:14,667 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:09:15,125 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:09:15,125 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.458s
+2025-04-04 00:09:15,126 - api_gateway - INFO - Request 1743710954667-804cdd22 completed: Status 401, Time 0.459s
+2025-04-04 00:09:25,195 - api_gateway - INFO - Request 1743710965195-c20d536f: POST /ais/administrators/token
+2025-04-04 00:09:25,195 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:09:25,675 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:09:25,676 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.480s
+2025-04-04 00:09:25,676 - api_gateway - INFO - Request 1743710965195-c20d536f completed: Status 401, Time 0.481s
+2025-04-04 00:10:35,247 - api_gateway - INFO - Request 1743711035247-da2f3f81: POST /ais/administrators/token
+2025-04-04 00:10:35,247 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:10:35,730 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:10:35,730 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.483s
+2025-04-04 00:10:35,731 - api_gateway - INFO - Request 1743711035247-da2f3f81 completed: Status 401, Time 0.484s
+2025-04-04 00:11:12,383 - api_gateway - INFO - Request 1743711072383-2db4f356: POST /ais/administrators/token
+2025-04-04 00:11:12,383 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:11:12,860 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:11:12,861 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.477s
+2025-04-04 00:11:12,861 - api_gateway - INFO - Request 1743711072383-2db4f356 completed: Status 401, Time 0.479s
+2025-04-04 00:13:16,623 - api_gateway - INFO - Request 1743711196623-2ab8f0ad: POST /ais/administrators/token
+2025-04-04 00:13:16,623 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:13:17,098 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:13:17,099 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.476s
+2025-04-04 00:13:17,099 - api_gateway - INFO - Request 1743711196623-2ab8f0ad completed: Status 401, Time 0.476s
+2025-04-04 00:13:19,111 - api_gateway - INFO - Request 1743711199111-eaaff8d0: POST /ais/administrators/token
+2025-04-04 00:13:19,112 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:13:19,599 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:13:19,599 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.488s
+2025-04-04 00:13:19,600 - api_gateway - INFO - Request 1743711199111-eaaff8d0 completed: Status 401, Time 0.489s
+2025-04-04 00:15:05,318 - api_gateway - INFO - Request 1743711305318-e0a2c52d: POST /ais/administrators/token
+2025-04-04 00:15:05,318 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:15:05,835 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:15:05,835 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.517s
+2025-04-04 00:15:05,835 - api_gateway - INFO - Request 1743711305318-e0a2c52d completed: Status 401, Time 0.518s
+2025-04-04 00:16:22,898 - api_gateway - INFO - Request 1743711382898-47a31dc5: POST /ais/administrators/token
+2025-04-04 00:16:22,898 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:16:23,373 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:16:23,374 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.475s
+2025-04-04 00:16:23,374 - api_gateway - INFO - Request 1743711382898-47a31dc5 completed: Status 401, Time 0.476s
+2025-04-04 00:19:21,214 - api_gateway - INFO - Request 1743711561214-c4cff76e: POST /ais/administrators/token
+2025-04-04 00:19:21,215 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:19:21,718 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:19:21,718 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.504s
+2025-04-04 00:19:21,719 - api_gateway - INFO - Request 1743711561214-c4cff76e completed: Status 401, Time 0.505s
+2025-04-04 00:22:08,639 - api_gateway - INFO - Request 1743711728639-ddd30724: POST /ais/administrators/token
+2025-04-04 00:22:08,639 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:22:09,140 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:22:09,140 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.501s
+2025-04-04 00:22:09,141 - api_gateway - INFO - Request 1743711728639-ddd30724 completed: Status 401, Time 0.503s
+2025-04-04 00:24:53,123 - api_gateway - INFO - Request 1743711893123-c69c6b94: POST /ais/administrators/token
+2025-04-04 00:24:53,124 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:24:53,609 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:24:53,609 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.485s
+2025-04-04 00:24:53,610 - api_gateway - INFO - Request 1743711893123-c69c6b94 completed: Status 401, Time 0.487s
+2025-04-04 00:25:07,821 - api_gateway - INFO - Request 1743711907821-e07090c9: POST /ais/administrators/token
+2025-04-04 00:25:07,821 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:25:08,292 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:25:08,292 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.471s
+2025-04-04 00:25:08,293 - api_gateway - INFO - Request 1743711907821-e07090c9 completed: Status 401, Time 0.472s
+2025-04-04 00:25:21,706 - api_gateway - INFO - Request 1743711921706-c092cac4: POST /ais/administrators/token
+2025-04-04 00:25:21,706 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:25:22,167 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:25:22,167 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.461s
+2025-04-04 00:25:22,168 - api_gateway - INFO - Request 1743711921706-c092cac4 completed: Status 401, Time 0.462s
+2025-04-04 00:29:53,604 - api_gateway - INFO - Request 1743712193604-bcff525c: POST /ais/administrators/token
+2025-04-04 00:29:53,604 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:29:54,084 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:29:54,084 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.480s
+2025-04-04 00:29:54,085 - api_gateway - INFO - Request 1743712193604-bcff525c completed: Status 401, Time 0.481s
+2025-04-04 00:30:05,915 - api_gateway - INFO - Request 1743712205915-00dbd3ca: POST /ais/administrators/token
+2025-04-04 00:30:05,915 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:30:06,392 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:30:06,393 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.478s
+2025-04-04 00:30:06,393 - api_gateway - INFO - Request 1743712205915-00dbd3ca completed: Status 401, Time 0.479s
+2025-04-04 00:38:41,483 - api_gateway - INFO - Request 1743712721483-55c4a2cd: POST /ais/administrators/token
+2025-04-04 00:38:41,484 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-04 00:38:41,966 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 401 Unauthorized"
+2025-04-04 00:38:41,966 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 401, Время: 0.482s
+2025-04-04 00:38:41,967 - api_gateway - INFO - Request 1743712721483-55c4a2cd completed: Status 401, Time 0.484s
