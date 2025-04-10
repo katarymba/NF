@@ -178,7 +178,7 @@ class ProductUpdate(BaseModel):
 
 class ProductInDB(ProductBase):
   id: int
-  created_at: datetime
+  created_at: Optional[datetime] = None
 
   model_config = ConfigDict(from_attributes=True, frozen=True)
 

@@ -492,6 +492,8 @@ async def ais_admin_token_proxy(request: Request):
 
 
 # Общая функция для проксирования запросов
+# Обновим proxy_request функцию в api-gateway/main.py для лучшей обработки ошибок
+
 async def proxy_request(target_url: str, request: Request):
     """Проксирует запрос к указанному URL и возвращает ответ"""
     start_time = time.time()
@@ -512,23 +514,52 @@ async def proxy_request(target_url: str, request: Request):
         content = None
         if method in ["POST", "PUT", "PATCH"]:
             content = await request.body()
+            
+            # Логируем содержимое для отладки
+            content_log = content
+            if len(str(content)) > 1000:
+                content_log = str(content)[:1000] + "... [truncated]"
+            logger.debug(f"Тело запроса: {content_log}")
 
         # Выполняем запрос к целевому API
         async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method,
-                target_url,
-                params=params,
-                headers=headers,
-                content=content,
-                timeout=30.0  # Увеличенный таймаут для запросов
-            )
+            try:
+                response = await client.request(
+                    method,
+                    target_url,
+                    params=params,
+                    headers=headers,
+                    content=content,
+                    timeout=30.0  # Увеличенный таймаут для запросов
+                )
+            except httpx.ConnectError as e:
+                logger.error(f"Ошибка подключения к {target_url}: {str(e)}")
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": f"Сервис недоступен: {str(e)}"}
+                )
+            except httpx.ReadTimeout as e:
+                logger.error(f"Таймаут при чтении от {target_url}: {str(e)}")
+                return JSONResponse(
+                    status_code=504,
+                    content={"detail": f"Сервис не отвечает: {str(e)}"}
+                )
 
             process_time = time.time() - start_time
 
             # Логируем успешный ответ
             logger.info(f"Проксирование завершено: {request.method} {request.url.path} -> {target_url} | "
                         f"Статус: {response.status_code}, Время: {process_time:.3f}s")
+            
+            # Логируем содержимое для отладки
+            if response.status_code >= 400:
+                try:
+                    response_log = response.text
+                    if len(response_log) > 1000:
+                        response_log = response_log[:1000] + "... [truncated]"
+                    logger.debug(f"Тело ответа (ошибка): {response_log}")
+                except Exception as e:
+                    logger.error(f"Не удалось прочитать тело ответа: {str(e)}")
 
             # Создаем ответ с тем же статус-кодом и содержимым
             return Response(
@@ -542,20 +573,28 @@ async def proxy_request(target_url: str, request: Request):
         process_time = time.time() - start_time
         logger.error(f"Таймаут при проксировании: {request.method} {request.url.path} -> {target_url} | "
                      f"Время: {process_time:.3f}s")
-        raise HTTPException(status_code=504, detail="Время ожидания ответа от сервиса истекло")
+        return JSONResponse(
+            status_code=504,
+            content={"detail": "Время ожидания ответа от сервиса истекло"}
+        )
 
     except httpx.RequestError as e:
         process_time = time.time() - start_time
         logger.error(f"Ошибка при проксировании: {request.method} {request.url.path} -> {target_url} | "
                      f"Ошибка: {str(e)}, Время: {process_time:.3f}s")
-        raise HTTPException(status_code=502, detail=f"Ошибка при обращении к сервису: {str(e)}")
+        return JSONResponse(
+            status_code=502,
+            content={"detail": f"Ошибка при обращении к сервису: {str(e)}"}
+        )
 
     except Exception as e:
         process_time = time.time() - start_time
         logger.error(f"Внутренняя ошибка при проксировании: {request.method} {request.url.path} -> {target_url} | "
                      f"Ошибка: {str(e)}, Время: {process_time:.3f}s")
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
-
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Внутренняя ошибка сервера: {str(e)}"}
+        )
 
 if __name__ == "__main__":
     import uvicorn

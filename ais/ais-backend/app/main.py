@@ -1,11 +1,47 @@
 import os
-from fastapi import FastAPI, Request, HTTPException, Response
+import time
+from datetime import datetime, timedelta
+from fastapi import FastAPI, Request, HTTPException, Response, logger
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, users, products, categories, orders, payments, shipments
 from app.routers import integration
 from app.routers import administrators
 import httpx
 from dotenv import load_dotenv
+
+from app.models import Administrator
+from app.database import SessionLocal
+from app.routers.auth import get_password_hash
+
+
+def create_default_admin():
+    db = SessionLocal()
+    try:
+        admin = db.query(Administrator).filter(Administrator.username == "main_admin").first()
+        if not admin:
+            print("🔧 Создание администратора по умолчанию...")
+            hashed_password = get_password_hash("qwerty123")
+            new_admin = Administrator(
+                username="main_admin",
+                email="admin@example.com",
+                password_hash=hashed_password,
+                full_name="Main Administrator",
+                role="admin",
+                is_active=True
+            )
+            db.add(new_admin)
+            db.commit()
+            print("✅ Администратор по умолчанию создан!")
+        else:
+            print("✅ Администратор по умолчанию уже существует")
+    except Exception as e:
+        print(f"❌ Ошибка при создании администратора: {e}")
+    finally:
+        db.close()
+
+
+# Создаем администратора
+create_default_admin()
 
 load_dotenv()
 
@@ -14,7 +50,9 @@ AIS_API = os.getenv("AIS_API", "http://localhost:8001")
 app = FastAPI(
     title="AIS Backend API",
     description="Автоматизированная информационная система предприятия",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/docs",  # Явно указываем URL для документации
+    redoc_url="/redoc"  # Явно указываем URL для ReDoc
 )
 
 origins = [
@@ -28,7 +66,8 @@ origins = [
     "http://192.168.0.157:8000",
     "http://localhost:8000",
     "http://localhost:8001",
-    "http://localhost:8080"
+    "http://localhost:8080",
+    "http://0.0.0.0:8001"  # Добавляем этот адрес
     # Добавьте здесь ваши production домены, когда перейдете в production
 ]
 
@@ -52,9 +91,16 @@ app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
 app.include_router(shipments.router, prefix="/shipments", tags=["Shipments"])
 app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
 
+
 @app.get("/")
 def read_root():
     return {"message": "AIS Backend API is running."}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "timestamp": str(datetime.now())}
+
 
 @app.api_route("/ais/administrators/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def ais_admin_proxy(path: str, request: Request):
@@ -62,10 +108,11 @@ async def ais_admin_proxy(path: str, request: Request):
     return await proxy_request(f"{AIS_API}/administrators/{path}", request)
 
 
-
-
 async def proxy_request(target_url: str, request: Request):
     """Проксирует запрос к указанному URL и возвращает ответ"""
+    start_time = time.time()
+    logger.info(f"Проксирование запроса: {request.method} {request.url.path} -> {target_url}")
+
     try:
         # Получаем метод запроса
         method = request.method
@@ -90,8 +137,14 @@ async def proxy_request(target_url: str, request: Request):
                 params=params,
                 headers=headers,
                 content=content,
-                timeout=30.0  # Увеличенный таймаут для запросов
+                timeout=20.0  # Увеличенный таймаут до 60 секунд
             )
+
+            process_time = time.time() - start_time
+
+            # Логируем успешный ответ
+            logger.info(f"Проксирование завершено: {request.method} {request.url.path} -> {target_url} | "
+                        f"Статус: {response.status_code}, Время: {process_time:.3f}s")
 
             # Создаем ответ с тем же статус-кодом и содержимым
             return Response(

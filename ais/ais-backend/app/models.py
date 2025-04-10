@@ -58,9 +58,9 @@ class Product(Base):
     name = Column(String(100), nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     price = Column(Float, nullable=False)
-    stock_quantity = Column(Integer, default=0)
+    stock_quantity = Column(Integer, default=0, nullable=False)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
 
     # Связь с категорией (многие товары -> одна категория)
     category = relationship("Category", back_populates="products")

@@ -13,7 +13,7 @@ from app.routers.auth import get_password_hash, verify_password, create_access_t
 from dotenv import load_dotenv
 
 load_dotenv()
-ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 router = APIRouter(prefix="", tags=["Administrators"])
 
@@ -41,21 +41,37 @@ def login_admin(admin_data: AdministratorLogin, db: Session = Depends(get_db)):
 
 @router.post("/token", response_model=dict)
 def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: Session = Depends(get_db)
 ):
+    print(f"Попытка входа пользователя: {form_data.username}")
     admin = db.query(Administrator).filter(Administrator.username == form_data.username).first()
-    if not admin or not verify_password(form_data.password, admin.password_hash):
+
+    if not admin:
+        print(f"Администратор с именем {form_data.username} не найден")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверные учётные данные",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    print(f"Найден администратор: {admin.username}, проверка пароля...")
+    password_valid = verify_password(form_data.password, admin.password_hash)
+    print(f"Результат проверки пароля: {password_valid}")
+
+    if not password_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверные учётные данные",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": admin.username, "role": "admin"},
         expires_delta=access_token_expires,
     )
+    print(f"Вход выполнен успешно, токен создан")
     return {"access_token": access_token, "token_type": "bearer"}
 
 

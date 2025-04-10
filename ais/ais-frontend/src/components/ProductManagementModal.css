@@ -1,0 +1,61 @@
+/* src/components/ProductManagementModal.css */
+
+/* Стили для модального окна */
+.modal-content {
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+  }
+  
+  /* Решение для черных полей ввода */
+  .product-form-input {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  /* Явно устанавливаем стили для темной темы через JavaScript */
+  .dark .product-form-input-dark {
+    background-color: #374151 !important;
+    color: white !important;
+  }
+  
+  /* Скрываем стрелки в полях ввода чисел */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  /* Firefox */
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+  
+  /* Ручной контроль для опускающегося списка */
+  select.product-form-input {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Дополнительные стили для явного перезаписывания в Chrome */
+  @media screen and (-webkit-min-device-pixel-ratio:0) {
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      background-color: white !important;
+      color: black !important;
+    }
+    
+    .dark input[type="text"],
+    .dark input[type="number"],
+    .dark textarea,
+    .dark select {
+      background-color: #374151 !important;
+      color: white !important;
+    }
+  }

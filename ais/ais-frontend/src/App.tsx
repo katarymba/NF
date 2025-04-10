@@ -17,12 +17,55 @@ import Home from './pages/Home';
 const App: React.FC = () => {
     // Получаем токен из localStorage при инициализации
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     // Функция для установки токена
     const handleToken = (newToken: string) => {
+        console.log("Token received:", newToken.substring(0, 10) + "...");
         localStorage.setItem('token', newToken);
         setToken(newToken);
     };
+
+    // Проверяем валидность токена при загрузке приложения
+    useEffect(() => {
+        const checkAuth = async () => {
+            const storedToken = localStorage.getItem('token');
+            
+            if (storedToken) {
+                try {
+                    const response = await fetch('http://localhost:8080/ais/auth/me', {
+                        headers: {
+                            'Authorization': `Bearer ${storedToken}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        // Токен недействителен, удаляем его
+                        console.log("Токен недействителен, выполняется выход");
+                        localStorage.removeItem('token');
+                        setToken(null);
+                    } else {
+                        setToken(storedToken);
+                    }
+                } catch (error) {
+                    console.error("Ошибка проверки авторизации:", error);
+                    localStorage.removeItem('token');
+                    setToken(null);
+                }
+            }
+            
+            setIsCheckingAuth(false);
+        };
+        
+        checkAuth();
+    }, []);
+
+    // Показываем индикатор загрузки, пока проверяем авторизацию
+    if (isCheckingAuth) {
+        return <div className="flex items-center justify-center h-screen">Загрузка...</div>;
+    }
+
+    console.log("Токен аутентификации:", token ? "установлен" : "отсутствует");
 
     return (
         <Router>
@@ -31,59 +74,58 @@ const App: React.FC = () => {
                     token ? <Navigate to="/dashboard" replace /> : <LoginPage onToken={handleToken} />
                 } />
 
-                <Route path="/" element={<MainLayout />}>
+                <Route path="/" element={token ? <MainLayout /> : <Navigate to="/login" replace />}>
                     <Route
                         index
-                        element={token ? <Navigate to="/dashboard" replace /> : <Home />}
+                        element={<Navigate to="/dashboard" replace />}
                     />
 
                     <Route
                         path="dashboard"
-                        element={token ? <Dashboard token={token} /> : <Navigate to="/login" replace />}
+                        element={<Dashboard token={token || ''} />}
                     />
 
                     <Route
                         path="products"
-                        element={token ? <Products /> : <Navigate to="/login" replace />}
+                        element={<Products />}
                     />
 
                     <Route
                         path="orders"
-                        element={token ? <Orders token={token} /> : <Navigate to="/login" replace />}
+                        element={<Orders token={token || ''} />}
                     />
                     
                     <Route
                         path="orders/:orderId"
-                        element={token ? <OrderDetail /> : <Navigate to="/login" replace />}
+                        element={<OrderDetail />}
                     />
 
                     <Route
                         path="payments"
-                        element={token ? <Payments /> : <Navigate to="/login" replace />}
+                        element={<Payments token={''} />}
                     />
                     
                     <Route
                         path="analytics"
-                        element={token ? <AnalyticsDashboard /> : <Navigate to="/login" replace />}
+                        element={<AnalyticsDashboard />}
                     />
                     
                     <Route
                         path="sync"
-                        element={token ? <SyncPage /> : <Navigate to="/login" replace />}
+                        element={<SyncPage />}
                     />
                     
-                    {/* Заглушки для других разделов интеграции */}
                     <Route
                         path="customers"
-                        element={token ? <div className="p-4">Страница управления клиентами находится в разработке</div> : <Navigate to="/login" replace />}
+                        element={<div className="p-4">Страница управления клиентами находится в разработке</div>}
                     />
                     
                     <Route
                         path="settings"
-                        element={token ? <div className="p-4">Страница настроек интеграции находится в разработке</div> : <Navigate to="/login" replace />}
+                        element={<div className="p-4">Страница настроек интеграции находится в разработке</div>}
                     />
 
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
             </Routes>
         </Router>

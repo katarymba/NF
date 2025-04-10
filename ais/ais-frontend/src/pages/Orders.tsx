@@ -1,8 +1,8 @@
 // ais/ais-frontend/src/pages/Orders.tsx
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { API_BASE_URL } from '../services/api';
+import { getOrders } from '../services/api';
 
 interface Order {
    id: number;
@@ -27,10 +27,9 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
        const fetchOrders = async () => {
            try {
                setLoading(true);
-               const response = await axios.get(`${API_BASE_URL}/api/orders`, {
-                   headers: { Authorization: `Bearer ${token}` }
-               });
-               setOrders(response.data);
+               // Используем функцию из api.ts, которая корректно обрабатывает ошибки
+               const data = await getOrders();
+               setOrders(data);
                setError(null);
            } catch (err) {
                console.error('Ошибка при загрузке заказов:', err);
@@ -40,24 +39,37 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
            }
        };
 
-       fetchOrders();
+       if (token) {
+           fetchOrders();
+       } else {
+           setLoading(false);
+           setError('Требуется авторизация');
+       }
    }, [token]);
 
    // Функция форматирования даты
    const formatDate = (dateString: string): string => {
-       const options: Intl.DateTimeFormatOptions = {
-           year: 'numeric',
-           month: 'short',
-           day: 'numeric',
-           hour: '2-digit',
-           minute: '2-digit'
-       };
-       return new Date(dateString).toLocaleDateString('ru-RU', options);
+       try {
+           const options: Intl.DateTimeFormatOptions = {
+               year: 'numeric',
+               month: 'short',
+               day: 'numeric',
+               hour: '2-digit',
+               minute: '2-digit'
+           };
+           return new Date(dateString).toLocaleDateString('ru-RU', options);
+       } catch (e) {
+           return dateString;
+       }
    };
 
    // Функция форматирования цены
    const formatPrice = (price: number): string => {
-       return price.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,") + ' ₽';
+       try {
+           return price.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,") + ' ₽';
+       } catch (e) {
+           return `${price} ₽`;
+       }
    };
 
    // Функция получения класса для статуса заказа
@@ -95,6 +107,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
        ? orders 
        : orders.filter(order => order.status === filter);
 
+   // Если нет данных, показываем заглушку
    if (loading) {
        return (
            <div className="flex justify-center items-center h-48">
@@ -107,6 +120,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
        return (
            <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
                <p>{error}</p>
+               <p className="mt-2 text-sm">На данный момент сервер с заказами может быть недоступен. Это тестовая версия приложения.</p>
            </div>
        );
    }
@@ -134,6 +148,25 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
            {filteredOrders.length === 0 ? (
                <div className="text-center py-12">
                    <p className="text-gray-500 dark:text-gray-400">Нет заказов для отображения</p>
+                   {/* Пример заказа для удобства разработки */}
+                   <div className="mt-8 p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                       <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300">Пример заказа (данные для разработки)</h2>
+                       <div className="mt-2 bg-white dark:bg-gray-800 shadow-sm p-4 rounded-md">
+                           <div className="flex justify-between">
+                               <div>
+                                   <p className="font-medium">Заказ #123456</p>
+                                   <p className="text-sm text-gray-500">Иванов Иван</p>
+                               </div>
+                               <div className="text-right">
+                                   <p className="text-sm text-gray-500">12 апр. 2025, 15:30</p>
+                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                       Новый
+                                   </span>
+                               </div>
+                           </div>
+                           <p className="mt-2 font-medium">Сумма: 12 500 ₽</p>
+                       </div>
+                   </div>
                </div>
            ) : (
                <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">

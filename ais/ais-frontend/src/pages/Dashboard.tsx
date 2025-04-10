@@ -1,287 +1,346 @@
 // ais/ais-frontend/src/pages/Dashboard.tsx
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { API_BASE_URL } from '../services/api';
 
-interface OrderSummary {
-  total: number;
-  new: number;
-  processing: number;
-  completed: number;
-  cancelled: number;
+interface DashboardProps {
+    token: string;
 }
 
 interface SalesSummary {
-  totalRevenue: number;
-  todayRevenue: number;
-  weekRevenue: number;
-  monthRevenue: number;
-}
-
-interface ProductSummary {
-  totalProducts: number;
-  outOfStock: number;
-  lowStock: number;
-}
-
-interface UserSummary {
-  totalUsers: number;
-  newUsersToday: number;
-}
-
-interface DashboardProps {
-  token: string;
+    totalRevenue: number;
+    todayRevenue: number;
+    weekRevenue: number;
+    monthRevenue: number;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ token }) => {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [orderSummary, setOrderSummary] = useState<OrderSummary>({
-    total: 0,
-    new: 0,
-    processing: 0,
-    completed: 0,
-    cancelled: 0
-  });
-  const [salesSummary, setSalesSummary] = useState<SalesSummary>({
-    totalRevenue: 0,
-    todayRevenue: 0,
-    weekRevenue: 0,
-    monthRevenue: 0
-  });
-  const [productSummary, setProductSummary] = useState<ProductSummary>({
-    totalProducts: 0,
-    outOfStock: 0,
-    lowStock: 0
-  });
-  const [userSummary, setUserSummary] = useState<UserSummary>({
-    totalUsers: 0,
-    newUsersToday: 0
-  });
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
-  const [topProducts, setTopProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [orderSummary, setOrderSummary] = useState({
+        total: 0,
+        new: 0,
+        processing: 0,
+        completed: 0,
+        cancelled: 0
+    });
+    const [salesSummary, setSalesSummary] = useState<SalesSummary>({
+        totalRevenue: 0,
+        todayRevenue: 0,
+        weekRevenue: 0,
+        monthRevenue: 0
+    });
+    const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [token]);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      
-      // Загрузка данных о заказах
-      const orderResponse = await axios.get(`${API_BASE_URL}/api/orders`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (orderResponse.data) {
-        const orders = orderResponse.data;
-        // Расчет статистики по заказам
-        const ordersStats = {
-          total: orders.length,
-          new: orders.filter((o: any) => o.status === 'new').length,
-          processing: orders.filter((o: any) => o.status === 'processing').length,
-          completed: orders.filter((o: any) => o.status === 'completed').length,
-          cancelled: orders.filter((o: any) => o.status === 'cancelled').length
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                setLoading(true);
+                
+                // Генерируем тестовые данные для демонстрации
+                // В реальном приложении здесь будут API-запросы
+                
+                // Заглушка для количества заказов
+                setOrderSummary({
+                    total: 125,
+                    new: 15,
+                    processing: 32,
+                    completed: 68,
+                    cancelled: 10
+                });
+                
+                // Заглушка для финансовой информации
+                setSalesSummary({
+                    totalRevenue: 1750000,
+                    todayRevenue: 45000,
+                    weekRevenue: 320000,
+                    monthRevenue: 1250000
+                });
+                
+                // Заглушка для последних заказов
+                setRecentOrders([
+                    {
+                        id: 10045,
+                        customer_name: "Иванов Иван",
+                        created_at: "2025-04-08T10:30:00",
+                        total_price: 12500,
+                        status: "new"
+                    },
+                    {
+                        id: 10044,
+                        customer_name: "Петров Петр",
+                        created_at: "2025-04-07T15:45:00",
+                        total_price: 8750,
+                        status: "processing"
+                    },
+                    {
+                        id: 10043,
+                        customer_name: "Сидорова Анна",
+                        created_at: "2025-04-06T09:15:00",
+                        total_price: 21300,
+                        status: "completed"
+                    }
+                ]);
+                
+                setError(null);
+                setLoading(false);
+            } catch (err) {
+                console.error('Ошибка загрузки данных Dashboard:', err);
+                setError('Не удалось загрузить данные дашборда');
+                setLoading(false);
+            }
         };
-        setOrderSummary(ordersStats);
-        
-        // Расчет статистики по продажам
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const weekAgo = new Date(today - 7 * 24 * 60 * 60 * 1000).getTime();
-        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).getTime();
-        
-        const totalRevenue = orders.reduce((sum: number, order: any) => sum + order.total_price, 0);
-        const todayRevenue = orders
-          .filter((o: any) => new Date(o.created_at).getTime() >= today)
-          .reduce((sum: number, order: any) => sum + order.total_price, 0);
-        const weekRevenue = orders
-          .filter((o: any) => new Date(o.created_at).getTime() >= weekAgo)
-          .reduce((sum: number, order: any) => sum + order.total_price, 0);
-        const monthRevenue = orders
-          .filter((o: any) => new Date(o.created_at).getTime() >= monthAgo)
-          .reduce((sum: number, order: any) => sum + order.total_price, 0);
-        
-        setSalesSummary({
-          totalRevenue,
-          todayRevenue,
-          weekRevenue,
-          monthRevenue
-        });
-        
-        // Получаем последние 5 заказов
-        setRecentOrders(
-          orders
-            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, 5)
-        );
-      }
-      
-      // Загрузка данных о продуктах
-      const productsResponse = await axios.get(`${API_BASE_URL}/api/products`);
-      
-      if (productsResponse.data) {
-        const products = productsResponse.data;
-        // Статистика по продуктам
-        setProductSummary({
-          totalProducts: products.length,
-          outOfStock: products.filter((p: any) => p.stock_quantity === 0).length,
-          lowStock: products.filter((p: any) => p.stock_quantity > 0 && p.stock_quantity < 10).length
-        });
-        
-        // Топ продаваемых продуктов (заглушка, обычно берется из статистики продаж)
-        setTopProducts(products.slice(0, 5));
-      }
-      
-      // Загрузка данных о пользователях (если API доступен)
-      try {
-        const usersResponse = await axios.get(`${API_BASE_URL}/users`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (usersResponse.data) {
-          const users = usersResponse.data;
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          
-          setUserSummary({
-            totalUsers: users.length,
-            newUsersToday: users.filter((u: any) => {
-              const created = new Date(u.created_at);
-              return created >= today;
-            }).length
-          });
+
+        if (token) {
+            fetchDashboardData();
+        } else {
+            setLoading(false);
+            setError('Требуется авторизация');
         }
-      } catch (userError) {
-        console.log('Не удалось загрузить данные о пользователях:', userError);
-        // Не выдаем ошибку, просто оставляем заглушечные данные
-      }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Ошибка загрузки данных Dashboard:', err);
-      setError('Не удалось загрузить данные');
-      setLoading(false);
-    }
-  };
+    }, [token]);
 
-  // Форматирование цены
-  const formatPrice = (price: number): string => {
-    return price.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,") + ' ₽';
-  };
-
-  // Форматирование даты
-  const formatDate = (dateString: string): string => {
-    const options: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    // Форматирование цены
+    const formatPrice = (price: number): string => {
+        return new Intl.NumberFormat('ru-RU', { 
+            style: 'currency', 
+            currency: 'RUB',
+            maximumFractionDigits: 0
+        }).format(price);
     };
-    return new Date(dateString).toLocaleDateString('ru-RU', options);
-  };
 
-  // Получение класса для статуса заказа
-  const getStatusClass = (status: string): string => {
-    switch (status) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'processing':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-    }
-  };
-
-  // Получение названия статуса для отображения
-  const getStatusLabel = (status: string): string => {
-    const statusLabels: {[key: string]: string} = {
-      'new': 'Новый',
-      'processing': 'Обрабатывается',
-      'shipped': 'Отправлен',
-      'completed': 'Выполнен',
-      'cancelled': 'Отменен'
+    // Форматирование даты
+    const formatDate = (dateString: string): string => {
+        const options: Intl.DateTimeFormatOptions = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        return new Date(dateString).toLocaleDateString('ru-RU', options);
     };
-    return statusLabels[status] || status;
-  };
 
-  if (loading) {
+    // Получение класса для статуса заказа
+    const getStatusClass = (status: string): string => {
+        switch (status) {
+            case 'new':
+                return 'bg-blue-100 text-blue-800';
+            case 'processing':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'completed':
+                return 'bg-green-100 text-green-800';
+            case 'cancelled':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    // Получение названия статуса для отображения
+    const getStatusLabel = (status: string): string => {
+        const statusLabels: {[key: string]: string} = {
+            'new': 'Новый',
+            'processing': 'Обрабатывается',
+            'shipped': 'Отправлен',
+            'completed': 'Выполнен',
+            'cancelled': 'Отменен'
+        };
+        return statusLabels[status] || status;
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-48">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 p-4 rounded">
+                <p>{error}</p>
+                <p className="mt-2 text-sm">Это тестовая версия приложения с демонстрационными данными.</p>
+            </div>
+        );
+    }
+
     return (
-      <div className="flex justify-center items-center h-48">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
-        <p>{error}</p>
-        <button 
-          onClick={fetchDashboardData} 
-          className="mt-2 text-sm font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100"
-        >
-          Повторить
-        </button>
-      </div>
-    );
-  }
-
-  // Остальной JSX код Dashboard.tsx остается прежним
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Панель управления</h1>
-      {/* Содержимое панели управления */}
-      
-      {/* Верхние карточки со статистикой */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Статистика по заказам */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Всего заказов</p>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{orderSummary.total}</h2>
+        <div className="container mx-auto p-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Панель управления</h1>
+            
+            {/* Верхние карточки со статистикой */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {/* Карточка заказов */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">Всего заказов</p>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{orderSummary.total}</h2>
+                        </div>
+                        <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-900">
+                            <svg className="w-6 h-6 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-between text-sm">
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Новых:</span>
+                            <span className="ml-2 font-medium text-blue-600 dark:text-blue-400">{orderSummary.new}</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Обработка:</span>
+                            <span className="ml-2 font-medium text-yellow-600 dark:text-yellow-400">{orderSummary.processing}</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Выполнено:</span>
+                            <span className="ml-2 font-medium text-green-600 dark:text-green-400">{orderSummary.completed}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Карточка общего дохода */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">Общий доход</p>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatPrice(salesSummary.totalRevenue)}</h2>
+                        </div>
+                        <div className="p-3 rounded-full bg-green-50 dark:bg-green-900">
+                            <svg className="w-6 h-6 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-between text-sm">
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Сегодня:</span>
+                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{formatPrice(salesSummary.todayRevenue)}</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">За месяц:</span>
+                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{formatPrice(salesSummary.monthRevenue)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Заглушки для других карточек */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">Товары на складе</p>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">278</h2>
+                        </div>
+                        <div className="p-3 rounded-full bg-purple-50 dark:bg-purple-900">
+                            <svg className="w-6 h-6 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-between text-sm">
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Категорий:</span>
+                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">12</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Низкий запас:</span>
+                            <span className="ml-2 font-medium text-red-600 dark:text-red-400">15</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">Клиенты</p>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">450</h2>
+                        </div>
+                        <div className="p-3 rounded-full bg-indigo-50 dark:bg-indigo-900">
+                            <svg className="w-6 h-6 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-between text-sm">
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Новых:</span>
+                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">12 за неделю</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Активных:</span>
+                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">85%</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-900">
-              <svg className="w-6 h-6 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
+            
+            {/* Последние заказы */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Последние заказы</h2>
+                    <Link to="/orders" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                        Все заказы
+                    </Link>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    ID заказа
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Клиент
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Дата
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Сумма
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Статус
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {recentOrders.map((order) => (
+                                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        #{order.id}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {order.customer_name}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {formatDate(order.created_at)}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {formatPrice(order.total_price)}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(order.status)}`}>
+                                            {getStatusLabel(order.status)}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-          </div>
-          <div className="mt-4 flex justify-between text-sm">
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Новых:</span>
-              <span className="ml-2 font-medium text-blue-600 dark:text-blue-400">{orderSummary.new}</span>
+            
+            {/* Блок с информацией для разработчиков */}
+            <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 text-yellow-700 dark:text-yellow-200 p-4 rounded">
+                <h3 className="font-medium mb-2">Для разработчиков</h3>
+                <p className="text-sm">
+                    Это тестовая версия приложения с демонстрационными данными. API-сервер может быть недоступен,
+                    поэтому используются заглушки. В реальном приложении здесь будут отображаться актуальные данные.
+                </p>
             </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Обработка:</span>
-              <span className="ml-2 font-medium text-yellow-600 dark:text-yellow-400">{orderSummary.processing}</span>
-            </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Выполнено:</span>
-              <span className="ml-2 font-medium text-green-600 dark:text-green-400">{orderSummary.completed}</span>
-            </div>
-          </div>
         </div>
-        
-        {/* И другие карточки статистики */}
-      </div>
-      
-      {/* Недавние заказы и популярные товары */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Секции с заказами и товарами */}
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Dashboard;

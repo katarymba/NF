@@ -11,8 +11,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
+    // ais/ais-frontend/src/components/LoginForm.tsx
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(''); // Очищаем ошибки перед новой попыткой
 
         try {
             console.group('Вход администратора');
@@ -21,14 +23,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                 passwordLength: password.length
             });
 
-            const formData = new URLSearchParams({
-                username,
-                password,
-                grant_type: 'password'
-            });
+            const formData = new URLSearchParams();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('grant_type', 'password');
 
             console.log('Отправляемые данные:', Object.fromEntries(formData));
 
+            // Убираем AbortController, так как он может вызывать проблемы
             const response = await fetch('http://localhost:8080/ais/administrators/token', {
                 method: 'POST',
                 headers: {
@@ -47,7 +49,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                 throw new Error(responseText || 'Ошибка авторизации');
             }
 
-            const data = JSON.parse(responseText);
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (error) {
+                console.error('Ошибка парсинга ответа:', error);
+                throw new Error('Некорректный ответ от сервера');
+            }
+
             onToken(data.access_token);
             navigate('/dashboard', { replace: true });
 
