@@ -50,6 +50,109 @@ export async function registerUser(
 }
 
 /**
+ * Публичная регистрация пользователя
+ */
+export async function registerPublicUser(userData: {
+    username: string;
+    email: string;
+    password: string;
+    password_confirm: string;
+}): Promise<any> {
+    // Отладочная информация
+    console.log("Регистрируем пользователя:", {
+        username: userData.username,
+        email: userData.email
+    });
+
+    try {
+        // Отправляем запрос напрямую на бэкенд
+        const response = await fetch("http://localhost:8000/auth/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                username: userData.username,
+                email: userData.email,
+                password: userData.password,
+                password_confirm: userData.password_confirm,
+                // Добавляем пустые поля, которые могут ожидаться сервером
+                phone: "",
+                full_name: userData.username
+            }),
+        });
+
+        console.log('Статус ответа:', response.status);
+        const responseText = await response.text();
+        console.log('Текст ответа:', responseText);
+
+        if (!response.ok) {
+            let errorMessage = "Ошибка при регистрации";
+            try {
+                const errorData = JSON.parse(responseText);
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                errorMessage = responseText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            data = { message: "Пользователь успешно зарегистрирован" };
+        }
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Ошибка при регистрации:', error);
+        return { success: false, message: error instanceof Error ? error.message : String(error) };
+    }
+}
+
+/**
+ * Вход пользователя через телефон
+ */
+export async function loginWithPhone(phone: string, password: string): Promise<any> {
+    console.log("Вход с телефоном:", phone);
+    
+    try {
+        // Прямое подключение к бэкенду
+        const response = await fetch("http://localhost:8000/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                phone: phone,
+                password: password
+            }),
+        });
+
+        const responseText = await response.text();
+        console.log('Ответ при входе:', responseText);
+
+        if (!response.ok) {
+            let errorMessage = "Ошибка при входе";
+            try {
+                const errorData = JSON.parse(responseText);
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                errorMessage = responseText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+
+        const data = JSON.parse(responseText);
+        return { success: true, data };
+    } catch (error) {
+        console.error('Ошибка при входе:', error);
+        return { success: false, message: error instanceof Error ? error.message : String(error) };
+    }
+}
+
+/**
  * Получение информации о текущем пользователе.
  */
 export async function getCurrentUser(token: string): Promise<any> {
