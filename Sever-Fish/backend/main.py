@@ -1,11 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-# Проверьте правильность пути импорта
+import os
 from routers import auth, products, cart, orders
 import secrets
+from dotenv import load_dotenv
 
 app = FastAPI()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # Настройки CORS
 origins = [
