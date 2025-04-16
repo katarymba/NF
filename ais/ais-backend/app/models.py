@@ -22,11 +22,14 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    email = Column(String(100), unique=True, nullable=False, index=True)
-    password_hash = Column(String(128), nullable=False)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime)
     role = Column(String(20), default="user", nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    phone = Column(String, unique=True, nullable=False)
+    full_name = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
 
     # Пример связи с заказами (один пользователь - много заказов)
     orders = relationship("Order", back_populates="user")

@@ -94,8 +94,13 @@ app.include_router(integration.router, prefix="/api/integration", tags=["Integra
 
 @app.get("/")
 def read_root():
-    return {"message": "AIS Backend API is running."}
+    return {"message": "AIS Backend is running"}
 
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    if user_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    return {"user_id": user_id, "name": "John Doe"}
 
 @app.get("/health")
 def health_check():
