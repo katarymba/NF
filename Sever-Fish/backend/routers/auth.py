@@ -8,13 +8,17 @@ from database import get_db
 from models import User
 from typing import Optional
 from schemas import UserBirthdayUpdate, UserProfileUpdate
+from dotenv import load_dotenv
+import os
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 # Настройка JWT
-SECRET_KEY = "your_secret_key"  # В реальном приложении используйте безопасный ключ
+SECRET_KEY = SECRET_KEY  # В реальном приложении используйте безопасный ключ
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 

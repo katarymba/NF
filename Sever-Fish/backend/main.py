@@ -8,6 +8,9 @@ import secrets
 
 app = FastAPI()
 
+# Загрузка переменных окружения
+load_dotenv()
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)

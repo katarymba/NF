@@ -8247,3 +8247,71 @@
 2025-04-11 14:41:03,972 - httpx - INFO - HTTP Request: POST http://localhost:8000/auth/login "HTTP/1.1 500 Internal Server Error"
 2025-04-11 14:41:03,978 - api_gateway - INFO - Проксирование завершено: POST /sever-ryba/auth/login -> http://localhost:8000/auth/login | Статус: 500, Время: 1.149s
 2025-04-11 14:41:03,981 - api_gateway - INFO - Request 1744371662827-d25a5c07 completed: Status 500, Time 1.154s
+2025-04-11 16:40:47,195 - api_gateway - INFO - Request 1744375247195-15da020d: OPTIONS /ais/auth/me
+2025-04-11 16:40:47,196 - api_gateway - INFO - Request 1744375247195-15da020d completed: Status 200, Time 0.001s
+2025-04-11 16:40:47,197 - api_gateway - INFO - Request 1744375247197-e853f179: OPTIONS /ais/auth/me
+2025-04-11 16:40:47,197 - api_gateway - INFO - Request 1744375247197-e853f179 completed: Status 200, Time 0.000s
+2025-04-11 16:40:47,198 - api_gateway - INFO - Request 1744375247198-673d9678: GET /ais/auth/me
+2025-04-11 16:40:47,198 - api_gateway - INFO - Проксирование запроса: GET /ais/auth/me -> http://localhost:8001/auth/me
+2025-04-11 16:40:47,793 - httpx - INFO - HTTP Request: GET http://localhost:8001/auth/me "HTTP/1.1 401 Unauthorized"
+2025-04-11 16:40:47,794 - api_gateway - INFO - Проксирование завершено: GET /ais/auth/me -> http://localhost:8001/auth/me | Статус: 401, Время: 0.595s
+2025-04-11 16:40:47,795 - api_gateway - INFO - Request 1744375247198-673d9678 completed: Status 401, Time 0.597s
+2025-04-11 16:40:47,796 - api_gateway - INFO - Request 1744375247796-54b8b5e1: GET /ais/auth/me
+2025-04-11 16:40:47,797 - api_gateway - INFO - Проксирование запроса: GET /ais/auth/me -> http://localhost:8001/auth/me
+2025-04-11 16:40:48,327 - httpx - INFO - HTTP Request: GET http://localhost:8001/auth/me "HTTP/1.1 401 Unauthorized"
+2025-04-11 16:40:48,328 - api_gateway - INFO - Проксирование завершено: GET /ais/auth/me -> http://localhost:8001/auth/me | Статус: 401, Время: 0.531s
+2025-04-11 16:40:48,328 - api_gateway - INFO - Request 1744375247796-54b8b5e1 completed: Status 401, Time 0.532s
+2025-04-11 16:40:48,934 - api_gateway - INFO - Request 1744375248934-dd40216b: POST /ais/administrators/token
+2025-04-11 16:40:48,934 - api_gateway - INFO - Проксирование запроса: POST /ais/administrators/token -> http://localhost:8001/administrators/token
+2025-04-11 16:40:49,690 - httpx - INFO - HTTP Request: POST http://localhost:8001/administrators/token "HTTP/1.1 200 OK"
+2025-04-11 16:40:49,691 - api_gateway - INFO - Проксирование завершено: POST /ais/administrators/token -> http://localhost:8001/administrators/token | Статус: 200, Время: 0.757s
+2025-04-11 16:40:49,692 - api_gateway - INFO - Request 1744375248934-dd40216b completed: Status 200, Time 0.758s
+2025-04-11 16:40:51,895 - api_gateway - INFO - Request 1744375251895-3f97a5b1: OPTIONS /ais/api/categories
+2025-04-11 16:40:51,896 - api_gateway - INFO - Request 1744375251895-3f97a5b1 completed: Status 200, Time 0.001s
+2025-04-11 16:40:51,898 - api_gateway - INFO - Request 1744375251898-5ff089ed: OPTIONS /ais/api/products
+2025-04-11 16:40:51,899 - api_gateway - INFO - Request 1744375251899-1ee0287a: OPTIONS /ais/api/categories
+2025-04-11 16:40:51,899 - api_gateway - INFO - Request 1744375251898-5ff089ed completed: Status 200, Time 0.001s
+2025-04-11 16:40:51,900 - api_gateway - INFO - Request 1744375251899-1ee0287a completed: Status 200, Time 0.001s
+2025-04-11 16:40:51,904 - api_gateway - INFO - Request 1744375251904-357a5f7f: OPTIONS /ais/api/products
+2025-04-11 16:40:51,905 - api_gateway - INFO - Request 1744375251904-357a5f7f completed: Status 200, Time 0.001s
+2025-04-11 16:40:51,906 - api_gateway - INFO - Request 1744375251906-b52edb80: GET /ais/api/categories
+2025-04-11 16:40:51,907 - api_gateway - INFO - Проксирование запроса: GET /ais/api/categories -> http://localhost:8001/api/categories
+2025-04-11 16:40:52,191 - api_gateway - INFO - Request 1744375252191-d2f9cd03: GET /ais/api/products
+2025-04-11 16:40:52,195 - api_gateway - INFO - Проксирование запроса: GET /ais/api/products -> http://localhost:8001/api/products
+2025-04-11 16:40:52,704 - httpx - INFO - HTTP Request: GET http://localhost:8001/api/categories "HTTP/1.1 200 OK"
+2025-04-11 16:40:52,705 - api_gateway - INFO - Проксирование завершено: GET /ais/api/categories -> http://localhost:8001/api/categories | Статус: 200, Время: 0.798s
+2025-04-11 16:40:52,706 - api_gateway - INFO - Request 1744375251906-b52edb80 completed: Status 200, Time 0.800s
+2025-04-11 16:40:52,707 - api_gateway - INFO - Request 1744375252707-03d2f74f: GET /ais/api/categories
+2025-04-11 16:40:52,708 - api_gateway - INFO - Проксирование запроса: GET /ais/api/categories -> http://localhost:8001/api/categories
+2025-04-11 16:40:52,965 - httpx - INFO - HTTP Request: GET http://localhost:8001/api/products "HTTP/1.1 200 OK"
+2025-04-11 16:40:52,966 - api_gateway - INFO - Проксирование завершено: GET /ais/api/products -> http://localhost:8001/api/products | Статус: 200, Время: 0.771s
+2025-04-11 16:40:52,967 - api_gateway - INFO - Request 1744375252191-d2f9cd03 completed: Status 200, Time 0.776s
+2025-04-11 16:40:52,968 - api_gateway - INFO - Request 1744375252968-25009437: GET /ais/api/products
+2025-04-11 16:40:52,969 - api_gateway - INFO - Проксирование запроса: GET /ais/api/products -> http://localhost:8001/api/products
+2025-04-11 16:40:53,257 - httpx - INFO - HTTP Request: GET http://localhost:8001/api/categories "HTTP/1.1 200 OK"
+2025-04-11 16:40:53,258 - api_gateway - INFO - Проксирование завершено: GET /ais/api/categories -> http://localhost:8001/api/categories | Статус: 200, Время: 0.550s
+2025-04-11 16:40:53,260 - api_gateway - INFO - Request 1744375252707-03d2f74f completed: Status 200, Time 0.553s
+2025-04-11 16:40:53,535 - httpx - INFO - HTTP Request: GET http://localhost:8001/api/products "HTTP/1.1 200 OK"
+2025-04-11 16:40:53,535 - api_gateway - INFO - Проксирование завершено: GET /ais/api/products -> http://localhost:8001/api/products | Статус: 200, Время: 0.566s
+2025-04-11 16:40:53,536 - api_gateway - INFO - Request 1744375252968-25009437 completed: Status 200, Time 0.568s
+2025-04-11 16:41:01,460 - api_gateway - INFO - Request 1744375261460-b7d14e94: OPTIONS /ais/api/products
+2025-04-11 16:41:01,461 - api_gateway - INFO - Request 1744375261460-b7d14e94 completed: Status 200, Time 0.001s
+2025-04-11 16:41:01,463 - api_gateway - INFO - Request 1744375261463-9ed68024: GET /ais/api/products
+2025-04-11 16:41:01,464 - api_gateway - INFO - Проксирование запроса: GET /ais/api/products -> http://localhost:8001/api/products
+2025-04-11 16:41:01,993 - httpx - INFO - HTTP Request: GET http://localhost:8001/api/products?category_id=1 "HTTP/1.1 200 OK"
+2025-04-11 16:41:01,993 - api_gateway - INFO - Проксирование завершено: GET /ais/api/products -> http://localhost:8001/api/products | Статус: 200, Время: 0.530s
+2025-04-11 16:41:01,994 - api_gateway - INFO - Request 1744375261463-9ed68024 completed: Status 200, Time 0.531s
+2025-04-11 16:41:03,162 - api_gateway - INFO - Request 1744375263162-c955c7e0: GET /ais/api/products
+2025-04-11 16:41:03,162 - api_gateway - INFO - Проксирование запроса: GET /ais/api/products -> http://localhost:8001/api/products
+2025-04-11 16:41:03,710 - httpx - INFO - HTTP Request: GET http://localhost:8001/api/products "HTTP/1.1 200 OK"
+2025-04-11 16:41:03,710 - api_gateway - INFO - Проксирование завершено: GET /ais/api/products -> http://localhost:8001/api/products | Статус: 200, Время: 0.548s
+2025-04-11 16:41:03,711 - api_gateway - INFO - Request 1744375263162-c955c7e0 completed: Status 200, Time 0.549s
+2025-04-11 16:45:15,185 - api_gateway - INFO - Request 1744375515185-ec9dbe6a: OPTIONS /auth/login
+2025-04-11 16:45:15,185 - api_gateway - INFO - Request 1744375515185-ec9dbe6a completed: Status 200, Time 0.001s
+2025-04-11 16:45:15,187 - api_gateway - INFO - Request 1744375515187-97adc0c0: POST /auth/login
+2025-04-11 16:45:15,187 - api_gateway - INFO - Request 1744375515187-97adc0c0 completed: Status 404, Time 0.000s
+2025-04-11 16:45:37,738 - api_gateway - INFO - Request 1744375537738-2dca12a0: OPTIONS /auth/register
+2025-04-11 16:45:37,738 - api_gateway - INFO - Request 1744375537738-2dca12a0 completed: Status 200, Time 0.000s
+2025-04-11 16:45:37,740 - api_gateway - INFO - Request 1744375537740-826e27dc: POST /auth/register
+2025-04-11 16:45:37,741 - api_gateway - INFO - Request 1744375537740-826e27dc completed: Status 404, Time 0.001s
+2025-04-11 17:39:33,520 - api_gateway - INFO - Request 1744378773520-63263897: GET /ais/api/products
