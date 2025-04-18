@@ -1,4 +1,3 @@
-// ais/ais-frontend/src/components/SideBar.tsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 // Импорт иконок
@@ -11,19 +10,24 @@ import {
     ChartBarIcon,
     ArrowPathIcon,
     UsersIcon,
-    Cog6ToothIcon
+    Cog6ToothIcon,
+    DocumentTextIcon, // Иконка для отчетов
+    BuildingStorefrontIcon, // Добавляем иконку для склада
 } from '@heroicons/react/24/solid';
 
 interface SidebarProps {
     isOpen: boolean;
 }
 
+// Добавлен пункт "Склад" в список навигации
 const navItems = [
     { to: '/dashboard', label: 'Главная', Icon: HomeIcon },
     { to: '/products', label: 'Товары', Icon: ShoppingCartIcon },
+    { to: '/warehouse', label: 'Склад', Icon: BuildingStorefrontIcon }, // Новый пункт меню для склада
     { to: '/orders', label: 'Заказы', Icon: ArchiveBoxIcon },
     { to: '/payments', label: 'Платежи', Icon: WalletIcon },
     { to: '/shipments', label: 'Доставка', Icon: TruckIcon },
+    { to: '/reports', label: 'Отчеты', Icon: DocumentTextIcon },
     { to: '/analytics', label: 'Аналитика', Icon: ChartBarIcon },
 ];
 
@@ -87,33 +91,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
             )}
             
             {/* Секция интеграции */}
-            <nav className="flex-1 flex flex-col space-y-1 pb-4">
-                {integrationItems.map(({ to, label, Icon }) => (
-                    <Link
-                        key={to}
-                        to={to}
-                        className={`
-                            flex items-center
-                            px-3 py-2
-                            ${isActiveLink(to) 
-                                ? 'bg-green-50 text-green-600 dark:bg-green-900 dark:text-green-200' 
-                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#2a2a2a]'}
-                            transition-colors
-                        `}
-                    >
-                        <Icon className="h-6 w-6" />
-                        {isOpen && <span className="ml-3">{label}</span>}
-                    </Link>
-                ))}
-            </nav>
-            
-            {/* Информация о версии */}
-            {isOpen && (
-                <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-[#1a1a1a] border-t border-gray-200 dark:border-gray-700">
-                    <p>АИС Север-Рыба v1.0.0</p>
-                    <p>© 2025 NorthFish</p>
-                </div>
-            )}
+            <div className="px-3 pb-4">
+                <nav className="flex-1 flex flex-col space-y-1">
+                    {integrationItems.map(({ to, label, Icon }) => (
+                        <Link
+                            key={to}
+                            to={to}
+                            className={`
+                                flex items-center
+                                px-3 py-2
+                                ${isActiveLink(to) 
+                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900 dark:text-blue-200' 
+                                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#2a2a2a]'}
+                                transition-colors
+                            `}
+                        >
+                            <Icon className="h-6 w-6" />
+                            {isOpen && <span className="ml-3">{label}</span>}
+                        </Link>
+                    ))}
+                </nav>
+            </div>
         </div>
     );
 };

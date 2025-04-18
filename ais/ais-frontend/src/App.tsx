@@ -1,5 +1,3 @@
-// ais/ais-frontend/src/App.tsx
-
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
@@ -12,6 +10,8 @@ import OrderDetail from './pages/OrderDetail';
 import Payments from './pages/Payments';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import SyncPage from './pages/SyncPage';
+import Reports from './pages/Reports'; // Импорт страницы отчетов
+import Warehouse from './pages/Warehouse'; // Импорт страницы склада
 import Home from './pages/Home';
 
 const App: React.FC = () => {
@@ -90,6 +90,12 @@ const App: React.FC = () => {
                         element={<Products />}
                     />
 
+                    {/* Добавляем новый маршрут для страницы склада */}
+                    <Route
+                        path="warehouse"
+                        element={<Warehouse token={token || ''} />}
+                    />
+
                     <Route
                         path="orders"
                         element={<Orders token={token || ''} />}
@@ -103,6 +109,12 @@ const App: React.FC = () => {
                     <Route
                         path="payments"
                         element={<Payments token={''} />}
+                    />
+                    
+                    {/* Маршрут для страницы отчетов */}
+                    <Route
+                        path="reports"
+                        element={<Reports />}
                     />
                     
                     <Route

@@ -28,9 +28,6 @@ def upgrade():
     # Create a unique index on phone to ensure uniqueness
     op.create_index(op.f('ix_users_phone'), 'users', ['phone'], unique=True)
 
-    # You might need to populate the phone field with default values
-    # for existing users, since we're making it non-nullable
-
 
 def downgrade():
     # Drop added columns for rollback

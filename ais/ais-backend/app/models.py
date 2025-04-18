@@ -8,7 +8,7 @@ from sqlalchemy import (
     Float,
     Enum,
     Date,
-    Boolean, func  # добавлен импорт func
+    Boolean  # добавьте этот импорт
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -22,15 +22,14 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, nullable=False, index=True)
+    username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False, index=True)
-    phone = Column(String, unique=True, nullable=False, index=True)
-    full_name = Column(String, nullable=True)
-    birthday = Column(Date, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=func.now())
+    email = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime)
     role = Column(String(20), default="user", nullable=False)
+    phone = Column(String, unique=True, nullable=False)
+    full_name = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
 
     # Пример связи с заказами (один пользователь - много заказов)
     orders = relationship("Order", back_populates="user")

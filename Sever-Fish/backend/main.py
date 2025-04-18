@@ -1,30 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from dotenv import load_dotenv
-import os
-from routers import auth, products, cart, orders
-import secrets
 
 app = FastAPI()
 
-# Загрузка переменных окружения
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
-
 # Настройки CORS
 origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    # Добавьте другие нужные вам домены
+    "http://localhost:5173",  # URL фронтенда
+    "http://127.0.0.1:5173",  # Альтернативный URL
 ]
 
-# Упростим middleware для начала
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -33,23 +17,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключаем маршруты API
-try:
-    app.include_router(auth.router)
-    app.include_router(products.router)
-    app.include_router(cart.router)
-    app.include_router(orders.router)
-except Exception as e:
-    # Добавим обработку исключений для отладки
-    @app.get("/error")
-    def error_info():
-        return {"error": str(e)}
+# Пример данных корзины
+cart_data = [
+    {"id": 1, "name": "Fish Item 1", "quantity": 2},
+    {"id": 2, "name": "Fish Item 2", "quantity": 1},
+]
 
 @app.get("/")
-def root():
-    return {"message": "Welcome to the API"}
+def read_root():
+    return {"message": "Sever-Fish Backend is running"}
 
-# Добавьте тестовый маршрут для проверки работы сервера
-@app.get("/test")
-def test():
-    return {"status": "ok", "message": "API is working"}
+@app.get("/cart/")
+def get_cart():
+    return {"cart_items": cart_data}
+
+@app.post("/cart/")
+def add_to_cart(item: dict):
+    if "id" not in item or "name" not in item or "quantity" not in item:
+        raise HTTPException(status_code=400, detail="Invalid item format")
+    cart_data.append(item)
+    return {"message": "Item added to cart", "cart": cart_data}
