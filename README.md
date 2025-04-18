@@ -1,6 +1,13 @@
 # Север-Рыба: Система управления и клиентская часть
 
-![Логотип проекта](./ais/ais-frontend/public/logo.png)
+<div align="center">
+  <img src="ais/ais-frontend/public/logo.png" alt="NF logo" width="200"/>
+  
+  <p><strong>Разработка FullStack приложения</strong></p>
+  
+  ![License](https://img.shields.io/badge/license-MIT-blue)
+  ![Version](https://img.shields.io/badge/version-0.0.0.4.2-green)
+</div>
 
 ## Обзор проекта
 
