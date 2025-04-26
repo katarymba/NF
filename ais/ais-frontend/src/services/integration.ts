@@ -94,3 +94,22 @@ export const reconnectRabbitMQ = async (token: string) => {
     throw error;
   }
 };
+
+// Полная синхронизация данных
+export const runFullSync = async (token: string) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/integration/sync`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка при выполнении полной синхронизации:', error);
+    throw error;
+  }
+};

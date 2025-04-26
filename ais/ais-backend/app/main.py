@@ -5,8 +5,9 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from sqlalchemy import text 
 
-from app.database import engine, Base, get_db, db
+from app.database import engine, Base, get_db, SessionLocal
 from app.routers import users, administrators, products, categories, orders, payments, shipments, auth, integration
 from app.admin import create_default_admin
 from app.services.message_handlers import register_message_handlers
@@ -23,13 +24,15 @@ Base.metadata.create_all(bind=engine)
 
 try:
     # Проверка подключения к базе данных
-    db.execute("SELECT 1")
+    db = SessionLocal()
+    db.execute(text("SELECT 1"))
     logger.info("✅ Подключение к базе данных установлено!")
 except Exception as e:
     logger.error(f"❌ Ошибка подключения к базе данных: {e}")
     raise e
 finally:
-    db.close()
+    if 'db' in locals():
+        db.close()
 
 
 # Создаем администратора
