@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Request, HTTPException, Response, Depends
+import asyncio
+from rabbit_mq import rabbit_client, init_rabbitmq, close_rabbitmqfrom fastapi import FastAPI, Request, HTTPException, Response, Depends
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
 import json
@@ -60,7 +61,71 @@ class TokenRequest(BaseModel):
     username: str
     password: str
 
+@app.on_event("startup")
+async def startup_event():
+    """Инициализация при запуске приложения"""
+    await init_rabbitmq()
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Очистка ресурсов при остановке приложения"""
+    await close_rabbitmq()
+
+# Добавить новые маршруты для интеграции через RabbitMQ:
+@app.post("/api/mq-integration/{service}/{method}")
+async def rabbit_mq_integration(service: str, method: str, data: dict):
+    """
+    Интеграционный маршрут через RabbitMQ.
+    Сервис может быть 'sever_ryba' или 'ais'.
+    """
+    try:
+        if service not in ["sever_ryba", "ais"]:
+            raise HTTPException(status_code=400, detail=f"Неизвестный сервис: {service}")
+        
+        response = await rabbit_client.send_message(service, method, data)
+        return response
+    except TimeoutError as e:
+        logger.error(f"Таймаут при обработке запроса к {service}/{method}: {str(e)}")
+        raise HTTPException(status_code=504, detail="Время ожидания ответа истекло")
+    except Exception as e:
+        logger.error(f"Ошибка при обработке запроса к {service}/{method}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Обновить маршрут для интегрированной информации о заказе:
+@app.get("/api/integration/order-status/{order_id}")
+async def get_integrated_order_status(order_id: int):
+    """Получение интегрированной информации о заказе через RabbitMQ"""
+    try:
+        # Получаем данные о заказе из Север-Рыба
+        order_data = await rabbit_client.send_message(
+            "sever_ryba", 
+            "get_order", 
+            {"order_id": order_id}
+        )
+        
+        if not order_data:
+            raise HTTPException(status_code=404, detail="Заказ не найден")
+        
+        # Получаем данные о отслеживании из АИС
+        try:
+            tracking_data = await rabbit_client.send_message(
+                "ais", 
+                "get_tracking", 
+                {"order_id": order_id}
+            )
+        except Exception:
+            tracking_data = None
+        
+        # Комбинируем данные
+        return {
+            "order": order_data,
+            "tracking": tracking_data,
+            "message": "Информация об отслеживании недоступна" if not tracking_data else None
+        }
+    except Exception as e:
+        logger.error(f"Ошибка при получении статуса заказа {order_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка интеграции: {str(e)}")
+    
 # Middleware для логирования запросов
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

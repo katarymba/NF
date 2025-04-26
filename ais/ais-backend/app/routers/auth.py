@@ -14,7 +14,9 @@ from app.models import Administrator
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+# Используем значение из config.py, если не задано в .env
+if not SECRET_KEY or SECRET_KEY == "change_this_secret_key":
+    SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 
 router = APIRouter(tags=["auth"])
 
@@ -24,19 +26,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    print("\n--- Проверка пароля ---")
-    print(f"Входящий пароль: {plain_password}")
-    print(f"Длина входящего пароля: {len(plain_password)}")
-    print(f"Хеш из базы: {hashed_password}")
-    print(f"Длина хеша: {len(hashed_password)}")
-
     try:
-        result = pwd_context.verify(plain_password, hashed_password)
-        print(f"Результат проверки: {result}")
-        return result
+        return pwd_context.verify(plain_password, hashed_password)
     except Exception as e:
         print(f"❌ Ошибка при проверке пароля: {e}")
         return False
+
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
@@ -44,7 +39,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=15))
+    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -55,11 +50,6 @@ def login_for_access_token(
         form_data: OAuth2PasswordRequestForm = Depends(),
         db: Session = Depends(get_db)
 ):
-    # Расширенное логирование
-    print("\n--- Попытка входа администратора ---")
-    print(f"Входящий username/email: {form_data.username}")
-    print(f"Длина пароля: {len(form_data.password)}")
-
     # Поиск администратора
     user = (
         db.query(Administrator)
@@ -78,13 +68,9 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Подробная проверка пароля
+    # Проверка пароля
     try:
         is_password_correct = verify_password(form_data.password, user.password_hash)
-
-        print(f"✅ Найден пользователь: {user.username}")
-        print(f"✅ Хеш пароля из БД: {user.password_hash}")
-        print(f"✅ Результат проверки пароля: {is_password_correct}")
 
         if not is_password_correct:
             print("❌ Неверный пароль")
@@ -141,15 +127,19 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credentials_exception
 
-    user = db.query(models.User).filter(models.User.username == username).first()
+    # Сначала проверяем среди администраторов
+    user = db.query(Administrator).filter(Administrator.email == username).first()
     if user is None:
-        raise credentials_exception
+        # Если нет в администраторах, проверяем среди обычных пользователей
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user is None:
+            raise credentials_exception
     return user
 
 
 # Зависимость для проверки роли администратора
-def require_admin(user: models.User = Depends(get_current_user)):
-    if user.role != "admin":
+def require_admin(user = Depends(get_current_user)):
+    if not hasattr(user, 'role') or user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Недостаточно прав для доступа"
@@ -161,7 +151,7 @@ def require_admin(user: models.User = Depends(get_current_user)):
 def register(
     user_create: schemas.UserCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_admin)
+    current_user = Depends(require_admin)
 ):
     # Только администратор может создавать новых пользователей
     existing_user = db.query(models.User).filter(models.User.username == user_create.username).first()
@@ -184,7 +174,5 @@ def register(
 
 
 @router.get("/me", response_model=schemas.UserResponse)
-def read_current_user(current_user: models.User = Depends(get_current_user)):
+def read_current_user(current_user = Depends(get_current_user)):
     return current_user
-
-

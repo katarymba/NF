@@ -1,149 +1,78 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useProducts } from '../contexts/ProductContext';
+import { useCart } from '../contexts/CartContext';
+import axios from 'axios';
+import { API_ENDPOINTS } from '../utils/apiConfig';
 
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  description?: string;
-  image_url?: string;
-  weight?: string;
-  category_id: number;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  slug: string;
-}
-
-const ProductDetail: React.FC<{ updateCartCount: () => void }> = ({ updateCartCount }) => {
-  const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [category, setCategory] = useState<Category | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [isAdding, setIsAdding] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+const ProductDetail = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const { categories } = useProducts();
+  const { addToCart } = useCart();
+  
+  const [product, setProduct] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
+      if (!id) return;
+      
       try {
-        setLoading(true);
-        const res = await axios.get(`http://127.0.0.1:8000/products/${id}`);
-        setProduct(res.data);
-        
-        // Если продукт получен успешно, также получаем данные о категории
-        if (res.data.category_id) {
-          try {
-            const catRes = await axios.get(`http://127.0.0.1:8000/products/categories/`);
-            const foundCategory = catRes.data.find((cat: Category) => cat.id === res.data.category_id);
-            if (foundCategory) {
-              setCategory(foundCategory);
-            }
-          } catch (categoryError) {
-            console.error("Ошибка при загрузке категории:", categoryError);
-          }
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Ошибка при загрузке товара:', error);
-        setError("Не удалось загрузить информацию о товаре. Пожалуйста, попробуйте позже.");
-        setLoading(false);
+        setIsLoading(true);
+        const response = await axios.get(API_ENDPOINTS.PRODUCT_BY_ID(Number(id)));
+        setProduct(response.data);
+      } catch (err) {
+        console.error('Ошибка при загрузке товара:', err);
+        setError('Не удалось загрузить информацию о товаре');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (id) {
-      fetchProduct();
-    }
+    fetchProduct();
   }, [id]);
 
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    if (!isNaN(value) && value >= 1 && value <= 99) {
-      setQuantity(value);
-    }
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : '';
   };
 
-  const decreaseQuantity = () => {
-    if (quantity > 1) {
-      setQuantity(quantity - 1);
-    }
-  };
-
-  const increaseQuantity = () => {
-    if (quantity < 99) {
-      setQuantity(quantity + 1);
-    }
-  };
-
-  const addToCart = async () => {
-    if (!product) return;
-    
-    // Получаем токен из localStorage
-    const token = localStorage.getItem('token');
-    const tokenType = localStorage.getItem('tokenType');
-    
-    // Проверяем, авторизован ли пользователь
-    if (!token || !tokenType) {
-      // Показываем модальное окно или перенаправляем на страницу авторизации
-      setShowAuthModal(true);
-      return;
-    }
-    
+  const handleAddToCart = async () => {
     try {
-      setIsAdding(true);
+      const success = await addToCart(product.id, quantity);
       
-      // Отправляем запрос с токеном авторизации
-      await axios.post("http://127.0.0.1:8000/cart/", {
-        product_id: product.id,
-        quantity,
-      }, {
-        headers: {
-          'Authorization': `${tokenType} ${token}`
-        }
-      });
-      
-      updateCartCount();
-      
-      // Показываем сообщение об успешном добавлении
-      setTimeout(() => {
-        setIsAdding(false);
-      }, 1500);
-    } catch (error) {
-      console.error('Ошибка добавления в корзину:', error);
-      setError("Не удалось добавить товар в корзину. Пожалуйста, попробуйте позже.");
-      setIsAdding(false);
-      
-      // Если ошибка связана с авторизацией (401), показываем модальное окно
-      if (error.response && error.response.status === 401) {
+      if (!success) {
         setShowAuthModal(true);
+      } else {
+        // Показываем уведомление об успешном добавлении
+        const addButton = document.getElementById('add-to-cart-button');
+        if (addButton) {
+          addButton.innerText = "Добавлено ✓";
+          addButton.classList.add("bg-green-600");
+          
+          setTimeout(() => {
+            addButton.innerText = "В корзину";
+            addButton.classList.remove("bg-green-600");
+          }, 1500);
+        }
       }
+    } catch (err) {
+      console.error('Ошибка при добавлении в корзину:', err);
     }
   };
-  
-  // Обработчик для перехода на страницу авторизации
+
   const handleGoToAuth = () => {
-    // Сохраняем текущее состояние, чтобы вернуться после авторизации
     localStorage.setItem('redirectAfterAuth', `/products/${id}`);
     navigate('/auth');
   };
 
-  // Форматирование цены
-  const formatPrice = (price: number): string => {
-    if (Number.isInteger(price)) {
-      return `${price} ₽`;
-    }
-    return `${price.toFixed(2)} ₽`;
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
+      <div className="max-w-4xl mx-auto my-12 px-4 flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-800"></div>
       </div>
     );
@@ -181,126 +110,116 @@ const ProductDetail: React.FC<{ updateCartCount: () => void }> = ({ updateCartCo
     );
   }
 
-  // URL изображения по умолчанию в случае ошибки
-  const defaultImage = '/images/products/default-product.jpg';
-
   return (
-    <div className="max-w-4xl mx-auto my-12 bg-white rounded-xl shadow-md overflow-hidden p-4 md:p-8">
+    <div className="max-w-4xl mx-auto my-12 px-4">
       {/* Хлебные крошки */}
-      <div className="mb-6 text-sm text-gray-500">
-        <Link to="/" className="hover:text-blue-700">Главная</Link>
-        <span className="mx-2">/</span>
-        <Link to="/products" className="hover:text-blue-700">Продукция</Link>
-        {category && (
-          <>
-            <span className="mx-2">/</span>
-            <Link to={`/products/category/${category.slug}`} className="hover:text-blue-700">
-              {category.name}
-            </Link>
-          </>
-        )}
-        <span className="mx-2">/</span>
-        <span className="text-gray-700">{product.name}</span>
-      </div>
-      
-      {/* Основной контент */}
-      <div className="md:flex md:items-start">
-        {/* Изображение товара */}
-        <div className="md:w-1/2 mb-6 md:mb-0 md:pr-6">
-          <div className="overflow-hidden rounded-lg bg-gray-100 border border-gray-200">
+      <nav className="flex mb-6" aria-label="Breadcrumb">
+        <ol className="inline-flex items-center space-x-1 md:space-x-3">
+          <li className="inline-flex items-center">
+            <button 
+              onClick={() => navigate('/')}
+              className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600"
+            >
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+              </svg>
+              Главная
+            </button>
+          </li>
+          <li>
+            <div className="flex items-center">
+              <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
+              </svg>
+              <button 
+                onClick={() => navigate('/products')}
+                className="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2"
+              >
+                Каталог
+              </button>
+            </div>
+          </li>
+          <li aria-current="page">
+            <div className="flex items-center">
+              <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
+              </svg>
+              <span className="ml-1 text-sm font-medium text-gray-500 md:ml-2">{product.name}</span>
+            </div>
+          </li>
+        </ol>
+      </nav>
+
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          {/* Изображение товара */}
+          <div className="md:w-1/2">
             <img 
-              src={product.image_url || defaultImage} 
-              alt={product.name}
-              className="w-full h-auto object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (target.src !== defaultImage) {
-                  target.src = defaultImage;
-                }
-              }}
+              src={product.image_url || "/placeholder.jpg"} 
+              alt={product.name} 
+              className="w-full h-72 md:h-96 object-cover"
             />
           </div>
-        </div>
-        
-        {/* Информация о товаре */}
-        <div className="md:w-1/2">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">{product.name}</h1>
-          
-          {/* Цена и наличие */}
-          <div className="flex items-center mb-6">
-            <span className="text-2xl font-bold text-blue-900 mr-4">{formatPrice(product.price)}</span>
-            <span className="inline-block py-1 px-2 bg-green-100 text-green-800 text-sm font-medium rounded">В наличии</span>
-          </div>
-          
-          {/* Вес */}
-          {product.weight && (
-            <div className="text-gray-600 mb-4">
-              <span className="font-medium">Вес:</span> {product.weight}
+
+          {/* Информация о товаре */}
+          <div className="md:w-1/2 p-6">
+            <div className="mb-4">
+              <span className="text-sm text-blue-600 font-medium">
+                {getCategoryName(product.category_id)}
+              </span>
             </div>
-          )}
-          
-          {/* Описание */}
-          {product.description && (
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
+            
+            {product.weight && (
+              <p className="text-gray-600 mb-4">Вес/объем: {product.weight}</p>
+            )}
+            
             <div className="mb-6">
-              <h2 className="text-lg font-medium text-gray-800 mb-2">Описание</h2>
-              <p className="text-gray-600">{product.description}</p>
-            </div>
-          )}
-          
-          {/* Выбор количества и добавление в корзину */}
-          <div className="mb-6">
-            <div className="flex items-center mb-4">
-              <button
-                onClick={decreaseQuantity}
-                className="w-10 h-10 bg-gray-100 border border-gray-300 rounded-l-md flex items-center justify-center text-gray-700 hover:bg-gray-200"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                value={quantity}
-                onChange={handleQuantityChange}
-                min="1"
-                max="99"
-                className="w-16 h-10 border-t border-b border-gray-300 text-center text-gray-700"
-              />
-              <button
-                onClick={increaseQuantity}
-                className="w-10 h-10 bg-gray-100 border border-gray-300 rounded-r-md flex items-center justify-center text-gray-700 hover:bg-gray-200"
-              >
-                +
-              </button>
+              <p className="text-gray-700 leading-relaxed">
+                {product.description || "Описание товара отсутствует."}
+              </p>
             </div>
             
-            <button
-              onClick={addToCart}
-              disabled={isAdding}
-              className={`w-full py-3 px-6 ${
-                isAdding ? 'bg-green-600' : 'bg-blue-700 hover:bg-blue-800'
-              } text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
-            >
-              {isAdding ? '✓ Добавлено в корзину' : 'Добавить в корзину'}
-            </button>
-          </div>
-          
-          {/* Дополнительная информация */}
-          <div className="border-t border-gray-200 pt-4">
-            <div className="flex items-center text-sm text-gray-600 mb-2">
-              <svg className="w-4 h-4 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-              </svg>
-              <span>Консультация специалиста</span>
+            <div className="flex items-center justify-between mt-auto">
+              <p className="text-3xl font-bold text-blue-700">
+                {product.price?.toLocaleString()} ₽
+              </p>
             </div>
-            <div className="flex items-center text-sm text-gray-600">
-              <svg className="w-4 h-4 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4a.5.5 0 01-.5-.5v-7h13v7a.5.5 0 01-.5.5zM4 8.5v-3a.5.5 0 01.5-.5h11a.5.5 0 01.5.5v3H4z" />
-              </svg>
-              <span>Оплата при получении</span>
+            
+            <div className="mt-6 flex items-center">
+              <div className="flex border border-gray-300 rounded">
+                <button 
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium"
+                >
+                  -
+                </button>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={quantity} 
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 text-center border-x border-gray-300 focus:outline-none py-1" 
+                />
+                <button 
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium"
+                >
+                  +
+                </button>
+              </div>
+              <button 
+                id="add-to-cart-button"
+                onClick={handleAddToCart}
+                className="ml-4 flex-grow px-6 py-2 bg-blue-700 hover:bg-blue-800 text-white font-medium rounded transition-colors"
+              >
+                В корзину
+              </button>
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Модальное окно для авторизации */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -1,158 +1,120 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import List, Optional
-from datetime import datetime, date
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
 
-# Константа для максимального количества товара
-MAX_QUANTITY = 99
-
-# Схема пользователя
-class UserBase(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Имя пользователя")
-    email: EmailStr = Field(..., description="Email пользователя")
-    phone: str = Field(..., min_length=10, max_length=15, description="Номер телефона")
-    full_name: str = Field(..., min_length=2, max_length=100, description="Полное имя пользователя")
-
-class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, description="Пароль пользователя")
-    password_confirm: str = Field(..., min_length=6, description="Подтверждение пароля")
-    birthday: Optional[date] = Field(None, description="Дата рождения")
-
-class UserLogin(BaseModel):
-    phone: str = Field(..., description="Номер телефона")
-    password: str = Field(..., description="Пароль пользователя")
-
-class UserResponse(UserBase):
-    id: int
-    birthday: Optional[date] = None
-    
-    model_config = ConfigDict(from_attributes=True)
-
-class UserProfileUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, min_length=10, max_length=15)
-
-# Новая схема для обновления даты рождения
-class UserBirthdayUpdate(BaseModel):
-    birthday: Optional[date] = None
-
-# Схема токена
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
-
-# Схема категории
+# Category schemas
 class CategoryBase(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100)
-    slug: str = Field(..., min_length=2, max_length=100)
-
-class CategoryResponse(BaseModel):
-    id: int
     name: str
     slug: str
-    
-    model_config = ConfigDict(from_attributes=True)
+    description: Optional[str] = None
 
-# Схема продукта
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryResponse(CategoryBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+# Product schemas
 class ProductBase(BaseModel):
-    name: str = Field(..., min_length=2, max_length=255)
-    description: Optional[str] = Field(None, max_length=1000)
-    price: float = Field(..., gt=0, description="Цена должна быть положительной")
+    name: str
+    description: Optional[str] = None
+    price: float
     image_url: Optional[str] = None
     weight: Optional[str] = None
+    category_id: int
 
 class ProductCreate(ProductBase):
-    category_id: int
+    pass
 
 class ProductResponse(ProductBase):
     id: int
-    category_id: int
-    
-    model_config = ConfigDict(from_attributes=True)
+    category: Optional[CategoryResponse] = None
 
-# Схема элемента корзины
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+# Cart schemas
 class CartItemBase(BaseModel):
-    product_id: int = Field(..., gt=0)
-    quantity: int = Field(default=1, gt=0, le=MAX_QUANTITY, description=f"Количество товара (от 1 до {MAX_QUANTITY})")
+    product_id: int
+    quantity: int = 1
 
 class CartItemCreate(CartItemBase):
     pass
 
 class CartItemResponse(CartItemBase):
     id: int
-    user_id: int
-    product: Optional[ProductResponse] = None
-    
-    model_config = ConfigDict(from_attributes=True)
+    product: ProductResponse
 
-# Схема заказа
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+# Order item schemas
 class OrderItemBase(BaseModel):
     product_id: int
     quantity: int
     price: float
 
-class OrderBase(BaseModel):
-    total_price: float = Field(..., gt=0)
-    user_id: int
-
-class OrderCreate(OrderBase):
-    items: List[OrderItemBase]
-
-# Расширенные модели для заказа
-class CustomerInfo(BaseModel):
-    first_name: str
-    last_name: str
-    email: EmailStr
-    phone: str
-
-class DeliveryAddress(BaseModel):
-    city: str
-    street_address: str
-    postal_code: str
-
-class DeliveryInfo(BaseModel):
-    method: str
-    address: Optional[DeliveryAddress] = None
-
-class ExtendedOrderCreate(BaseModel):
-    items: List[OrderItemBase]
-    customer: CustomerInfo
-    delivery: DeliveryInfo
-    payment_method: str
-    comment: Optional[str] = None
-    total_price: float
+class OrderItemCreate(OrderItemBase):
+    pass
 
 class OrderItemResponse(OrderItemBase):
     id: int
-    order_id: int
-    
-    model_config = ConfigDict(from_attributes=True)
+    product: ProductResponse
 
-class OrderResponse(BaseModel):
-    id: int
-    user_id: int
-    total_price: float
-    status: str
-    created_at: datetime
-    customer_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    delivery_method: Optional[str] = None
-    delivery_address: Optional[str] = None
-    #delivery_city: Optional[str] = None
-    #delivery_postal_code: Optional[str] = None
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+# Order schemas
+class OrderBase(BaseModel):
+    status: str = "pending"
+    total_amount: float
+
+class OrderCreate(OrderBase):
+    items: List[OrderItemCreate]
+
+class ExtendedOrderCreate(OrderBase):
+    items: List[OrderItemCreate]
+    user_id: Optional[int] = None
+    shipping_address: Optional[str] = None
     payment_method: Optional[str] = None
     comment: Optional[str] = None
-    order_items: Optional[List[OrderItemResponse]] = None
-    
-    model_config = ConfigDict(from_attributes=True)
 
-# Дополнительные вспомогательные схемы
-class ProductSearchParams(BaseModel):
-    name: Optional[str] = None
-    min_price: Optional[float] = None
-    max_price: Optional[float] = None
-    category_id: Optional[int] = None
+class OrderResponse(OrderBase):
+    id: int
+    created_at: datetime
+    items: List[OrderItemResponse]
 
-class ErrorResponse(BaseModel):
-    detail: str
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+# User schemas
+class UserBase(BaseModel):
+    email: str
+    username: str
+
+class UserCreate(UserBase):
+    password: str
+
+class UserResponse(UserBase):
+    id: int
+    is_active: bool
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+# Authentication schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

@@ -1,43 +1,35 @@
+# ais/ais-backend/app/main.py
 import os
-import time
-from datetime import datetime, timedelta
-from fastapi import FastAPI, Request, HTTPException, Response, logger
+import logging
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, users, products, categories, orders, payments, shipments
-from app.routers import integration
-from app.routers import administrators
-import httpx
 from dotenv import load_dotenv
 
-from app.models import Administrator
-from app.database import SessionLocal
-from app.routers.auth import get_password_hash
+from app.database import engine, Base, get_db, db
+from app.routers import users, administrators, products, categories, orders, payments, shipments, auth, integration
+from app.admin import create_default_admin
+from app.services.message_handlers import register_message_handlers
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
-def create_default_admin():
-    db = SessionLocal()
-    try:
-        admin = db.query(Administrator).filter(Administrator.username == "main_admin").first()
-        if not admin:
-            print("🔧 Создание администратора по умолчанию...")
-            hashed_password = get_password_hash("qwerty123")
-            new_admin = Administrator(
-                username="main_admin",
-                email="admin@example.com",
-                password_hash=hashed_password,
-                full_name="Main Administrator",
-                role="admin",
-                is_active=True
-            )
-            db.add(new_admin)
-            db.commit()
-            print("✅ Администратор по умолчанию создан!")
-        else:
-            print("✅ Администратор по умолчанию уже существует")
-    except Exception as e:
-        print(f"❌ Ошибка при создании администратора: {e}")
-    finally:
-        db.close()
+# Создание таблиц в базе данных
+Base.metadata.create_all(bind=engine)
+
+try:
+    # Проверка подключения к базе данных
+    db.execute("SELECT 1")
+    logger.info("✅ Подключение к базе данных установлено!")
+except Exception as e:
+    logger.error(f"❌ Ошибка подключения к базе данных: {e}")
+    raise e
+finally:
+    db.close()
 
 
 # Создаем администратора
@@ -78,7 +70,7 @@ app.add_middleware(
     allow_methods=["*"],     # Разрешаем все методы
     allow_headers=["*"],     # Разрешаем все заголовки
 )
-print("✅ CORS middleware подключен!")
+logger.info("✅ CORS middleware подключен!")
 
 # роутеры
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
@@ -114,50 +106,28 @@ async def ais_admin_proxy(path: str, request: Request):
 
 
 async def proxy_request(target_url: str, request: Request):
-    """Проксирует запрос к указанному URL и возвращает ответ"""
-    start_time = time.time()
-    logger.info(f"Проксирование запроса: {request.method} {request.url.path} -> {target_url}")
+    # Ваш код проксирования запроса здесь
+    pass
 
-    try:
-        # Получаем метод запроса
-        method = request.method
 
-        # Получаем параметры запроса
-        params = dict(request.query_params)
+@app.on_event("startup")
+async def startup_event():
+    """
+    Действия при запуске приложения
+    """
+    logger.info("Запуск АИС Backend...")
+    # Регистрация обработчиков сообщений
+    register_message_handlers()
+    logger.info("АИС Backend успешно запущен!")
 
-        # Получаем заголовки (исключая специальные заголовки хоста)
-        headers = {k: v for k, v in request.headers.items()
-                   if k.lower() not in ["host", "content-length"]}
 
-        # Получаем тело запроса для методов POST, PUT, PATCH
-        content = None
-        if method in ["POST", "PUT", "PATCH"]:
-            content = await request.body()
-
-        # Выполняем запрос к целевому API
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method,
-                target_url,
-                params=params,
-                headers=headers,
-                content=content,
-                timeout=20.0  # Увеличенный таймаут до 60 секунд
-            )
-
-            process_time = time.time() - start_time
-
-            # Логируем успешный ответ
-            logger.info(f"Проксирование завершено: {request.method} {request.url.path} -> {target_url} | "
-                        f"Статус: {response.status_code}, Время: {process_time:.3f}s")
-
-            # Создаем ответ с тем же статус-кодом и содержимым
-            return Response(
-                content=response.content,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.headers.get("content-type")
-            )
-
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Ошибка при обращении к сервису: {str(e)}")
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Действия при остановке приложения
+    """
+    from app.services.rabbitmq import rabbitmq_service
+    logger.info("Остановка АИС Backend...")
+    # Закрытие соединения с RabbitMQ
+    rabbitmq_service.close()
+    logger.info("АИС Backend успешно остановлен!")

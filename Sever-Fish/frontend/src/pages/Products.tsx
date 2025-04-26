@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Products = ({ updateCartCount }) => {
   const [products, setProducts] = useState([]);
@@ -11,6 +11,9 @@ const Products = ({ updateCartCount }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
   const productsPerPage = 12;
+
+  // Базовый URL API
+  const API_BASE_URL = "http://127.0.0.1:8000";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,7 +26,7 @@ const Products = ({ updateCartCount }) => {
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/products");
+      const res = await axios.get(`${API_BASE_URL}/products`);
       setProducts(res.data);
     } catch (error) {
       console.error("Ошибка при загрузке продуктов:", error);
@@ -32,10 +35,33 @@ const Products = ({ updateCartCount }) => {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/products/categories/");
+      const res = await axios.get(`${API_BASE_URL}/products/categories/`);
       setCategories(res.data);
     } catch (error) {
       console.error("Ошибка при загрузке категорий:", error);
+    }
+  };
+
+  const fetchProductsByCategory = async (categorySlug) => {
+    try {
+      setIsLoading(true);
+      const res = await axios.get(`${API_BASE_URL}/products/category/${categorySlug}`);
+      setProducts(res.data);
+    } catch (error) {
+      console.error("Ошибка при загрузке товаров по категории:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCategorySelect = async (category) => {
+    setSelectedCategory(category.id);
+    setCurrentPage(1);
+    
+    if (category.slug) {
+      await fetchProductsByCategory(category.slug);
+    } else {
+      await fetchProducts();
     }
   };
 
@@ -60,7 +86,7 @@ const Products = ({ updateCartCount }) => {
       button.classList.add("bg-green-600");
       
       // Отправляем запрос с токеном авторизации
-      await axios.post("http://127.0.0.1:8000/cart/", {
+      await axios.post(`${API_BASE_URL}/cart/`, {
         product_id: productId,
         quantity: 1,
       }, {
@@ -69,6 +95,7 @@ const Products = ({ updateCartCount }) => {
         }
       });
       
+      // Обновляем счетчик корзины
       updateCartCount();
       
       // Возвращаем исходный текст после короткой задержки
@@ -93,7 +120,7 @@ const Products = ({ updateCartCount }) => {
   };
 
   const filteredProducts = selectedCategory
-    ? products.filter((p) => p.category_id === selectedCategory)
+    ? products.filter((p) => p.category_id.toString() === selectedCategory)
     : products;
 
   const lastProductIndex = currentPage * productsPerPage;
@@ -150,6 +177,7 @@ const Products = ({ updateCartCount }) => {
                   onClick={() => {
                     setSelectedCategory("");
                     setCurrentPage(1);
+                    fetchProducts();
                   }}
                   className={`w-full text-left py-2 px-3 rounded transition-colors ${
                     selectedCategory === "" 
@@ -163,12 +191,9 @@ const Products = ({ updateCartCount }) => {
               {categories.map((cat) => (
                 <li key={cat.id}>
                   <button 
-                    onClick={() => {
-                      setSelectedCategory(cat.id);
-                      setCurrentPage(1);
-                    }}
+                    onClick={() => handleCategorySelect(cat)}
                     className={`w-full text-left py-2 px-3 rounded transition-colors ${
-                      selectedCategory === cat.id 
+                      selectedCategory === cat.id.toString() 
                       ? "bg-blue-50 text-blue-800 font-medium" 
                       : "text-gray-700 hover:bg-gray-100"
                     }`}

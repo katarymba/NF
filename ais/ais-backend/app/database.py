@@ -6,11 +6,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise Exception("DATABASE_URL не задан в переменных окружения")
+# Проверка и установка значения по умолчанию для DATABASE_URL
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ais.db")
 
-engine = create_engine(DATABASE_URL)
+# Настройка подключения к БД для SQLite
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL, connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

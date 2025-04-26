@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 
+import Integration from './pages/Integration';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';

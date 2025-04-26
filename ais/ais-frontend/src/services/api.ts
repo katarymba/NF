@@ -1,6 +1,13 @@
 // ais/ais-frontend/src/services/api.ts
 
-export const API_BASE_URL = 'http://localhost:8080/ais';
+// Исправление: используем относительные URL, чтобы работало с прокси
+export const API_BASE_URL = '/ais';
+
+// Добавляем объявление переменной API_ENDPOINTS, которая используется, но не определена
+const API_ENDPOINTS = {
+  auth: `${API_BASE_URL}/auth`,
+  api: `${API_BASE_URL}/api`,
+};
 
 // Единая функция для выполнения запросов с обработкой ошибок
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
@@ -15,6 +22,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
       };
     }
     
+    // Добавляем индикатор загрузки здесь если нужно
     const response = await fetch(url, options);
     
     // Проверка статуса ответа
@@ -131,60 +139,39 @@ export async function getShipments(): Promise<any[]> {
   }
 }
 
-// ais/ais-frontend/src/services/api.ts - Добавить следующие методы
-
-export async function createProduct(productData: any, token: string): Promise<any> {
- const response = await fetch(`${API_ENDPOINTS.api}/products`, {
+/**
+ * Создание нового товара
+ */
+export async function createProduct(productData: any): Promise<any> {
+ const response = await fetchWithAuth(`${API_ENDPOINTS.api}/products`, {
    method: 'POST',
    headers: {
-     'Content-Type': 'application/json',
-     'Authorization': `Bearer ${token}`
+     'Content-Type': 'application/json'
    },
    body: JSON.stringify(productData)
  });
  
- if (!response.ok) {
-   const errorData = await response.json();
-   throw new Error(errorData.detail || 'Ошибка при создании товара');
- }
- 
- return await response.json();
+ return response;
 }
 
 /**
 * Обновление существующего товара
 */
-export async function updateProduct(productId: number, productData: any, token: string): Promise<any> {
- const response = await fetch(`${API_ENDPOINTS.api}/products/${productId}`, {
+export async function updateProduct(productId: number, productData: any): Promise<any> {
+ return fetchWithAuth(`${API_ENDPOINTS.api}/products/${productId}`, {
    method: 'PUT',
    headers: {
-     'Content-Type': 'application/json',
-     'Authorization': `Bearer ${token}`
+     'Content-Type': 'application/json'
    },
    body: JSON.stringify(productData)
  });
- 
- if (!response.ok) {
-   const errorData = await response.json();
-   throw new Error(errorData.detail || 'Ошибка при обновлении товара');
- }
- 
- return await response.json();
 }
 
 /**
 * Удаление товара
 */
-export async function deleteProduct(productId: number, token: string): Promise<void> {
- const response = await fetch(`${API_ENDPOINTS.api}/products/${productId}`, {
-   method: 'DELETE',
-   headers: {
-     'Authorization': `Bearer ${token}`
-   }
+export async function deleteProduct(productId: number): Promise<void> {
+ await fetchWithAuth(`${API_ENDPOINTS.api}/products/${productId}`, {
+   method: 'DELETE'
  });
- 
- if (!response.ok) {
-   const errorData = await response.json();
-   throw new Error(errorData.detail || 'Ошибка при удалении товара');
- }
 }
