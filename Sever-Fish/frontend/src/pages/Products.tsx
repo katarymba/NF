@@ -9,46 +9,159 @@ const Products = ({ updateCartCount }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
   const productsPerPage = 12;
 
   // Базовый URL API
+  // Проверяем через API, какие эндпоинты доступны
   const API_BASE_URL = "http://127.0.0.1:8000";
+  
+  // Исправляем пути API в соответствии с маршрутами в routes/products.py
+  const PRODUCTS_API = `${API_BASE_URL}/products`;
+  const CATEGORIES_API = `${API_BASE_URL}/products/categories`;
+  const CART_API = `${API_BASE_URL}/cart`;
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      await Promise.all([fetchProducts(), fetchCategories()]);
-      setIsLoading(false);
+      setError(null);
+      
+      // Сначала пробуем получить список доступных маршрутов
+      try {
+        const res = await axios.get(`${API_BASE_URL}`);
+        console.log("API доступен:", res.data);
+      } catch (error) {
+        console.log("Не удалось получить информацию об API:", error);
+      }
+      
+      try {
+        await Promise.all([fetchProducts(), fetchCategories()]);
+      } catch (err) {
+        console.error("Ошибка загрузки данных:", err);
+      } finally {
+        setIsLoading(false);
+      }
     };
+    
     fetchData();
   }, []);
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/products`);
+      console.log("Запрос продуктов по адресу:", PRODUCTS_API);
+      const res = await axios.get(PRODUCTS_API, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      });
+      console.log("Получены продукты:", res.data);
       setProducts(res.data);
+      setError(null);
+      return res.data;
     } catch (error) {
       console.error("Ошибка при загрузке продуктов:", error);
+      
+      // Дополнительное логирование для отладки
+      if (error.response) {
+        console.log("Статус ответа:", error.response.status);
+        console.log("Данные ответа:", error.response.data);
+        console.log("Заголовки ответа:", error.response.headers);
+        
+        if (error.response.status === 404) {
+          setError("API маршрут /products не найден. Возможно, сервер запущен, но маршруты не настроены правильно.");
+        } else {
+          setError(`Ошибка сервера: ${error.response.status} ${error.response.statusText}`);
+        }
+      } else if (error.request) {
+        console.log("Запрос был сделан, но ответ не получен:", error.request);
+        setError("Сервер не отвечает. Убедитесь, что сервер запущен.");
+      } else {
+        console.log("Ошибка при настройке запроса:", error.message);
+        setError("Произошла ошибка при настройке запроса: " + error.message);
+      }
+      
+      return [];
     }
   };
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/products/categories/`);
+      console.log("Запрос категорий по адресу:", CATEGORIES_API);
+      const res = await axios.get(CATEGORIES_API, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      });
+      console.log("Получены категории:", res.data);
       setCategories(res.data);
+      setError(null);
+      return res.data;
     } catch (error) {
       console.error("Ошибка при загрузке категорий:", error);
+      
+      // Проверяем альтернативный путь без слеша в конце
+      try {
+        const alternativeUrl = CATEGORIES_API.endsWith('/') 
+          ? CATEGORIES_API.slice(0, -1) 
+          : `${CATEGORIES_API}/`;
+          
+        console.log("Попытка запроса по альтернативному URL:", alternativeUrl);
+        const res = await axios.get(alternativeUrl);
+        console.log("Получены категории по альтернативному URL:", res.data);
+        setCategories(res.data);
+        return res.data;
+      } catch (altError) {
+        console.error("Альтернативный запрос также не удался:", altError);
+        
+        if (error.response && error.response.status === 404) {
+          setError("API маршрут /products/categories не найден. Возможно, сервер запущен, но маршруты не настроены правильно.");
+        } else if (error.response) {
+          setError(`Ошибка сервера при загрузке категорий: ${error.response.status}`);
+        } else {
+          setError("Не удалось загрузить категории. Проверьте работу сервера.");
+        }
+        
+        return [];
+      }
     }
   };
 
   const fetchProductsByCategory = async (categorySlug) => {
     try {
       setIsLoading(true);
-      const res = await axios.get(`${API_BASE_URL}/products/category/${categorySlug}`);
+      const categoryUrl = `${API_BASE_URL}/products/category/${categorySlug}`;
+      console.log("Запрос продуктов по категории:", categoryUrl);
+      
+      const res = await axios.get(categoryUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      });
+      console.log("Получены продукты по категории:", res.data);
       setProducts(res.data);
+      setError(null);
     } catch (error) {
       console.error("Ошибка при загрузке товаров по категории:", error);
+      
+      if (error.response && error.response.status === 404) {
+        setError(`Категория "${categorySlug}" не найдена или маршрут /products/category не настроен.`);
+      } else {
+        setError("Не удалось загрузить товары по категории. Проверьте работу сервера.");
+      }
+      
+      // В случае ошибки загружаем все товары
+      try {
+        await fetchProducts();
+      } catch (e) {
+        console.error("Также не удалось загрузить все товары:", e);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -85,13 +198,17 @@ const Products = ({ updateCartCount }) => {
       button.innerText = "Добавлено ✓";
       button.classList.add("bg-green-600");
       
+      console.log(`Добавление товара ${productId} в корзину`);
+      
       // Отправляем запрос с токеном авторизации
-      await axios.post(`${API_BASE_URL}/cart/`, {
+      await axios.post(CART_API, {
         product_id: productId,
         quantity: 1,
       }, {
         headers: {
-          'Authorization': `${tokenType} ${token}`
+          'Authorization': `${tokenType} ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       
@@ -105,6 +222,11 @@ const Products = ({ updateCartCount }) => {
       }, 1500);
     } catch (error) {
       console.error("Ошибка при добавлении в корзину:", error);
+      
+      // Показываем ошибку пользователю
+      const errorMsg = error.response?.data?.detail || "Не удалось добавить товар в корзину";
+      setError(errorMsg);
+      
       // Если ошибка связана с авторизацией (401), показываем модальное окно
       if (error.response && error.response.status === 401) {
         setShowAuthModal(true);
@@ -120,7 +242,7 @@ const Products = ({ updateCartCount }) => {
   };
 
   const filteredProducts = selectedCategory
-    ? products.filter((p) => p.category_id.toString() === selectedCategory)
+    ? products.filter((p) => p.category_id?.toString() === selectedCategory)
     : products;
 
   const lastProductIndex = currentPage * productsPerPage;
@@ -129,25 +251,20 @@ const Products = ({ updateCartCount }) => {
 
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
-  // Функция для генерации границ пагинации
   const getPaginationRange = () => {
-    const delta = 2; // Количество страниц до и после текущей
+    const delta = 2;
     let range = [];
     
-    // Всегда показываем первую страницу
     range.push(1);
     
-    // Создаем диапазон вокруг текущей страницы
     for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
       range.push(i);
     }
     
-    // Всегда показываем последнюю страницу, если она существует
     if (totalPages > 1) {
       range.push(totalPages);
     }
     
-    // Добавляем многоточия, где нужно
     let result = [];
     let lastVal = 0;
     
@@ -166,8 +283,29 @@ const Products = ({ updateCartCount }) => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Каталог продукции</h1>
       
+      {/* Отображение ошибок */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+          <strong className="font-bold">Ошибка!</strong>
+          <span className="block sm:inline"> {error}</span>
+          <button 
+            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            onClick={() => setError(null)}
+          >
+            <span className="text-red-500">×</span>
+          </button>
+        </div>
+      )}
+      
+      {/* Отладочный блок - можно удалить в продакшен */}
+      <div className="bg-gray-100 border border-gray-300 rounded p-3 mb-6 text-xs">
+        <p><strong>Адрес API:</strong> {API_BASE_URL}</p>
+        <p><strong>Маршрут продуктов:</strong> {PRODUCTS_API}</p>
+        <p><strong>Маршрут категорий:</strong> {CATEGORIES_API}</p>
+      </div>
+      
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Боковая панель с категориями - фиксированное положение */}
+        {/* Боковая панель с категориями */}
         <aside className="lg:w-1/4">
           <div className="bg-white shadow-sm rounded-lg p-5 lg:sticky lg:top-5">
             <h2 className="text-xl font-medium text-gray-800 mb-4 pb-2 border-b">Категории</h2>
@@ -188,20 +326,24 @@ const Products = ({ updateCartCount }) => {
                   Все товары
                 </button>
               </li>
-              {categories.map((cat) => (
-                <li key={cat.id}>
-                  <button 
-                    onClick={() => handleCategorySelect(cat)}
-                    className={`w-full text-left py-2 px-3 rounded transition-colors ${
-                      selectedCategory === cat.id.toString() 
-                      ? "bg-blue-50 text-blue-800 font-medium" 
-                      : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                </li>
-              ))}
+              {categories.length > 0 ? (
+                categories.map((cat) => (
+                  <li key={cat.id}>
+                    <button 
+                      onClick={() => handleCategorySelect(cat)}
+                      className={`w-full text-left py-2 px-3 rounded transition-colors ${
+                        selectedCategory === cat.id?.toString() 
+                        ? "bg-blue-50 text-blue-800 font-medium" 
+                        : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="text-gray-500 italic p-2">Категории не загружены</li>
+              )}
             </ul>
           </div>
         </aside>
@@ -217,7 +359,15 @@ const Products = ({ updateCartCount }) => {
             <>
               {filteredProducts.length === 0 ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-500 text-lg">Товары не найдены</p>
+                  <p className="text-gray-500 text-lg">
+                    {error ? "Ошибка загрузки товаров" : "Товары не найдены"}
+                  </p>
+                  <button 
+                    onClick={fetchProducts}
+                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    Попробовать снова
+                  </button>
                 </div>
               ) : (
                 <>
@@ -231,6 +381,10 @@ const Products = ({ updateCartCount }) => {
                               src={product.image_url || "/placeholder.jpg"}
                               alt={product.name}
                               className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                              onError={(e) => {
+                                e.target.src = "/placeholder.jpg";
+                                e.target.onerror = null;
+                              }}
                             />
                           </div>
                           <div className="p-4">

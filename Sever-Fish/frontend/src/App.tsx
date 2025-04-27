@@ -23,11 +23,21 @@ function App() {
     const updateCartCount = async () => {
         try {
             const response = await fetch('http://localhost:8000/cart/', {
-                credentials: 'include'  // Важно для передачи куки сессии
+                method: 'GET',
+                credentials: 'include',  // Важно для передачи куки сессии
+                headers: {
+                    'Accept': 'application/json',
+                }
             });
             
             if (!response.ok) {
-                throw new Error('Ошибка при загрузке корзины');
+                if (response.status === 401) {
+                    // Если пользователь не авторизован, это нормально - просто показываем 0 товаров
+                    console.log('Пользователь не авторизован, корзина пуста');
+                    setCartCount(0);
+                    return;
+                }
+                throw new Error(`Ошибка при загрузке корзины: ${response.status} ${response.statusText}`);
             }
             
             const data = await response.json();
@@ -35,7 +45,7 @@ function App() {
             setCartCount(totalCount);
         } catch (error) {
             console.error('Ошибка при загрузке корзины:', error);
-            setCartCount(0);
+            // Не устанавливаем count в 0, сохраняем последнее значение в случае временных проблем с сетью
         }
     };
 

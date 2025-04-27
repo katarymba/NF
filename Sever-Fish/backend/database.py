@@ -1,39 +1,40 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import os
-from dotenv import load_dotenv
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import logging
 
-# Загружаем .env файл
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-# Получаем URL подключения из переменных окружения или используем значение по умолчанию
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://katarymba:root@localhost:5432/sever_ryba_db")
+# Обновляем параметры подключения к базе данных PostgreSQL
+DB_HOST = "localhost"
+DB_PORT = "5432"
+DB_NAME = "sever_ryba_db"   # Исправлено с sever_fish_db на sever_ryba_db
+DB_USER = "katarymba"
+DB_PASSWORD = "root"
 
-# Создаем движок базы данных
-engine = create_engine(DATABASE_URL)
-
-# Создаем класс сессии
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Создаем базовый класс для моделей
-Base = declarative_base()
-
-# Функция для получения сессии базы данных
-def get_db():
-    db = SessionLocal()
+def get_db_connection():
+    """
+    Создает и возвращает соединение с базой данных
+    """
     try:
-        yield db
-    finally:
-        db.close()
-
-# Функция для проверки подключения к базе данных
-def test_connection():
-    try:
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
-            print("Подключение к базе данных успешно!")
-            return True
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            cursor_factory=RealDictCursor  # Возвращает результаты как словари
+        )
+        return conn
     except Exception as e:
-        print(f"Ошибка подключения к базе данных: {e}")
-        return False
+        logger.error(f"Ошибка подключения к базе данных: {str(e)}")
+        raise e
+
+def get_db():
+    """
+    Функция-зависимость для создания и закрытия соединения с БД
+    """
+    conn = get_db_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()

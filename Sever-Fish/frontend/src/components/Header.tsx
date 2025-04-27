@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 interface HeaderProps {
     onMenuToggle: () => void;
@@ -8,14 +8,24 @@ interface HeaderProps {
 }
 
 const Header = ({ onMenuToggle, cartCount, updateCartCount }: HeaderProps) => {
-    useEffect(() => {
-        // Периодическое обновление корзины
-        const interval = setInterval(() => {
+    // Используем useCallback для предотвращения пересоздания функции при каждом рендере
+    const safeUpdateCartCount = useCallback(() => {
+        try {
             updateCartCount();
-        }, 30000); // обновлять корзину каждые 30 секунд
+        } catch (error) {
+            console.error('Ошибка при обновлении корзины:', error);
+            // Игнорируем ошибку и продолжаем работу
+        }
+    }, [updateCartCount]);
+
+    useEffect(() => {
+        // Периодическое обновление корзины с более длинным интервалом
+        const interval = setInterval(() => {
+            safeUpdateCartCount();
+        }, 60000); // обновлять корзину каждую минуту вместо 30 секунд
 
         return () => clearInterval(interval);
-    }, [updateCartCount]);
+    }, [safeUpdateCartCount]);
 
     return (
         <header className="bg-white shadow-md sticky top-0 z-30">
