@@ -1,5 +1,6 @@
 // Sever-Fish/frontend/src/services/api.ts
-export const API_BASE_URL = 'http://localhost:8080/sever-ryba';
+// Устанавливаем базовый URL, соответствующий вашему бэкенду
+export const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const API_ENDPOINTS = {
     auth: `${API_BASE_URL}/auth`,
@@ -64,24 +65,65 @@ export async function getCurrentUser(token: string): Promise<any> {
 
 /**
  * Получение списка товаров (с возможностью фильтрации по категории).
+ * Проверяет несколько маршрутов, чтобы найти рабочий.
  */
 export async function getProducts(url: string = '/products'): Promise<any[]> {
-    const response = await fetch(`${API_ENDPOINTS.api}${url}`);
-    if (!response.ok) {
-        throw new Error('Ошибка получения товаров');
+    // Список возможных путей для проверки
+    const possiblePaths = [
+        `${API_ENDPOINTS.api}${url}`,
+        `${API_BASE_URL}${url}`,
+        `${API_BASE_URL}/api${url}`
+    ];
+    
+    let lastError = null;
+    
+    // Пробуем каждый путь по очереди
+    for (const path of possiblePaths) {
+        try {
+            const response = await fetch(path);
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (error) {
+            console.log(`Ошибка при запросе к ${path}:`, error);
+            lastError = error;
+        }
     }
-    return await response.json();
+    
+    // Если все попытки не удались, бросаем последнюю ошибку
+    throw new Error(`Ошибка получения товаров: ${lastError?.message || 'Не удалось найти рабочий маршрут API'}`);
 }
 
 /**
  * Получение списка категорий.
+ * Проверяет несколько маршрутов, чтобы найти рабочий.
  */
 export async function getCategories(): Promise<any[]> {
-    const response = await fetch(`${API_ENDPOINTS.api}/categories`);
-    if (!response.ok) {
-        throw new Error('Ошибка получения категорий');
+    // Список возможных путей для проверки
+    const possiblePaths = [
+        `${API_ENDPOINTS.api}/categories`,
+        `${API_BASE_URL}/categories`,
+        `${API_BASE_URL}/api/categories`,
+        `${API_BASE_URL}/products/categories`
+    ];
+    
+    let lastError = null;
+    
+    // Пробуем каждый путь по очереди
+    for (const path of possiblePaths) {
+        try {
+            const response = await fetch(path);
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (error) {
+            console.log(`Ошибка при запросе категорий к ${path}:`, error);
+            lastError = error;
+        }
     }
-    return await response.json();
+    
+    // Если все попытки не удались, бросаем последнюю ошибку
+    throw new Error(`Ошибка получения категорий: ${lastError?.message || 'Не удалось найти рабочий маршрут API'}`);
 }
 
 /**
@@ -121,4 +163,43 @@ export async function getShipments(token: string): Promise<any[]> {
         throw new Error('Ошибка получения доставок');
     }
     return await response.json();
+}
+
+/**
+ * Проверяет доступность различных маршрутов API и возвращает рабочий маршрут.
+ * Полезно для отладки проблем с API.
+ */
+export async function checkApiRoutes() {
+    const routes = [
+        { name: 'Корень API', path: API_BASE_URL },
+        { name: 'Статус здоровья', path: `${API_BASE_URL}/health` },
+        { name: 'API продуктов (с префиксом)', path: `${API_BASE_URL}/api/products` },
+        { name: 'API продуктов (без префикса)', path: `${API_BASE_URL}/products` },
+        { name: 'API категорий (с префиксом)', path: `${API_BASE_URL}/api/categories` },
+        { name: 'API категорий (без префикса)', path: `${API_BASE_URL}/categories` },
+        { name: 'API категорий (альт. путь)', path: `${API_BASE_URL}/products/categories` }
+    ];
+    
+    const results = [];
+    
+    for (const route of routes) {
+        try {
+            const response = await fetch(route.path);
+            results.push({
+                name: route.name,
+                path: route.path,
+                status: response.status,
+                ok: response.ok,
+                data: response.ok ? await response.json() : null
+            });
+        } catch (error) {
+            results.push({
+                name: route.name,
+                path: route.path,
+                error: error.message
+            });
+        }
+    }
+    
+    return results;
 }

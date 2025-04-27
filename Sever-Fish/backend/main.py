@@ -28,11 +28,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Создаем модели данных для ответа API
+# Обновляем модель CategoryResponse, делая поле description необязательным
 class CategoryResponse(BaseModel):
     id: int
     name: str
-    slug: str
-    description: Optional[str] = None
+    slug: Optional[str] = ""  # Делаем поле необязательным и инициализируем пустой строкой
+    description: Optional[str] = None  # Это поле может отсутствовать в базе данных
     
 class ProductResponse(BaseModel):
     id: int
@@ -91,6 +92,22 @@ app.add_middleware(
     max_age=86400,  # Увеличиваем время кэширования предзапросов CORS до 24 часов
 )
 
+# Функция для преобразования словаря в модель
+def dict_to_model(data_dict, model_class):
+    """Преобразует словарь в Pydantic модель, обрабатывая отсутствующие поля"""
+    if not data_dict:
+        return None
+    
+    # Очищаем от лишних полей, которых нет в модели
+    model_fields = model_class.__fields__.keys()
+    filtered_dict = {k: v for k, v in data_dict.items() if k in model_fields}
+    
+    # Для CategoryResponse добавляем slug, если его нет
+    if model_class == CategoryResponse and 'slug' not in filtered_dict:
+        filtered_dict['slug'] = filtered_dict.get('name', '').lower().replace(' ', '-')
+    
+    return model_class(**filtered_dict)
+
 # Маршруты для работы с товарами
 products_router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -113,7 +130,11 @@ async def get_all_products(
         LIMIT %s OFFSET %s
         """
         cursor.execute(query, (limit, skip))
-        products = cursor.fetchall()
+        products_raw = cursor.fetchall()
+        
+        # Преобразуем словари в модели
+        products = [dict_to_model(product, ProductResponse) for product in products_raw]
+        
         logger.info(f"Успешно получено {len(products)} товаров")
         return products
     except Exception as e:
@@ -123,66 +144,106 @@ async def get_all_products(
             raise HTTPException(status_code=500, detail="Ошибка в структуре базы данных: таблица products не существует")
         raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении товаров: {str(e)}")
 
-# Получить список категорий
-@products_router.get("/categories/", response_model=List[CategoryResponse])
+# Исправленная версия маршрута для получения категорий
+@products_router.get("/categories", response_model=List[CategoryResponse])
 async def get_categories(db = Depends(get_db)):
     try:
         logger.info("Запрос всех категорий")
         cursor = db.cursor()
-        query = "SELECT id, name, slug, description FROM categories ORDER BY id"
-        cursor.execute(query)
-        categories = cursor.fetchall()
-        logger.info(f"Успешно получено {len(categories)} категорий")
-        return categories
+        
+        # Проверим структуру таблицы categories
+        try:
+            cursor.execute("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'categories'
+            """)
+            columns = [row['column_name'] for row in cursor.fetchall()]
+            logger.info(f"Структура таблицы categories: {columns}")
+            
+            # Используем только те столбцы, которые фактически существуют
+            if 'description' in columns:
+                query = "SELECT id, name, description FROM categories ORDER BY id"
+            else:
+                query = "SELECT id, name FROM categories ORDER BY id"
+                
+            cursor.execute(query)
+            categories_raw = cursor.fetchall()
+            
+            # Преобразуем результаты в список моделей CategoryResponse
+            categories = []
+            for cat_data in categories_raw:
+                # Если description нет в данных, добавляем пустое значение
+                if 'description' not in cat_data:
+                    cat_data['description'] = None
+                
+                # Если slug нет в данных, создаем его из имени
+                if 'slug' not in cat_data:
+                    cat_data['slug'] = cat_data['name'].lower().replace(' ', '-')
+                
+                # Преобразуем словарь в модель
+                category = dict_to_model(cat_data, CategoryResponse)
+                categories.append(category)
+            
+            logger.info(f"Успешно получено {len(categories)} категорий")
+            return categories
+        except Exception as schema_error:
+            logger.error(f"Ошибка при проверке структуры таблицы: {str(schema_error)}")
+            # Пробуем более простой запрос
+            cursor.execute("SELECT id, name FROM categories ORDER BY id")
+            categories_raw = cursor.fetchall()
+            
+            # Преобразуем результаты в список моделей CategoryResponse
+            categories = []
+            for cat_data in categories_raw:
+                # Добавляем отсутствующие поля для соответствия модели
+                cat_data['description'] = None
+                cat_data['slug'] = cat_data['name'].lower().replace(' ', '-')
+                
+                # Преобразуем словарь в модель
+                category = CategoryResponse(
+                    id=cat_data['id'],
+                    name=cat_data['name'],
+                    description=None,
+                    slug=cat_data['slug']
+                )
+                categories.append(category)
+            
+            logger.info(f"Успешно получено {len(categories)} категорий (упрощенный запрос)")
+            return categories
+            
     except Exception as e:
         logger.error(f"Ошибка при получении категорий: {str(e)}")
         logger.error(traceback.format_exc())
         if "does not exist" in str(e):
             raise HTTPException(status_code=500, detail="Ошибка в структуре базы данных: таблица categories не существует")
         raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении категорий: {str(e)}")
+    
+# ДОБАВЛЯЕМ альтернативный маршрут для категорий без слеша в конце
+@products_router.get("/categories/", include_in_schema=False)
+async def get_categories_alt(db = Depends(get_db)):
+    """Альтернативный маршрут для совместимости"""
+    return await get_categories(db)
 
-# Получить товары по категории
-@products_router.get("/category/{category_slug}", response_model=List[ProductResponse])
-async def get_products_by_category(
-    category_slug: str,
+# ДОБАВЛЯЕМ новый маршрут для категорий через /api/categories
+@app.get("/api/categories", response_model=List[CategoryResponse], tags=["Categories"])
+async def get_api_categories(db = Depends(get_db)):
+    """API маршрут для категорий"""
+    return await get_categories(db)
+
+# ДОБАВЛЯЕМ новый маршрут для продуктов через /api/products
+@app.get("/api/products", response_model=List[ProductResponse], tags=["Products"])
+async def get_api_products(
     skip: int = 0,
     limit: int = 100,
     db = Depends(get_db)
 ):
-    try:
-        logger.info(f"Запрос товаров по категории {category_slug}")
-        cursor = db.cursor()
-        
-        # Сначала находим категорию по slug
-        category_query = "SELECT id FROM categories WHERE slug = %s"
-        cursor.execute(category_query, (category_slug,))
-        category = cursor.fetchone()
-        
-        if not category:
-            logger.warning(f"Категория с slug={category_slug} не найдена")
-            raise HTTPException(status_code=404, detail="Категория не найдена")
-        
-        # Затем получаем товары из этой категории
-        products_query = """
-        SELECT 
-            id, name, description, price, image_url, category_id, 
-            stock_quantity, created_at, updated_at
-        FROM products
-        WHERE category_id = %s
-        ORDER BY id
-        LIMIT %s OFFSET %s
-        """
-        cursor.execute(products_query, (category['id'], limit, skip))
-        products = cursor.fetchall()
-        logger.info(f"Успешно получено {len(products)} товаров для категории {category_slug}")
-        
-        return products
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Ошибка при получении товаров по категории {category_slug}: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении товаров по категории: {str(e)}")
+    return await get_all_products(skip, limit, db)
+
+# Добавляем маршрут для категорий без префикса
+@app.get("/categories", tags=["Categories"])
+async def get_all_categories_no_prefix(db = Depends(get_db)):
+    return await get_categories(db)
 
 # Получить товар по ID
 @products_router.get("/{product_id}", response_model=ProductResponse)
@@ -198,11 +259,14 @@ async def get_product_by_id(product_id: int, db = Depends(get_db)):
         WHERE id = %s
         """
         cursor.execute(query, (product_id,))
-        product = cursor.fetchone()
+        product_raw = cursor.fetchone()
         
-        if not product:
+        if not product_raw:
             logger.warning(f"Товар с ID={product_id} не найден")
             raise HTTPException(status_code=404, detail="Товар не найден")
+        
+        # Преобразуем словарь в модель
+        product = dict_to_model(product_raw, ProductResponse)
         
         logger.info(f"Успешно получен товар с ID {product_id}")
         return product
@@ -252,8 +316,11 @@ async def create_product(product: ProductCreate, db = Depends(get_db)):
         )
         db.commit()  # Важно: фиксируем транзакцию
         
-        new_product = cursor.fetchone()
-        logger.info(f"Успешно создан новый товар с ID {new_product['id']}")
+        new_product_raw = cursor.fetchone()
+        # Преобразуем словарь в модель
+        new_product = dict_to_model(new_product_raw, ProductResponse)
+        
+        logger.info(f"Успешно создан новый товар с ID {new_product.id}")
         return new_product
     except HTTPException:
         raise
@@ -287,6 +354,17 @@ async def add_to_cart():
         "message": "Товар добавлен в корзину"
     }
 
+# Добавляем маршрут для совместимости - /api/cart
+@app.get("/api/cart", response_model=dict, tags=["Cart"])
+async def get_api_cart():
+    """API маршрут для корзины"""
+    return await get_cart()
+
+@app.post("/api/cart", response_model=dict, tags=["Cart"])
+async def add_to_api_cart():
+    """API маршрут для добавления в корзину"""
+    return await add_to_cart()
+
 # Подключаем маршруты корзины
 app.include_router(cart_router)
 
@@ -318,10 +396,13 @@ async def root():
     """
     routes_info = [
         {"path": "/products/", "description": "Получение списка всех товаров"},
-        {"path": "/products/categories/", "description": "Получение списка всех категорий"},
+        {"path": "/products/categories", "description": "Получение списка всех категорий"},
+        {"path": "/api/products", "description": "API для получения списка всех товаров"},
+        {"path": "/api/categories", "description": "API для получения списка всех категорий"},
         {"path": "/products/{product_id}", "description": "Получение информации о конкретном товаре"},
         {"path": "/products/category/{category_slug}", "description": "Получение товаров по категории"},
         {"path": "/cart/", "description": "Работа с корзиной"},
+        {"path": "/api/cart", "description": "API для работы с корзиной"},
         {"path": "/docs", "description": "Документация API"},
     ]
     

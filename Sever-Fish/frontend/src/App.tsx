@@ -20,35 +20,49 @@ function App() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [cartCount, setCartCount] = useState(0);
 
-    const updateCartCount = async () => {
-        try {
-            const response = await fetch('http://localhost:8000/cart/', {
-                method: 'GET',
-                credentials: 'include',  // Важно для передачи куки сессии
-                headers: {
-                    'Accept': 'application/json',
-                }
-            });
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    // Если пользователь не авторизован, это нормально - просто показываем 0 товаров
-                    console.log('Пользователь не авторизован, корзина пуста');
-                    setCartCount(0);
-                    return;
-                }
-                throw new Error(`Ошибка при загрузке корзины: ${response.status} ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            const totalCount = data.reduce((sum, item) => sum + item.quantity, 0);
-            setCartCount(totalCount);
-        } catch (error) {
-            console.error('Ошибка при загрузке корзины:', error);
-            // Не устанавливаем count в 0, сохраняем последнее значение в случае временных проблем с сетью
+    // Функция для обновления счетчика корзины
+const updateCartCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setCartCount(0);
+        return;
+      }
+      
+      // Пробуем получить данные корзины
+      const response = await axios.get(`${API_BASE_URL}/cart`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      // Проверяем формат данных
+      const data = response.data;
+      
+      if (data && Array.isArray(data.items)) {
+        // Если data.items - массив, используем его
+        setCartCount(data.items.reduce((sum, item) => sum + item.quantity, 0));
+      } else if (data && typeof data === 'object') {
+        // Если data - объект, но не с ожидаемой структурой, ищем другие поля
+        if (Array.isArray(data.cart_items)) {
+          setCartCount(data.cart_items.reduce((sum, item) => sum + item.quantity, 0));
+        } else if (data.total_items !== undefined) {
+          // Если есть поле total_items, используем его
+          setCartCount(data.total_items);
+        } else {
+          // Иначе устанавливаем 0
+          console.log("Формат данных корзины не содержит ожидаемых полей:", data);
+          setCartCount(0);
         }
-    };
-
+      } else {
+        // Если data не соответствует ожидаемой структуре, устанавливаем 0
+        console.log("Неожиданный формат данных корзины:", data);
+        setCartCount(0);
+      }
+    } catch (error) {
+      console.error("Ошибка при загрузке корзины:", error);
+      setCartCount(0);
+    }
+  };
+  
     // Функция для переключения меню (четко определенная)
     const toggleMobileMenu = () => {
         setIsMobileMenuOpen(prevState => !prevState);

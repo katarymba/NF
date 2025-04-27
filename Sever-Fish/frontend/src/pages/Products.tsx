@@ -14,25 +14,39 @@ const Products = ({ updateCartCount }) => {
   const productsPerPage = 12;
 
   // Базовый URL API
-  // Проверяем через API, какие эндпоинты доступны
   const API_BASE_URL = "http://127.0.0.1:8000";
   
-  // Исправляем пути API в соответствии с маршрутами в routes/products.py
+  // Исправленные пути API согласно FastAPI маршрутам
   const PRODUCTS_API = `${API_BASE_URL}/products`;
   const CATEGORIES_API = `${API_BASE_URL}/products/categories`;
   const CART_API = `${API_BASE_URL}/cart`;
+
+  // Функция для проверки доступных API маршрутов
+  const checkApiEndpoints = async () => {
+    try {
+      const routesRes = await axios.get(`${API_BASE_URL}/routes`);
+      console.log("Доступные маршруты API:", routesRes.data);
+      return routesRes.data;
+    } catch (error) {
+      console.error("Ошибка при получении маршрутов API:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       
-      // Сначала пробуем получить список доступных маршрутов
+      // Проверяем доступные маршруты API
+      await checkApiEndpoints();
+      
+      // Проверяем статус сервера
       try {
-        const res = await axios.get(`${API_BASE_URL}`);
-        console.log("API доступен:", res.data);
-      } catch (error) {
-        console.log("Не удалось получить информацию об API:", error);
+        const healthRes = await axios.get(`${API_BASE_URL}/health`);
+        console.log("Статус сервера:", healthRes.data);
+      } catch (healthErr) {
+        console.error("Ошибка при проверке статуса:", healthErr);
       }
       
       try {
@@ -48,120 +62,118 @@ const Products = ({ updateCartCount }) => {
   }, []);
 
   const fetchProducts = async () => {
-    try {
-      console.log("Запрос продуктов по адресу:", PRODUCTS_API);
-      const res = await axios.get(PRODUCTS_API, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      });
-      console.log("Получены продукты:", res.data);
-      setProducts(res.data);
-      setError(null);
-      return res.data;
-    } catch (error) {
-      console.error("Ошибка при загрузке продуктов:", error);
-      
-      // Дополнительное логирование для отладки
-      if (error.response) {
-        console.log("Статус ответа:", error.response.status);
-        console.log("Данные ответа:", error.response.data);
-        console.log("Заголовки ответа:", error.response.headers);
-        
-        if (error.response.status === 404) {
-          setError("API маршрут /products не найден. Возможно, сервер запущен, но маршруты не настроены правильно.");
-        } else {
-          setError(`Ошибка сервера: ${error.response.status} ${error.response.statusText}`);
-        }
-      } else if (error.request) {
-        console.log("Запрос был сделан, но ответ не получен:", error.request);
-        setError("Сервер не отвечает. Убедитесь, что сервер запущен.");
-      } else {
-        console.log("Ошибка при настройке запроса:", error.message);
-        setError("Произошла ошибка при настройке запроса: " + error.message);
+    // Список возможных API маршрутов для продуктов
+    const productApis = [
+      PRODUCTS_API,
+      `${API_BASE_URL}/api/products`
+    ];
+    
+    for (const api of productApis) {
+      try {
+        console.log(`Попытка запроса продуктов по адресу: ${api}`);
+        const res = await axios.get(api, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
+        console.log("Получены продукты:", res.data);
+        setProducts(res.data);
+        setError(null);
+        return res.data;
+      } catch (error) {
+        console.error(`Ошибка при запросе к ${api}:`, error);
+        // Продолжаем пробовать другие API
       }
-      
-      return [];
     }
+    
+    // Если все попытки не удались, устанавливаем ошибку
+    setError("Не удалось загрузить товары. Проверьте работу сервера.");
+    return [];
   };
 
   const fetchCategories = async () => {
-    try {
-      console.log("Запрос категорий по адресу:", CATEGORIES_API);
-      const res = await axios.get(CATEGORIES_API, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      });
-      console.log("Получены категории:", res.data);
-      setCategories(res.data);
-      setError(null);
-      return res.data;
-    } catch (error) {
-      console.error("Ошибка при загрузке категорий:", error);
-      
-      // Проверяем альтернативный путь без слеша в конце
+    // Список возможных API маршрутов для категорий
+    const categoryApis = [
+      CATEGORIES_API,
+      `${API_BASE_URL}/api/categories`,
+      `${API_BASE_URL}/categories`
+    ];
+    
+    for (const api of categoryApis) {
       try {
-        const alternativeUrl = CATEGORIES_API.endsWith('/') 
-          ? CATEGORIES_API.slice(0, -1) 
-          : `${CATEGORIES_API}/`;
-          
-        console.log("Попытка запроса по альтернативному URL:", alternativeUrl);
-        const res = await axios.get(alternativeUrl);
-        console.log("Получены категории по альтернативному URL:", res.data);
-        setCategories(res.data);
-        return res.data;
-      } catch (altError) {
-        console.error("Альтернативный запрос также не удался:", altError);
+        console.log(`Попытка запроса категорий по адресу: ${api}`);
+        const res = await axios.get(api, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
         
-        if (error.response && error.response.status === 404) {
-          setError("API маршрут /products/categories не найден. Возможно, сервер запущен, но маршруты не настроены правильно.");
-        } else if (error.response) {
-          setError(`Ошибка сервера при загрузке категорий: ${error.response.status}`);
-        } else {
-          setError("Не удалось загрузить категории. Проверьте работу сервера.");
-        }
+        console.log("Получены категории:", res.data);
         
-        return [];
+        // Обработка данных для совместимости
+        const processedCategories = res.data.map(cat => {
+          // Убедимся, что каждая категория имеет slug
+          if (!cat.slug && cat.name) {
+            cat.slug = cat.name.toLowerCase().replace(/\s+/g, '-');
+          }
+          return cat;
+        });
+        
+        setCategories(processedCategories);
+        setError(null);
+        return processedCategories;
+      } catch (error) {
+        console.error(`Ошибка при запросе к ${api}:`, error);
+        // Продолжаем пробовать другие API
       }
     }
+    
+    // Если все попытки не удались, устанавливаем ошибку
+    setError("Не удалось загрузить категории. Проверьте работу сервера.");
+    return [];
   };
 
+  // ИСПРАВЛЕНИЕ: Правильное определение функции fetchProductsByCategory
   const fetchProductsByCategory = async (categorySlug) => {
-    try {
-      setIsLoading(true);
-      const categoryUrl = `${API_BASE_URL}/products/category/${categorySlug}`;
-      console.log("Запрос продуктов по категории:", categoryUrl);
-      
-      const res = await axios.get(categoryUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      });
-      console.log("Получены продукты по категории:", res.data);
-      setProducts(res.data);
-      setError(null);
-    } catch (error) {
-      console.error("Ошибка при загрузке товаров по категории:", error);
-      
-      if (error.response && error.response.status === 404) {
-        setError(`Категория "${categorySlug}" не найдена или маршрут /products/category не настроен.`);
-      } else {
-        setError("Не удалось загрузить товары по категории. Проверьте работу сервера.");
-      }
-      
-      // В случае ошибки загружаем все товары
+    setIsLoading(true);
+    
+    // Список возможных API маршрутов для продуктов по категории
+    const categoryProductApis = [
+      `${API_BASE_URL}/products/category/${categorySlug}`,
+      `${API_BASE_URL}/api/products/category/${categorySlug}`
+    ];
+    
+    for (const api of categoryProductApis) {
       try {
-        await fetchProducts();
-      } catch (e) {
-        console.error("Также не удалось загрузить все товары:", e);
+        console.log(`Попытка запроса продуктов по категории: ${api}`);
+        const res = await axios.get(api, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
+        console.log("Получены продукты по категории:", res.data);
+        setProducts(res.data);
+        setError(null);
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        console.error(`Ошибка при запросе к ${api}:`, error);
+        // Продолжаем пробовать другие API
       }
+    }
+    
+    // Если не удалось получить товары по категории, пробуем загрузить все товары
+    try {
+      setError("Не удалось загрузить товары по выбранной категории. Загружаем все товары.");
+      await fetchProducts();
+    } catch (e) {
+      console.error("Также не удалось загрузить все товары:", e);
     } finally {
       setIsLoading(false);
     }
@@ -192,46 +204,60 @@ const Products = ({ updateCartCount }) => {
       return;
     }
     
-    try {
-      const button = event.currentTarget;
-      // Анимация для кнопки
-      button.innerText = "Добавлено ✓";
-      button.classList.add("bg-green-600");
-      
-      console.log(`Добавление товара ${productId} в корзину`);
-      
-      // Отправляем запрос с токеном авторизации
-      await axios.post(CART_API, {
-        product_id: productId,
-        quantity: 1,
-      }, {
-        headers: {
-          'Authorization': `${tokenType} ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+    // Список возможных API маршрутов для корзины
+    const cartApis = [
+      CART_API,
+      `${API_BASE_URL}/api/cart`
+    ];
+    
+    const button = event.currentTarget;
+    // Анимация для кнопки
+    button.innerText = "Добавляем...";
+    button.classList.add("bg-yellow-600");
+    
+    for (const api of cartApis) {
+      try {
+        console.log(`Добавление товара ${productId} в корзину по адресу: ${api}`);
+        await axios.post(api, {
+          product_id: productId,
+          quantity: 1,
+        }, {
+          headers: {
+            'Authorization': `${tokenType} ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        // Обновляем счетчик корзины
+        if (updateCartCount) {
+          updateCartCount();
         }
-      });
-      
-      // Обновляем счетчик корзины
-      updateCartCount();
-      
-      // Возвращаем исходный текст после короткой задержки
-      setTimeout(() => {
-        button.innerText = "В корзину";
-        button.classList.remove("bg-green-600");
-      }, 1500);
-    } catch (error) {
-      console.error("Ошибка при добавлении в корзину:", error);
-      
-      // Показываем ошибку пользователю
-      const errorMsg = error.response?.data?.detail || "Не удалось добавить товар в корзину";
-      setError(errorMsg);
-      
-      // Если ошибка связана с авторизацией (401), показываем модальное окно
-      if (error.response && error.response.status === 401) {
-        setShowAuthModal(true);
+        
+        // Изменяем текст кнопки на успешный
+        button.innerText = "Добавлено ✓";
+        button.classList.remove("bg-yellow-600");
+        button.classList.add("bg-green-600");
+        
+        // Возвращаем исходный текст после короткой задержки
+        setTimeout(() => {
+          button.innerText = "В корзину";
+          button.classList.remove("bg-green-600");
+        }, 1500);
+        
+        return;
+      } catch (error) {
+        console.error(`Ошибка при добавлении в корзину по ${api}:`, error);
+        // Продолжаем пробовать другие API
       }
     }
+    
+    // Сбрасываем кнопку и показываем ошибку
+    button.innerText = "В корзину";
+    button.classList.remove("bg-yellow-600");
+    
+    // Показываем ошибку пользователю
+    setError("Не удалось добавить товар в корзину. Проверьте соединение с сервером.");
   };
 
   // Обработчик для перехода на страницу авторизации
@@ -302,6 +328,7 @@ const Products = ({ updateCartCount }) => {
         <p><strong>Адрес API:</strong> {API_BASE_URL}</p>
         <p><strong>Маршрут продуктов:</strong> {PRODUCTS_API}</p>
         <p><strong>Маршрут категорий:</strong> {CATEGORIES_API}</p>
+        <p><strong>Последнее обновление:</strong> {new Date().toLocaleTimeString()}</p>
       </div>
       
       <div className="flex flex-col lg:flex-row gap-8">
