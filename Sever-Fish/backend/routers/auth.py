@@ -80,7 +80,7 @@ async def register_user(request: Request):
                         email VARCHAR(100) UNIQUE NOT NULL,
                         phone VARCHAR(20),
                         full_name VARCHAR(200),
-                        hashed_password VARCHAR(200) NOT NULL,
+                        password_hash VARCHAR(200) NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
@@ -105,7 +105,7 @@ async def register_user(request: Request):
             # Вставляем пользователя
             logger.info("Добавляем нового пользователя...")
             cursor.execute("""
-                INSERT INTO users (username, email, phone, full_name, hashed_password)
+                INSERT INTO users (username, email, phone, full_name, password_hash)
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING id, username, email
             """, (
@@ -200,7 +200,7 @@ async def login(request: Request):
             
             # Ищем пользователя по телефону
             cursor.execute("""
-                SELECT id, username, email, hashed_password
+                SELECT id, username, email, password_hash
                 FROM users
                 WHERE phone = %s
             """, (phone,))
@@ -215,7 +215,7 @@ async def login(request: Request):
                     headers={"WWW-Authenticate": "Bearer"},
                 )
             
-            if not verify_password(password, user[3]):  # Индекс 3 для hashed_password
+            if not verify_password(password, user[3]):  # Индекс 3 для password_hash
                 logger.warning("Неверный пароль")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,

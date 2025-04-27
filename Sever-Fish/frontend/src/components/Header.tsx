@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useCallback } from 'react';
+import axios from 'axios';
 
 interface HeaderProps {
     onMenuToggle: () => void;

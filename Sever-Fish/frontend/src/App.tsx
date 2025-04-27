@@ -9,6 +9,7 @@ import Recipes from './pages/Recipes';
 import Production from './pages/Production';
 import Cart from './pages/Cart';
 import Auth from './pages/Auth';
+import axios from 'axios';
 import Account from './pages/Account';
 import Header from './components/Header';
 import Footer from './components/Footer';
