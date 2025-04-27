@@ -108,13 +108,24 @@ const Auth: React.FC = () => {
     const phoneNumber = registerForm.phone.replace(/\D/g, '');
 
     try {
-      const response = await fetch('http://127.0.0.1:8001/auth/register', {
+      // Отладочное сообщение для проверки данных
+      console.log("Отправляем данные для регистрации:", {
+        username: registerForm.email.split('@')[0],
+        email: registerForm.email,
+        phone: phoneNumber,
+        full_name: registerForm.full_name,
+        password: registerForm.password,
+        password_confirm: registerForm.password_confirm
+      });
+
+      const response = await fetch('http://127.0.0.1:8000/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Добавляем поддержку куки
         body: JSON.stringify({
-          username: registerForm.email.split('@')[0], // Используем часть email как username
+          username: registerForm.email.split('@')[0],
           email: registerForm.email,
           phone: phoneNumber,
           full_name: registerForm.full_name,
@@ -123,7 +134,22 @@ const Auth: React.FC = () => {
         }),
       });
 
-      const data = await response.json();
+      // Отладочное сообщение для проверки статуса ответа
+      console.log("Статус ответа:", response.status);
+
+      // Сначала попробуем получить текст ответа
+      const responseText = await response.text();
+      console.log("Текст ответа:", responseText);
+
+      // Преобразуем текст в JSON, если возможно
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log("Ответ сервера (JSON):", data);
+      } catch (e) {
+        console.error("Ошибка при парсинге JSON:", e);
+        data = { detail: "Ошибка парсинга ответа сервера" };
+      }
 
       if (!response.ok) {
         throw new Error(data.detail || 'Ошибка при регистрации');
@@ -133,6 +159,7 @@ const Auth: React.FC = () => {
       setIsLoginMode(true);
       alert('Регистрация успешна! Теперь вы можете войти в систему.');
     } catch (error) {
+      console.error("Ошибка регистрации:", error);
       if (error instanceof Error) {
         setError(error.message);
       } else {
@@ -158,13 +185,29 @@ const Auth: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Добавляем поддержку куки
         body: JSON.stringify({
           phone: phoneNumber,
           password: loginForm.password
         }),
       });
 
-      const data = await response.json();
+      // Отладочное сообщение для проверки статуса ответа
+      console.log("Статус ответа:", response.status);
+
+      // Сначала попробуем получить текст ответа
+      const responseText = await response.text();
+      console.log("Текст ответа:", responseText);
+
+      // Преобразуем текст в JSON, если возможно
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log("Ответ сервера (JSON):", data);
+      } catch (e) {
+        console.error("Ошибка при парсинге JSON:", e);
+        data = { detail: "Ошибка парсинга ответа сервера" };
+      }
 
       if (!response.ok) {
         throw new Error(data.detail || 'Ошибка при входе');
@@ -173,6 +216,8 @@ const Auth: React.FC = () => {
       // Сохраняем токен в localStorage
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('tokenType', data.token_type);
+      localStorage.setItem('userId', data.user_id);
+      localStorage.setItem('username', data.username);
 
       // Проверяем, есть ли сохраненный путь для перенаправления
       const redirectPath = localStorage.getItem('redirectAfterAuth');
@@ -187,6 +232,7 @@ const Auth: React.FC = () => {
         navigate('/account');
       }
     } catch (error) {
+      console.error("Ошибка входа:", error);
       if (error instanceof Error) {
         setError(error.message);
       } else {
@@ -234,6 +280,7 @@ const Auth: React.FC = () => {
                 onChange={(e) => handlePhoneChange(e, true)}
                 placeholder="+7 (___) ___-__-__"
                 required
+                autoComplete="tel"
               />
             </div>
 
@@ -247,6 +294,7 @@ const Auth: React.FC = () => {
                 onChange={handleLoginInputChange}
                 placeholder="Введите пароль"
                 required
+                autoComplete="current-password"
               />
             </div>
 
@@ -270,6 +318,7 @@ const Auth: React.FC = () => {
                 onChange={handleRegisterInputChange}
                 placeholder="Иванов Иван Иванович"
                 required
+                autoComplete="name"
               />
             </div>
             
@@ -283,6 +332,7 @@ const Auth: React.FC = () => {
                 onChange={(e) => handlePhoneChange(e, false)}
                 placeholder="+7 (___) ___-__-__"
                 required
+                autoComplete="tel"
               />
             </div>
 
@@ -296,6 +346,7 @@ const Auth: React.FC = () => {
                 onChange={handleRegisterInputChange}
                 placeholder="example@mail.com"
                 required
+                autoComplete="email"
               />
             </div>
 
@@ -310,6 +361,7 @@ const Auth: React.FC = () => {
                 placeholder="Минимум 6 символов"
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
 
@@ -324,6 +376,7 @@ const Auth: React.FC = () => {
                 placeholder="Повторите пароль"
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
 

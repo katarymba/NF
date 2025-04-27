@@ -11,6 +11,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 from database import get_db, get_db_connection  # Импортируем обе функции
+import psycopg2.pool
+from contextlib import asynccontextmanager
 
 # Настройка путей для корректного импорта
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,6 +28,25 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Создаем пул соединений с БД
+db_pool = psycopg2.pool.SimpleConnectionPool(
+    minconn=1,
+    maxconn=10,
+    host="localhost",
+    port="5432",
+    dbname="sever_ryba_db",  # Изменено на существующую БД
+    user="katarymba",
+    password="root"
+)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # При запуске приложения
+    app.state.db_pool = db_pool
+    yield
+    # При остановке приложения
+    db_pool.closeall()
 
 # Создаем модели данных для ответа API
 # Обновляем модель CategoryResponse, делая поле description необязательным
@@ -64,11 +85,11 @@ class ProductCreate(BaseModel):
 app = FastAPI(
     title="Север-Рыба API",
     description="API для интернет-магазина Север-Рыба",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Настройка CORS для разрешения запросов с фронтенда
-# Добавляем все возможные комбинации хостов и портов
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -108,6 +129,26 @@ def dict_to_model(data_dict, model_class):
     
     return model_class(**filtered_dict)
 
+# Импортируем роутеры
+try:
+    from routers import auth as auth_router
+    logger.info("Роутер auth импортирован успешно")
+except ImportError as e:
+    logger.error(f"Ошибка импорта роутера auth: {e}")
+    
+    # Создаем заглушку для роутера auth
+    auth_router_stub = APIRouter()
+    
+    @auth_router_stub.post("/register")
+    async def register_stub():
+        return {"message": "Регистрация недоступна, ошибка импорта модуля auth"}
+    
+    @auth_router_stub.post("/login")
+    async def login_stub():
+        return {"message": "Вход недоступен, ошибка импорта модуля auth"}
+    
+    auth_router = type('AuthRouter', (), {'router': auth_router_stub})
+
 # Маршруты для работы с товарами
 products_router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -121,6 +162,16 @@ async def get_all_products(
     try:
         logger.info(f"Запрос всех товаров (skip={skip}, limit={limit})")
         cursor = db.cursor()
+        
+        # Проверяем структуру таблицы products
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'products'
+        """)
+        columns = [row['column_name'] for row in cursor.fetchall()]
+        logger.info(f"Структура таблицы products: {columns}")
+        
         query = """
         SELECT 
             id, name, description, price, image_url, category_id, 
@@ -133,7 +184,25 @@ async def get_all_products(
         products_raw = cursor.fetchall()
         
         # Преобразуем словари в модели
-        products = [dict_to_model(product, ProductResponse) for product in products_raw]
+        products = []
+        for product_data in products_raw:
+            # Убедимся, что все необходимые поля присутствуют
+            for field in ['description', 'image_url', 'category_id', 'stock_quantity', 'created_at', 'updated_at']:
+                if field not in product_data:
+                    product_data[field] = None if field != 'stock_quantity' else 0
+            
+            product = ProductResponse(
+                id=product_data['id'],
+                name=product_data['name'],
+                description=product_data.get('description'),
+                price=product_data['price'],
+                image_url=product_data.get('image_url'),
+                category_id=product_data.get('category_id'),
+                stock_quantity=product_data.get('stock_quantity', 0),
+                created_at=product_data.get('created_at'),
+                updated_at=product_data.get('updated_at')
+            )
+            products.append(product)
         
         logger.info(f"Успешно получено {len(products)} товаров")
         return products
@@ -181,8 +250,13 @@ async def get_categories(db = Depends(get_db)):
                 if 'slug' not in cat_data:
                     cat_data['slug'] = cat_data['name'].lower().replace(' ', '-')
                 
-                # Преобразуем словарь в модель
-                category = dict_to_model(cat_data, CategoryResponse)
+                # Создаем модель напрямую
+                category = CategoryResponse(
+                    id=cat_data['id'],
+                    name=cat_data['name'],
+                    description=cat_data.get('description'),
+                    slug=cat_data.get('slug', cat_data['name'].lower().replace(' ', '-'))
+                )
                 categories.append(category)
             
             logger.info(f"Успешно получено {len(categories)} категорий")
@@ -197,15 +271,12 @@ async def get_categories(db = Depends(get_db)):
             categories = []
             for cat_data in categories_raw:
                 # Добавляем отсутствующие поля для соответствия модели
-                cat_data['description'] = None
-                cat_data['slug'] = cat_data['name'].lower().replace(' ', '-')
-                
-                # Преобразуем словарь в модель
+                # Создаем модель напрямую
                 category = CategoryResponse(
                     id=cat_data['id'],
                     name=cat_data['name'],
                     description=None,
-                    slug=cat_data['slug']
+                    slug=cat_data['name'].lower().replace(' ', '-')
                 )
                 categories.append(category)
             
@@ -225,20 +296,76 @@ async def get_categories_alt(db = Depends(get_db)):
     """Альтернативный маршрут для совместимости"""
     return await get_categories(db)
 
-# ДОБАВЛЯЕМ новый маршрут для категорий через /api/categories
-@app.get("/api/categories", response_model=List[CategoryResponse], tags=["Categories"])
-async def get_api_categories(db = Depends(get_db)):
-    """API маршрут для категорий"""
-    return await get_categories(db)
-
-# ДОБАВЛЯЕМ новый маршрут для продуктов через /api/products
+# ОБНОВЛЯЕМ маршрут для товаров через /api/products
 @app.get("/api/products", response_model=List[ProductResponse], tags=["Products"])
 async def get_api_products(
     skip: int = 0,
     limit: int = 100,
     db = Depends(get_db)
 ):
-    return await get_all_products(skip, limit, db)
+    """API маршрут для продуктов"""
+    try:
+        logger.info(f"Запрос API продуктов (skip={skip}, limit={limit})")
+        cursor = db.cursor()
+        
+        # Проверяем структуру таблицы products
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'products'
+        """)
+        columns = [row['column_name'] for row in cursor.fetchall()]
+        logger.info(f"Структура таблицы products в API: {columns}")
+        
+        # Формируем запрос с учетом имеющихся столбцов
+        select_columns = ["id", "name", "price"]
+        for column in ["description", "image_url", "category_id", "stock_quantity", "created_at", "updated_at"]:
+            if column in columns:
+                select_columns.append(column)
+                
+        query = f"""
+        SELECT {', '.join(select_columns)}
+        FROM products
+        ORDER BY id
+        LIMIT %s OFFSET %s
+        """
+        
+        cursor.execute(query, (limit, skip))
+        products_raw = cursor.fetchall()
+        
+        # Преобразуем словари в модели
+        products = []
+        for product_data in products_raw:
+            # Создаем объект с обязательными полями
+            product_obj = {
+                "id": product_data['id'],
+                "name": product_data['name'],
+                "price": product_data['price'],
+                "stock_quantity": product_data.get('stock_quantity', 0)
+            }
+            
+            # Добавляем опциональные поля, если они есть
+            optional_fields = ['description', 'image_url', 'category_id', 'created_at', 'updated_at']
+            for field in optional_fields:
+                if field in product_data:
+                    product_obj[field] = product_data[field]
+            
+            # Создаем модель
+            product = ProductResponse(**product_obj)
+            products.append(product)
+        
+        logger.info(f"Успешно получено {len(products)} API продуктов")
+        return products
+    except Exception as e:
+        logger.error(f"Ошибка при получении API продуктов: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении API продуктов: {str(e)}")
+
+# ДОБАВЛЯЕМ новый маршрут для категорий через /api/categories
+@app.get("/api/categories", response_model=List[CategoryResponse], tags=["Categories"])
+async def get_api_categories(db = Depends(get_db)):
+    """API маршрут для категорий"""
+    return await get_categories(db)
 
 # Добавляем маршрут для категорий без префикса
 @app.get("/categories", tags=["Categories"])
@@ -333,6 +460,13 @@ async def create_product(product: ProductCreate, db = Depends(get_db)):
 # Подключаем маршруты products
 app.include_router(products_router)
 
+# Подключаем маршруты auth
+try:
+    app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
+    logger.info("Маршруты аутентификации успешно подключены")
+except Exception as e:
+    logger.error(f"Ошибка при подключении маршрутов аутентификации: {e}")
+
 # Маршруты для работы с корзиной
 cart_router = APIRouter(prefix="/cart", tags=["Cart"])
 
@@ -403,6 +537,8 @@ async def root():
         {"path": "/products/category/{category_slug}", "description": "Получение товаров по категории"},
         {"path": "/cart/", "description": "Работа с корзиной"},
         {"path": "/api/cart", "description": "API для работы с корзиной"},
+        {"path": "/auth/register", "description": "Регистрация нового пользователя"},
+        {"path": "/auth/login", "description": "Вход пользователя"},
         {"path": "/docs", "description": "Документация API"},
     ]
     
