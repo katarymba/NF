@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.middleware.sessions import SessionMiddleware  # Добавляем для поддержки сессий
-from auth import verify_token, create_access_token, verify_password, get_password_hash
+# Fix the import to use your local auth functions from utils/auth
+from utils.auth import verify_password, create_access_token, get_password_hash
 import uvicorn
 import logging
 import sys
