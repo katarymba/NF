@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../services/api';
+import axios from 'axios';
 
 interface UserProfile {
   id: number;
@@ -94,37 +95,34 @@ const Account: React.FC = () => {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-        headers: {
-          ...authHeader
-        }
+      const response = await axios.get(`${API_BASE_URL}/auth/profile`, {
+        headers: authHeader
       });
       
-      if (response.status === 401) {
-        // Если токен истек или недействителен
+      if (response.status === 200) {
+        setUserProfile(response.data);
+        
+        // Заполняем форму редактирования профиля
+        setProfileForm({
+          full_name: response.data.full_name || '',
+          email: response.data.email || '',
+          phone: response.data.phone || '',
+          birthday: response.data.birthday || ''
+        });
+        
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке профиля:', error);
+      
+      // Если получаем 401, значит токен истек или недействителен
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('tokenType');
         navigate('/auth');
         return;
       }
       
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить данные пользователя');
-      }
-      
-      const data = await response.json();
-      setUserProfile(data);
-      
-      // Заполняем форму редактирования профиля
-      setProfileForm({
-        full_name: data.full_name || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        birthday: data.birthday || ''
-      });
-      
-      setLoading(false);
-    } catch (error) {
       setError('Ошибка при загрузке профиля пользователя');
       setLoading(false);
     }
@@ -140,18 +138,13 @@ const Account: React.FC = () => {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/orders/`, {
-        headers: {
-          ...authHeader
-        }
+      const response = await axios.get(`${API_BASE_URL}/orders/`, {
+        headers: authHeader
       });
       
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить заказы');
+      if (response.status === 200) {
+        setOrders(response.data);
       }
-      
-      const data = await response.json();
-      setOrders(data);
     } catch (error) {
       console.error('Ошибка при загрузке заказов:', error);
     }
@@ -223,73 +216,29 @@ const Account: React.FC = () => {
       // Создаем копию формы, чтобы не менять оригинал
       const formData = {...profileForm};
       
-      // Проверяем API-сервер - поддерживает ли он PATCH-метод
-      // Если сервер не поддерживает метод PUT для обновления профиля с датой рождения,
-      // можно попробовать метод PATCH или обновить только базовые поля
-      
       // Удалим поле birthday, если оно пустое, чтобы не вызывать проблем на сервере
       if (!formData.birthday) {
         delete formData.birthday;
       }
       
       // Отправка данных на сервер
-      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-        method: 'PUT', // Можно заменить на 'PATCH', если сервер поддерживает
+      const response = await axios.put(`${API_BASE_URL}/auth/profile`, formData, {
         headers: {
           'Content-Type': 'application/json',
           ...authHeader
-        },
-        body: JSON.stringify(formData)
+        }
       });
       
-      // Обрабатываем возможную ошибку Method Not Allowed (405)
-      if (response.status === 405) {
-        // Если метод не разрешен, попробуем отправить только основные поля без даты рождения
-        const basicFormData = {
-          full_name: formData.full_name,
-          email: formData.email,
-          phone: formData.phone
-        };
-        
-        const retryResponse = await fetch(`${API_BASE_URL}/auth/profile`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeader
-          },
-          body: JSON.stringify(basicFormData)
-        });
-        
-        if (!retryResponse.ok) {
-          const errorData = await retryResponse.json();
-          throw new Error(errorData.detail || 'Не удалось обновить профиль');
-        }
-        
-        const data = await retryResponse.json();
-        setUserProfile({...data, birthday: profileForm.birthday}); // Сохраняем дату рождения локально
+      if (response.status === 200) {
+        setUserProfile(response.data);
         setEditMode(false);
         setError(null);
-        alert('Профиль обновлен, но дату рождения не удалось сохранить на сервере.');
-        return;
+        // Показываем сообщение об успешном обновлении
+        alert('Профиль успешно обновлен!');
       }
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Не удалось обновить профиль');
-      }
-      
-      const data = await response.json();
-      setUserProfile(data);
-      setEditMode(false);
-      setError(null);
-      // Показываем сообщение об успешном обновлении
-      alert('Профиль успешно обновлен!');
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('Произошла ошибка при обновлении профиля');
-      }
+      console.error('Ошибка при обновлении профиля:', error);
+      setError('Произошла ошибка при обновлении профиля');
     }
   };
 
@@ -311,39 +260,31 @@ const Account: React.FC = () => {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
-        method: 'POST',
+      const response = await axios.post(`${API_BASE_URL}/auth/change-password`, {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password
+      }, {
         headers: {
           'Content-Type': 'application/json',
           ...authHeader
-        },
-        body: JSON.stringify({
-          current_password: passwordForm.current_password,
-          new_password: passwordForm.new_password
-        })
+        }
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Не удалось изменить пароль');
+      if (response.status === 200) {
+        // Очистка формы
+        setPasswordForm({
+          current_password: '',
+          new_password: '',
+          confirm_password: ''
+        });
+        
+        setError(null);
+        // Показываем сообщение об успешном изменении пароля
+        alert('Пароль успешно изменен!');
       }
-      
-      // Очистка формы
-      setPasswordForm({
-        current_password: '',
-        new_password: '',
-        confirm_password: ''
-      });
-      
-      setError(null);
-      // Показываем сообщение об успешном изменении пароля
-      alert('Пароль успешно изменен!');
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('Произошла ошибка при изменении пароля');
-      }
+      console.error('Ошибка при изменении пароля:', error);
+      setError('Произошла ошибка при изменении пароля');
     }
   };
 
@@ -506,9 +447,6 @@ const Account: React.FC = () => {
                         />
                         <small className="form-hint">
                           Укажите дату рождения для получения скидки 20% в течение недели
-                        </small>
-                        <small className="form-warning">
-                          Обратите внимание: сохранение даты рождения может быть недоступно в текущей версии сервера
                         </small>
                       </div>
                       
@@ -911,13 +849,6 @@ const Account: React.FC = () => {
           font-size: 12px;
           color: #6c757d;
           margin-top: 4px;
-        }
-        
-        .form-warning {
-          font-size: 12px;
-          color: #e67700;
-          margin-top: 4px;
-          display: block;
         }
 
         .profile-actions {

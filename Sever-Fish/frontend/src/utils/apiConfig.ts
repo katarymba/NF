@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   // Пользователи и аутентификация
   LOGIN: `${API_BASE_URL}/users/token`,
   REGISTER: `${API_BASE_URL}/users/register`,
+  // Исправляем пути для профиля и заказов
   USER_PROFILE: `${API_BASE_URL}/users/me`,
   
   // Заказы

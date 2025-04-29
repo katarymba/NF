@@ -16,6 +16,8 @@ import Footer from './components/Footer';
 import CookieConsent from './components/CookieConsent';
 import MobileMenu from './components/MobileMenu';
 import ProductDetail from './pages/ProductDetail';
+// Добавляем импорт API_BASE_URL
+import { API_BASE_URL } from './utils/apiConfig';
 
 function App() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

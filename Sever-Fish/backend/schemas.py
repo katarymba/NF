@@ -1,120 +1,84 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
+from pydantic import BaseModel, EmailStr, validator, Field
+from typing import Optional, List, Dict, Any
+from datetime import date, datetime
 
-# Category schemas
-class CategoryBase(BaseModel):
-    name: str
-    slug: str
-    description: Optional[str] = None
+# Базовая схема пользователя
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
 
-class CategoryCreate(CategoryBase):
-    pass
+# Схема для создания пользователя
+class UserCreate(UserBase):
+    password: str
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v is not None and not v.startswith('+'):
+            return f"+{v}"
+        return v
 
-class CategoryResponse(CategoryBase):
-    id: int
+# Схема для обновления пользователя
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    birthday: Optional[date] = None
+
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v is not None and not v.startswith('+'):
+            return f"+{v}"
+        return v
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # В новой версии pydantic используется from_attributes вместо orm_mode
+
+# Схема для ответа с профилем пользователя
+class UserProfile(BaseModel):
+    id: int
+    username: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    full_name: Optional[str] = None
+    birthday: Optional[date] = None
+
+    class Config:
         from_attributes = True
 
-# Product schemas
-class ProductBase(BaseModel):
+# Схема для продукта в ответе
+class ProductResponse(BaseModel):
+    id: int
     name: str
     description: Optional[str] = None
     price: float
     image_url: Optional[str] = None
     weight: Optional[str] = None
-    category_id: int
-
-class ProductCreate(ProductBase):
-    pass
-
-class ProductResponse(ProductBase):
-    id: int
-    category: Optional[CategoryResponse] = None
+    category_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
-# Cart schemas
-class CartItemBase(BaseModel):
+# Схема для создания элемента корзины
+class CartItemCreate(BaseModel):
     product_id: int
-    quantity: int = 1
+    quantity: int = Field(default=1, gt=0, le=99)
 
-class CartItemCreate(CartItemBase):
-    pass
-
-class CartItemResponse(CartItemBase):
+# Схема для ответа с элементом корзины
+class CartItemResponse(BaseModel):
     id: int
-    product: ProductResponse
-
-    class Config:
-        orm_mode = True
-        from_attributes = True
-
-# Order item schemas
-class OrderItemBase(BaseModel):
     product_id: int
     quantity: int
-    price: float
-
-class OrderItemCreate(OrderItemBase):
-    pass
-
-class OrderItemResponse(OrderItemBase):
-    id: int
-    product: ProductResponse
-
-    class Config:
-        orm_mode = True
-        from_attributes = True
-
-# Order schemas
-class OrderBase(BaseModel):
-    status: str = "pending"
-    total_amount: float
-
-class OrderCreate(OrderBase):
-    items: List[OrderItemCreate]
-
-class ExtendedOrderCreate(OrderBase):
-    items: List[OrderItemCreate]
     user_id: Optional[int] = None
-    shipping_address: Optional[str] = None
-    payment_method: Optional[str] = None
-    comment: Optional[str] = None
-
-class OrderResponse(OrderBase):
-    id: int
-    created_at: datetime
-    items: List[OrderItemResponse]
+    product: Optional[ProductResponse] = None
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
-# User schemas
-class UserBase(BaseModel):
-    email: str
-    username: str
-
-class UserCreate(UserBase):
-    password: str
-
-class UserResponse(UserBase):
-    id: int
-    is_active: bool
-
-    class Config:
-        orm_mode = True
-        from_attributes = True
-
-# Authentication schemas
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    username: Optional[str] = None
+# Схема для изменения пароля
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
