@@ -1,29 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../services/api';
 import axios from 'axios';
+import { API_BASE_URL, getAuthHeaders, api, getCurrentUser, updateUserProfile, changePassword } from '../services/api';
 
 interface UserProfile {
   id: number;
   username: string;
-  email: string;
-  phone: string;
-  full_name: string;
-  birthday?: string;
+  email: string | null;
+  phone: string | null;
+  full_name: string | null;
+  birthday: string | null;
 }
 
 interface Order {
   id: number;
-  status: string;
+  order_date: string;
   total_price: number;
-  created_at: string;
-  items?: OrderItem[];
+  status: string;
+  delivery_address: string | null;
+  products: OrderProduct[];
 }
 
-interface OrderItem {
+interface OrderProduct {
   product_id: number;
-  quantity: number;
+  name: string;
   price: number;
+  quantity: number;
+  total: number;
+  image_url: string | null;
+}
+
+interface ProfileForm {
+  full_name: string;
+  email: string;
+  phone: string;
+  birthday: string;
 }
 
 interface PasswordForm {
@@ -33,97 +44,108 @@ interface PasswordForm {
 }
 
 const Account: React.FC = () => {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
-  const [activeSection, setActiveSection] = useState('info');
   const [editMode, setEditMode] = useState(false);
-  const navigate = useNavigate();
-
-  const [profileForm, setProfileForm] = useState({
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  
+  // Форма профиля пользователя
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
     full_name: '',
     email: '',
     phone: '',
     birthday: ''
   });
-
+  
+  // Форма изменения пароля
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     current_password: '',
     new_password: '',
     confirm_password: ''
   });
 
-  // Получение токена из localStorage
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    const tokenType = localStorage.getItem('tokenType');
-    
-    if (!token || !tokenType) {
-      return null;
-    }
-    
-    return {
-      'Authorization': `${tokenType} ${token}`
-    };
-  };
-
   // Проверка авторизации при загрузке компонента
   useEffect(() => {
-    const authHeader = getAuthHeader();
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        navigate('/auth');
+        return;
+      }
+      
+      try {
+        // Загрузка профиля пользователя
+        await fetchUserProfile();
+        // Загрузка заказов пользователя
+        await fetchUserOrders();
+      } catch (error) {
+        console.error('Ошибка при проверке авторизации:', error);
+        // Не удаляем токены при ошибке получения профиля
+        // localStorage.removeItem('token');
+        // localStorage.removeItem('tokenType');
+        // navigate('/auth');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    if (!authHeader) {
-      navigate('/auth');
-      return;
-    }
-    
-    // Загрузка профиля пользователя
-    fetchUserProfile();
-    // Загрузка заказов пользователя
-    fetchUserOrders();
+    checkAuth();
   }, [navigate]);
 
   // Загрузка профиля пользователя
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      const authHeader = getAuthHeader();
       
-      if (!authHeader) {
-        navigate('/auth');
-        return;
-      }
+      const userResponse = await getCurrentUser();
       
-      const response = await axios.get(`${API_BASE_URL}/auth/profile`, {
-        headers: authHeader
+      setUserProfile(userResponse);
+      
+      // Заполняем форму для редактирования данными пользователя
+      setProfileForm({
+        full_name: userResponse.full_name || '',
+        email: userResponse.email || '',
+        phone: userResponse.phone || '',
+        birthday: userResponse.birthday ? new Date(userResponse.birthday).toISOString().split('T')[0] : ''
       });
       
-      if (response.status === 200) {
-        setUserProfile(response.data);
-        
-        // Заполняем форму редактирования профиля
-        setProfileForm({
-          full_name: response.data.full_name || '',
-          email: response.data.email || '',
-          phone: response.data.phone || '',
-          birthday: response.data.birthday || ''
-        });
-        
-        setLoading(false);
-      }
+      setError(null);
     } catch (error) {
       console.error('Ошибка при загрузке профиля:', error);
+      setError('Ошибка при загрузке профиля пользователя');
+      // Позволяем пользователю остаться на странице аккаунта даже если не удалось загрузить профиль
       
-      // Если получаем 401, значит токен истек или недействителен
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('tokenType');
-        navigate('/auth');
-        return;
+      // Используем данные из localStorage для заполнения профиля
+      const userId = localStorage.getItem('userId');
+      const username = localStorage.getItem('username');
+      
+      if (userId && username) {
+        const localUserProfile = {
+          id: Number(userId),
+          username: username,
+          email: localStorage.getItem('userEmail'),
+          phone: localStorage.getItem('userPhone'),
+          full_name: localStorage.getItem('userFullName'),
+          birthday: null
+        };
+        
+        setUserProfile(localUserProfile);
+        
+        // Заполняем форму данными из localStorage
+        setProfileForm({
+          full_name: localUserProfile.full_name || '',
+          email: localUserProfile.email || '',
+          phone: localUserProfile.phone || '',
+          birthday: ''
+        });
       }
       
-      setError('Ошибка при загрузке профиля пользователя');
+      throw error;
+    } finally {
       setLoading(false);
     }
   };
@@ -131,15 +153,8 @@ const Account: React.FC = () => {
   // Загрузка заказов пользователя
   const fetchUserOrders = async () => {
     try {
-      const authHeader = getAuthHeader();
-      
-      if (!authHeader) {
-        navigate('/auth');
-        return;
-      }
-      
-      const response = await axios.get(`${API_BASE_URL}/orders/`, {
-        headers: authHeader
+      const response = await api.get(`${API_BASE_URL}/api/orders`, {
+        headers: getAuthHeaders()
       });
       
       if (response.status === 200) {
@@ -147,6 +162,7 @@ const Account: React.FC = () => {
       }
     } catch (error) {
       console.error('Ошибка при загрузке заказов:', error);
+      // Не показываем ошибку пользователю, просто оставляем пустой список заказов
     }
   };
 
@@ -158,29 +174,6 @@ const Account: React.FC = () => {
       month: '2-digit',
       year: 'numeric'
     });
-  };
-
-  // Форматирование даты рождения для отображения
-  const formatBirthday = (dateString: string) => {
-    if (!dateString) return 'Не указано';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  // Форматирование статуса заказа
-  const getStatusText = (status: string) => {
-    const statuses: Record<string, string> = {
-      'pending': 'В обработке',
-      'processing': 'Обрабатывается',
-      'completed': 'Выполнен',
-      'cancelled': 'Отменен'
-    };
-    
-    return statuses[status] || status;
   };
 
   // Обработчик изменения полей формы профиля
@@ -202,40 +195,49 @@ const Account: React.FC = () => {
   };
 
   // Обработчик отправки формы профиля
-  const handleProfileUpdate = async (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      const authHeader = getAuthHeader();
-      
-      if (!authHeader) {
-        navigate('/auth');
+      // Проверка на изменения
+      if (
+        profileForm.full_name === userProfile?.full_name &&
+        profileForm.email === userProfile?.email &&
+        profileForm.phone === userProfile?.phone &&
+        profileForm.birthday === (userProfile?.birthday ? new Date(userProfile.birthday).toISOString().split('T')[0] : '')
+      ) {
+        setEditMode(false);
         return;
       }
       
-      // Создаем копию формы, чтобы не менять оригинал
-      const formData = {...profileForm};
-      
-      // Удалим поле birthday, если оно пустое, чтобы не вызывать проблем на сервере
-      if (!formData.birthday) {
-        delete formData.birthday;
-      }
+      // Подготовка данных формы
+      const formData = {
+        full_name: profileForm.full_name,
+        email: profileForm.email,
+        phone: profileForm.phone,
+        birthday: profileForm.birthday || null
+      };
       
       // Отправка данных на сервер
-      const response = await axios.put(`${API_BASE_URL}/auth/profile`, formData, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeader
-        }
+      const updatedProfile = await updateUserProfile(formData);
+      
+      // Обновляем данные в localStorage
+      if (formData.full_name) localStorage.setItem('userFullName', formData.full_name);
+      if (formData.email) localStorage.setItem('userEmail', formData.email);
+      if (formData.phone) localStorage.setItem('userPhone', formData.phone);
+      
+      setUserProfile({
+        ...userProfile!,
+        full_name: formData.full_name,
+        email: formData.email,
+        phone: formData.phone,
+        birthday: formData.birthday
       });
       
-      if (response.status === 200) {
-        setUserProfile(response.data);
-        setEditMode(false);
-        setError(null);
-        // Показываем сообщение об успешном обновлении
-        alert('Профиль успешно обновлен!');
-      }
+      setEditMode(false);
+      setError(null);
+      // Показываем сообщение об успешном обновлении
+      alert('Профиль успешно обновлен!');
     } catch (error) {
       console.error('Ошибка при обновлении профиля:', error);
       setError('Произошла ошибка при обновлении профиля');
@@ -253,35 +255,22 @@ const Account: React.FC = () => {
     }
     
     try {
-      const authHeader = getAuthHeader();
-      
-      if (!authHeader) {
-        navigate('/auth');
-        return;
-      }
-      
-      const response = await axios.post(`${API_BASE_URL}/auth/change-password`, {
+      // Отправка запроса на изменение пароля
+      await changePassword({
         current_password: passwordForm.current_password,
         new_password: passwordForm.new_password
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeader
-        }
       });
       
-      if (response.status === 200) {
-        // Очистка формы
-        setPasswordForm({
-          current_password: '',
-          new_password: '',
-          confirm_password: ''
-        });
-        
-        setError(null);
-        // Показываем сообщение об успешном изменении пароля
-        alert('Пароль успешно изменен!');
-      }
+      // Очистка формы
+      setPasswordForm({
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      });
+      
+      setError(null);
+      // Показываем сообщение об успешном изменении пароля
+      alert('Пароль успешно изменен!');
     } catch (error) {
       console.error('Ошибка при изменении пароля:', error);
       setError('Произошла ошибка при изменении пароля');
@@ -292,6 +281,11 @@ const Account: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('tokenType');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('username');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userPhone');
+    localStorage.removeItem('userFullName');
     navigate('/');
   };
 
@@ -302,6 +296,27 @@ const Account: React.FC = () => {
         <div className="loading">Загрузка...</div>
       </div>
     );
+  }
+  
+  // Для отображения страницы аккаунта используем данные из localStorage, если профиль не загружен
+  if (!userProfile) {
+    const userId = localStorage.getItem('userId');
+    const username = localStorage.getItem('username');
+    
+    if (userId && username) {
+      setUserProfile({
+        id: Number(userId),
+        username: username,
+        email: localStorage.getItem('userEmail'),
+        phone: localStorage.getItem('userPhone'),
+        full_name: localStorage.getItem('userFullName'),
+        birthday: null
+      });
+    } else {
+      // Если нет данных даже в localStorage, перенаправляем на авторизацию
+      navigate('/auth');
+      return null;
+    }
   }
   
   // Проверка наличия скидки в день рождения
@@ -315,40 +330,17 @@ const Account: React.FC = () => {
     return today.getDate() === birthday.getDate() && 
            today.getMonth() === birthday.getMonth();
   };
-  
-  // Вычисление количества дней до дня рождения
-  const getDaysToBirthday = () => {
-    if (!userProfile?.birthday) return null;
-    
-    const today = new Date();
-    const birthday = new Date(userProfile.birthday);
-    
-    // Устанавливаем текущий год
-    birthday.setFullYear(today.getFullYear());
-    
-    // Если день рождения уже прошел в этом году, добавляем год
-    if (today > birthday) {
-      birthday.setFullYear(today.getFullYear() + 1);
-    }
-    
-    // Разница в миллисекундах
-    const diffTime = birthday.getTime() - today.getTime();
-    // Преобразуем в дни
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
-  };
 
   return (
     <div className="account-container">
       <div className="account-header">
-        <h1 className="account-title">Личный кабинет</h1>
-        <button onClick={handleLogout} className="logout-button">
-          Выйти
-        </button>
+        <h1>Личный кабинет</h1>
+        {isBirthdayDiscount() && (
+          <div className="birthday-discount">
+            <span>🎉 С днем рождения! Сегодня вам доступна скидка 10% на все товары! 🎁</span>
+          </div>
+        )}
       </div>
-      
-      {error && <div className="error-message">{error}</div>}
       
       <div className="account-tabs">
         <button 
@@ -363,250 +355,135 @@ const Account: React.FC = () => {
         >
           Мои заказы
         </button>
+        <button 
+          className={activeTab === 'password' ? 'active' : ''} 
+          onClick={() => setActiveTab('password')}
+        >
+          Изменить пароль
+        </button>
+        <button className="logout-button" onClick={handleLogout}>
+          Выйти
+        </button>
       </div>
+      
+      {error && <div className="account-error">{error}</div>}
       
       <div className="account-content">
         {activeTab === 'profile' && (
-          <div className="profile-container">
-            <div className="profile-sidebar">
-              <div 
-                className={`sidebar-item ${activeSection === 'info' ? 'active' : ''}`}
-                onClick={() => setActiveSection('info')}
-              >
-                Персональные данные
+          <div className="profile-section">
+            {!editMode ? (
+              <div className="profile-info">
+                <h2>Информация о пользователе</h2>
+                <p><strong>Имя пользователя:</strong> {userProfile?.username}</p>
+                <p><strong>ФИО:</strong> {userProfile?.full_name || 'Не указано'}</p>
+                <p><strong>Email:</strong> {userProfile?.email || 'Не указан'}</p>
+                <p><strong>Телефон:</strong> {userProfile?.phone || 'Не указан'}</p>
+                <p><strong>Дата рождения:</strong> {userProfile?.birthday ? formatDate(userProfile.birthday) : 'Не указана'}</p>
+                <button className="edit-button" onClick={() => setEditMode(true)}>Редактировать</button>
               </div>
-              <div 
-                className={`sidebar-item ${activeSection === 'security' ? 'active' : ''}`}
-                onClick={() => setActiveSection('security')}
-              >
-                Безопасность
-              </div>
-            </div>
-            
-            <div className="profile-main">
-              {activeSection === 'info' && (
-                <>
-                  <div className="section-header">
-                    <h2>Персональные данные</h2>
-                    {!editMode && (
-                      <button 
-                        onClick={() => setEditMode(true)} 
-                        className="edit-button"
-                      >
-                        Редактировать
-                      </button>
-                    )}
-                  </div>
-                  
-                  {editMode ? (
-                    <form onSubmit={handleProfileUpdate} className="profile-form">
-                      <div className="form-group">
-                        <label htmlFor="full_name">ФИО</label>
-                        <input
-                          type="text"
-                          id="full_name"
-                          name="full_name"
-                          value={profileForm.full_name}
-                          onChange={handleProfileInputChange}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="form-group">
-                        <label htmlFor="email">Email</label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={profileForm.email}
-                          onChange={handleProfileInputChange}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="form-group">
-                        <label htmlFor="phone">Телефон</label>
-                        <input
-                          type="tel"
-                          id="phone"
-                          name="phone"
-                          value={profileForm.phone}
-                          onChange={handleProfileInputChange}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="form-group">
-                        <label htmlFor="birthday">Дата рождения</label>
-                        <input
-                          type="date"
-                          id="birthday"
-                          name="birthday"
-                          value={profileForm.birthday}
-                          onChange={handleProfileInputChange}
-                        />
-                        <small className="form-hint">
-                          Укажите дату рождения для получения скидки 20% в течение недели
-                        </small>
-                      </div>
-                      
-                      <div className="profile-actions">
-                        <button type="submit" className="save-button">
-                          Сохранить
-                        </button>
-                        <button 
-                          type="button" 
-                          className="cancel-button"
-                          onClick={() => {
-                            setEditMode(false);
-                            // Восстанавливаем форму
-                            if (userProfile) {
-                              setProfileForm({
-                                full_name: userProfile.full_name || '',
-                                email: userProfile.email || '',
-                                phone: userProfile.phone || '',
-                                birthday: userProfile.birthday || ''
-                              });
-                            }
-                          }}
-                        >
-                          Отмена
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="profile-info">
-                      <div className="profile-field">
-                        <span className="field-label">ФИО:</span>
-                        <span className="field-value">{userProfile?.full_name || 'Не указано'}</span>
-                      </div>
-                      
-                      <div className="profile-field">
-                        <span className="field-label">Email:</span>
-                        <span className="field-value">{userProfile?.email || 'Не указано'}</span>
-                      </div>
-                      
-                      <div className="profile-field">
-                        <span className="field-label">Телефон:</span>
-                        <span className="field-value">{userProfile?.phone || 'Не указан'}</span>
-                      </div>
-                      
-                      <div className="profile-field">
-                        <span className="field-label">Дата рождения:</span>
-                        <span className="field-value">
-                          {userProfile?.birthday ? formatBirthday(userProfile.birthday) : 'Не указана'}
-                        </span>
-                      </div>
-                      
-                      {userProfile?.birthday && (
-                        <div className="birthday-info">
-                          {isBirthdayDiscount() ? (
-                            <div className="birthday-discount active">
-                              <span>🎁 С днем рождения! У вас скидка 20% на все товары!</span>
-                            </div>
-                          ) : (
-                            <div className="birthday-countdown">
-                              <span>До вашего дня рождения осталось {getDaysToBirthday()} дней</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {activeSection === 'security' && (
-                <>
-                  <div className="section-header">
-                    <h2>Безопасность</h2>
-                  </div>
-                  
-                  <form onSubmit={handlePasswordUpdate} className="profile-form">
-                    <div className="form-group">
-                      <label htmlFor="current_password">Текущий пароль</label>
-                      <input
-                        type="password"
-                        id="current_password"
-                        name="current_password"
-                        value={passwordForm.current_password}
-                        onChange={handlePasswordInputChange}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="form-group">
-                      <label htmlFor="new_password">Новый пароль</label>
-                      <input
-                        type="password"
-                        id="new_password"
-                        name="new_password"
-                        value={passwordForm.new_password}
-                        onChange={handlePasswordInputChange}
-                        required
-                        minLength={8}
-                      />
-                      <small className="form-hint">
-                        Минимум 8 символов
-                      </small>
-                    </div>
-                    
-                    <div className="form-group">
-                      <label htmlFor="confirm_password">Подтверждение пароля</label>
-                      <input
-                        type="password"
-                        id="confirm_password"
-                        name="confirm_password"
-                        value={passwordForm.confirm_password}
-                        onChange={handlePasswordInputChange}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="profile-actions">
-                      <button type="submit" className="save-button">
-                        Изменить пароль
-                      </button>
-                    </div>
-                  </form>
-                </>
-              )}
-            </div>
+            ) : (
+              <form onSubmit={handleProfileSubmit} className="profile-form">
+                <h2>Редактирование профиля</h2>
+                <div className="form-group">
+                  <label htmlFor="full_name">ФИО:</label>
+                  <input
+                    type="text"
+                    id="full_name"
+                    name="full_name"
+                    value={profileForm.full_name}
+                    onChange={handleProfileInputChange}
+                    placeholder="Иванов Иван Иванович"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="email">Email:</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={profileForm.email}
+                    onChange={handleProfileInputChange}
+                    placeholder="example@mail.com"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="phone">Телефон:</label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={profileForm.phone}
+                    onChange={handleProfileInputChange}
+                    placeholder="+7 (999) 999-99-99"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="birthday">Дата рождения:</label>
+                  <input
+                    type="date"
+                    id="birthday"
+                    name="birthday"
+                    value={profileForm.birthday}
+                    onChange={handleProfileInputChange}
+                  />
+                </div>
+                <div className="form-buttons">
+                  <button type="submit" className="save-button">Сохранить</button>
+                  <button type="button" className="cancel-button" onClick={() => setEditMode(false)}>Отмена</button>
+                </div>
+              </form>
+            )}
           </div>
         )}
         
         {activeTab === 'orders' && (
-          <div className="orders-container">
-            <h2>Мои заказы</h2>
-            
+          <div className="orders-section">
+            <h2>История заказов</h2>
             {orders.length === 0 ? (
-              <div className="empty-orders">
-                <p>У вас пока нет заказов</p>
-                <button 
-                  onClick={() => navigate('/products')} 
-                  className="shop-button"
-                >
-                  Перейти в каталог
-                </button>
-              </div>
+              <p className="no-data">У вас пока нет заказов</p>
             ) : (
               <div className="orders-list">
                 {orders.map(order => (
                   <div key={order.id} className="order-card">
                     <div className="order-header">
-                      <div className="order-info">
+                      <div>
                         <span className="order-number">Заказ №{order.id}</span>
-                        <span className="order-date">от {formatDate(order.created_at)}</span>
+                        <span className="order-date">от {formatDate(order.order_date)}</span>
                       </div>
-                      <div className={`order-status status-${order.status}`}>
-                        {getStatusText(order.status)}
-                      </div>
+                      <span className={`order-status status-${order.status.toLowerCase()}`}>
+                        {order.status === 'new' ? 'Новый' : 
+                         order.status === 'processing' ? 'В обработке' :
+                         order.status === 'shipped' ? 'Отправлен' :
+                         order.status === 'delivered' ? 'Доставлен' :
+                         order.status === 'cancelled' ? 'Отменен' : order.status}
+                      </span>
                     </div>
                     
-                    <div className="order-body">
+                    <div className="order-products">
+                      {order.products.map(item => (
+                        <div key={item.product_id} className="order-product">
+                          {item.image_url && (
+                            <img 
+                              src={item.image_url} 
+                              alt={item.name} 
+                              className="product-thumbnail"
+                            />
+                          )}
+                          <div className="product-details">
+                            <span className="product-name">{item.name}</span>
+                            <span className="product-price">{item.price} ₽ × {item.quantity} шт</span>
+                          </div>
+                          <span className="product-total">{item.total} ₽</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="order-footer">
+                      <div className="delivery-address">
+                        <strong>Адрес доставки:</strong> {order.delivery_address || 'Не указан'}
+                      </div>
                       <div className="order-total">
-                        <span>Сумма заказа:</span>
-                        <span className="order-price">{order.total_price.toFixed(2)} ₽</span>
+                        <strong>Итого:</strong> {order.total_price} ₽
                       </div>
                     </div>
                   </div>
@@ -615,462 +492,362 @@ const Account: React.FC = () => {
             )}
           </div>
         )}
+        
+        {activeTab === 'password' && (
+          <div className="password-section">
+            <h2>Изменение пароля</h2>
+            <form onSubmit={handlePasswordUpdate} className="password-form">
+              <div className="form-group">
+                <label htmlFor="current_password">Текущий пароль:</label>
+                <input
+                  type="password"
+                  id="current_password"
+                  name="current_password"
+                  value={passwordForm.current_password}
+                  onChange={handlePasswordInputChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="new_password">Новый пароль:</label>
+                <input
+                  type="password"
+                  id="new_password"
+                  name="new_password"
+                  value={passwordForm.new_password}
+                  onChange={handlePasswordInputChange}
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="confirm_password">Подтвердите новый пароль:</label>
+                <input
+                  type="password"
+                  id="confirm_password"
+                  name="confirm_password"
+                  value={passwordForm.confirm_password}
+                  onChange={handlePasswordInputChange}
+                  minLength={6}
+                  required
+                />
+              </div>
+              <button type="submit" className="change-password-button">Изменить пароль</button>
+            </form>
+          </div>
+        )}
       </div>
-
-      <style jsx>{`
-        /* Стили для страницы личного кабинета */
+      
+      <style dangerouslySetInnerHTML={{__html: `
         .account-container {
           max-width: 1000px;
           margin: 40px auto;
-          padding: 0 15px;
+          padding: 0 20px;
         }
-
+        
         .account-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
           margin-bottom: 30px;
         }
-
-        .account-title {
+        
+        .account-header h1 {
           color: #1a3a5c;
-          font-size: 28px;
-          margin: 0;
-          font-weight: 600;
+          margin-bottom: 10px;
         }
-
-        .logout-button {
-          background-color: transparent;
-          color: #6c757d;
-          border: 1px solid #e0e0e0;
-          padding: 8px 16px;
-          border-radius: 4px;
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .logout-button:hover {
-          background-color: #f8f9fa;
-          color: #495057;
-        }
-
-        .error-message {
-          background-color: #ffebee;
-          color: #c62828;
-          padding: 12px 15px;
-          border-radius: 4px;
-          margin-bottom: 20px;
-          font-size: 14px;
-        }
-
-        .loading {
+        
+        .birthday-discount {
+          background-color: #fff8e1;
+          border: 1px solid #ffecb3;
+          padding: 12px;
+          border-radius: 6px;
+          margin-top: 15px;
+          color: #ff6f00;
+          font-weight: 500;
           text-align: center;
-          padding: 40px 0;
-          font-size: 16px;
-          color: #647d98;
         }
-
-        /* Табы */
+        
         .account-tabs {
           display: flex;
-          border-bottom: 1px solid #e0e8f0;
-          margin-bottom: 20px;
+          border-bottom: 1px solid #e0e0e0;
+          margin-bottom: 30px;
+          overflow-x: auto;
+          white-space: nowrap;
         }
-
+        
         .account-tabs button {
           padding: 12px 20px;
           background: none;
           border: none;
           border-bottom: 3px solid transparent;
+          margin-right: 15px;
           cursor: pointer;
-          font-size: 16px;
-          color: #647d98;
+          font-weight: 500;
+          color: #546e7a;
           transition: all 0.2s;
         }
-
+        
         .account-tabs button.active {
           color: #1a5f7a;
           border-bottom-color: #1a5f7a;
-          font-weight: 500;
         }
-
-        .account-tabs button:hover:not(.active) {
-          border-bottom-color: #e0e8f0;
-          color: #1a3a5c;
-        }
-
-        /* Профиль */
-        .profile-container {
-          display: flex;
-          gap: 20px;
-        }
-
-        .profile-sidebar {
-          width: 240px;
-          background-color: #fff;
+        
+        .account-error {
+          background-color: #ffebee;
+          color: #c62828;
+          padding: 12px;
           border-radius: 6px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-
-        .sidebar-item {
-          padding: 14px 20px;
-          font-size: 15px;
-          color: #495057;
-          cursor: pointer;
-          border-bottom: 1px solid #f2f2f2;
-          transition: all 0.2s;
-        }
-
-        .sidebar-item:hover {
-          background-color: #f8f9fa;
-        }
-
-        .sidebar-item.active {
-          background-color: #e6f2f5;
-          color: #1a5f7a;
-          font-weight: 500;
-        }
-
-        .profile-main {
-          flex: 1;
-          background-color: #fff;
-          border-radius: 6px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          padding: 20px;
-        }
-
-        .section-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
           margin-bottom: 20px;
-          padding-bottom: 15px;
-          border-bottom: 1px solid #e0e8f0;
+          font-size: 14px;
         }
-
-        .section-header h2 {
-          margin: 0;
+        
+        .profile-info, .profile-form, .orders-section, .password-section {
+          background-color: #fff;
+          padding: 25px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .profile-info h2, .profile-form h2, .orders-section h2, .password-section h2 {
+          margin-top: 0;
           color: #1a3a5c;
           font-size: 20px;
-          font-weight: 600;
+          margin-bottom: 20px;
         }
-
-        .edit-button {
-          background-color: #f0f5fa;
-          color: #1a5f7a;
-          border: 1px solid #e0e8f0;
-          padding: 8px 16px;
-          border-radius: 4px;
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.2s;
+        
+        .profile-info p {
+          margin: 10px 0;
+          line-height: 1.6;
         }
-
-        .edit-button:hover {
-          background-color: #e0e8f0;
-        }
-
-        .profile-info {
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-        }
-
-        .profile-field {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-
-        .field-label {
-          font-size: 14px;
-          color: #647d98;
-        }
-
-        .field-value {
-          font-size: 16px;
-          color: #1a3a5c;
-          font-weight: 500;
-        }
-
-        .birthday-info {
-          margin-top: 20px;
-          padding-top: 15px;
-          border-top: 1px dashed #e0e8f0;
-        }
-
-        .birthday-discount {
-          padding: 12px 15px;
-          background-color: #e8f5e9;
-          color: #2e7d32;
-          border-radius: 4px;
-          font-weight: 500;
-          text-align: center;
-        }
-
-        .birthday-countdown {
-          color: #647d98;
-          font-size: 14px;
-        }
-
-        /* Форма редактирования профиля */
-        .profile-form {
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-        }
-
+        
         .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+          margin-bottom: 20px;
         }
-
+        
         .form-group label {
-          font-size: 14px;
-          color: #647d98;
+          display: block;
+          margin-bottom: 6px;
+          font-weight: 500;
+          color: #546e7a;
         }
-
+        
         .form-group input {
-          padding: 10px 12px;
-          border: 1px solid #e0e8f0;
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #e0e0e0;
           border-radius: 4px;
           font-size: 15px;
-          transition: border-color 0.2s;
         }
-
-        .form-group input:focus {
-          border-color: #1a5f7a;
-          outline: none;
-        }
-
-        .form-hint {
-          font-size: 12px;
-          color: #6c757d;
-          margin-top: 4px;
-        }
-
-        .profile-actions {
+        
+        .form-buttons {
           display: flex;
           gap: 10px;
-          margin-top: 10px;
+          margin-top: 20px;
         }
-
-        .save-button, .cancel-button {
-          padding: 10px 20px;
-          border-radius: 4px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .save-button {
-          background-color: #1a5f7a;
-          color: white;
+        
+        .edit-button, .save-button, .cancel-button, .change-password-button {
+          padding: 12px 24px;
           border: none;
-        }
-
-        .save-button:hover {
-          background-color: #124759;
-        }
-
-        .cancel-button {
-          background-color: #f8f9fa;
-          color: #495057;
-          border: 1px solid #e0e8f0;
-        }
-
-        .cancel-button:hover {
-          background-color: #e9ecef;
-        }
-
-        /* Заказы */
-        .orders-container {
-          background-color: #fff;
-          border-radius: 6px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          padding: 20px;
-        }
-
-        .orders-container h2 {
-          margin: 0 0 20px 0;
-          color: #1a3a5c;
-          font-size: 20px;
-          padding-bottom: 15px;
-          border-bottom: 1px solid #e0e8f0;
-        }
-
-        .empty-orders {
-          text-align: center;
-          padding: 30px 0;
-        }
-
-        .empty-orders p {
-          font-size: 16px;
-          color: #647d98;
-          margin-bottom: 20px;
-        }
-
-        .shop-button {
-          background-color: #1a5f7a;
-          color: white;
-          border: none;
-          padding: 10px 20px;
           border-radius: 4px;
-          font-size: 14px;
-          font-weight: 500;
           cursor: pointer;
+          font-weight: 500;
           transition: background-color 0.2s;
         }
-
-        .shop-button:hover {
+        
+        .edit-button, .save-button, .change-password-button {
+          background-color: #1a5f7a;
+          color: white;
+        }
+        
+        .edit-button:hover, .save-button:hover, .change-password-button:hover {
           background-color: #124759;
         }
-
+        
+        .cancel-button {
+          background-color: #e0e0e0;
+          color: #424242;
+        }
+        
+        .cancel-button:hover {
+          background-color: #d5d5d5;
+        }
+        
+        .logout-button {
+          margin-left: auto;
+          color: #f44336;
+        }
+        
+        .loading {
+          text-align: center;
+          padding: 40px;
+          font-size: 18px;
+          color: #546e7a;
+        }
+        
+        .no-data {
+          text-align: center;
+          padding: 30px;
+          color: #757575;
+          font-style: italic;
+        }
+        
         .orders-list {
           display: flex;
           flex-direction: column;
-          gap: 15px;
+          gap: 20px;
         }
-
+        
         .order-card {
-          border: 1px solid #e0e8f0;
+          border: 1px solid #e0e0e0;
           border-radius: 6px;
           overflow: hidden;
         }
-
+        
         .order-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 15px;
-          background-color: #f7fafd;
-          border-bottom: 1px solid #e0e8f0;
+          background-color: #f5f5f5;
+          padding: 12px 16px;
+          border-bottom: 1px solid #e0e0e0;
         }
-
-        .order-info {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
+        
         .order-number {
           font-weight: 600;
           color: #1a3a5c;
+          margin-right: 10px;
         }
-
+        
         .order-date {
+          color: #757575;
           font-size: 14px;
-          color: #647d98;
         }
-
+        
         .order-status {
-          font-size: 14px;
           font-weight: 500;
           padding: 4px 10px;
           border-radius: 20px;
+          font-size: 14px;
         }
-
-        .status-pending {
-          background-color: #fff8e1;
-          color: #f57c00;
-        }
-
-        .status-processing {
+        
+        .status-new {
           background-color: #e3f2fd;
-          color: #1976d2;
+          color: #1565c0;
         }
-
-        .status-completed {
+        
+        .status-processing {
+          background-color: #fff8e1;
+          color: #ff6f00;
+        }
+        
+        .status-shipped {
           background-color: #e8f5e9;
-          color: #388e3c;
+          color: #2e7d32;
         }
-
+        
+        .status-delivered {
+          background-color: #e8f5e9;
+          color: #2e7d32;
+        }
+        
         .status-cancelled {
           background-color: #ffebee;
-          color: #d32f2f;
+          color: #c62828;
         }
-
-        .order-body {
-          padding: 15px;
+        
+        .order-products {
+          padding: 16px;
         }
-
-        .order-total {
+        
+        .order-product {
+          display: flex;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid #f5f5f5;
+        }
+        
+        .order-product:last-child {
+          border-bottom: none;
+        }
+        
+        .product-thumbnail {
+          width: 60px;
+          height: 60px;
+          object-fit: cover;
+          border-radius: 4px;
+          margin-right: 16px;
+        }
+        
+        .product-details {
+          flex: 1;
+        }
+        
+        .product-name {
+          display: block;
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+        
+        .product-price {
+          color: #757575;
+          font-size: 14px;
+        }
+        
+        .product-total {
+          font-weight: 600;
+          color: #1a3a5c;
+        }
+        
+        .order-footer {
+          padding: 12px 16px;
+          background-color: #f5f5f5;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          font-size: 16px;
+          border-top: 1px solid #e0e0e0;
+        }
+        
+        .delivery-address {
+          font-size: 14px;
+          color: #546e7a;
+        }
+        
+        .order-total {
+          font-weight: 600;
           color: #1a3a5c;
         }
-
-        .order-price {
-          font-weight: 600;
-          font-size: 18px;
-        }
-
-        /* Адаптивность */
+        
         @media (max-width: 768px) {
-          .profile-container {
-            flex-direction: column;
-          }
-          
-          .profile-sidebar {
-            width: 100%;
-            margin-bottom: 15px;
-          }
-          
-          .sidebar-item {
-            padding: 12px 15px;
-          }
-        }
-
-        @media (max-width: 600px) {
-          .account-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-          }
-          
-          .logout-button {
-            align-self: flex-end;
-          }
-          
           .account-tabs {
-            flex-direction: row;
-            overflow-x: auto;
-            padding-bottom: 5px;
+            flex-wrap: wrap;
           }
           
           .account-tabs button {
-            padding: 10px 15px;
-            font-size: 14px;
-            white-space: nowrap;
+            flex-grow: 1;
+            min-width: 120px;
+            text-align: center;
           }
           
-          .section-header {
+          .logout-button {
+            order: 4;
+            margin-left: 0;
+            width: 100%;
+            margin-top: 10px;
+          }
+          
+          .order-header, .order-footer {
             flex-direction: column;
             align-items: flex-start;
-            gap: 10px;
           }
           
-          .order-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
+          .order-status, .order-total {
+            margin-top: 8px;
           }
           
-          .profile-actions {
-            flex-direction: column;
-            width: 100%;
-          }
-          
-          .save-button, .cancel-button {
-            width: 100%;
+          .product-thumbnail {
+            width: 40px;
+            height: 40px;
           }
         }
-      `}</style>
+      `}} />
     </div>
   );
 };

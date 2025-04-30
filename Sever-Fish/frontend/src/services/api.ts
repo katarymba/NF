@@ -1,205 +1,203 @@
 import axios from 'axios';
+
 // Устанавливаем базовый URL, соответствующий вашему бэкенду
 export const API_BASE_URL = 'http://127.0.0.1:8000';
 
-const API_ENDPOINTS = {
-    auth: `${API_BASE_URL}/auth`,
-    api: `${API_BASE_URL}/api`,
+// Создаем экземпляр axios с общими настройками
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+// Интерцептор для добавления токена авторизации ко всем запросам
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    const tokenType = localStorage.getItem('tokenType') || 'bearer';
+    
+    if (token) {
+      config.headers.Authorization = `${tokenType} ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+export const API_ENDPOINTS = {
+  auth: `${API_BASE_URL}/auth`,
+  api: `${API_BASE_URL}/api`,
 };
+
+/**
+ * Получение заголовков авторизации
+ */
+export function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  const tokenType = localStorage.getItem('tokenType') || 'bearer';
+  
+  if (!token) {
+    return {};
+  }
+  
+  return {
+    'Authorization': `${tokenType} ${token}`
+  };
+}
 
 /**
  * Логин пользователя. Возвращает JWT токен.
  */
-export async function login(username: string, password: string): Promise<string> {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const response = await fetch(`${API_ENDPOINTS.auth}/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData,
+export async function login(username: string, password: string): Promise<any> {
+  try {
+    const response = await api.post('/auth/login', {
+      username,
+      password
     });
-
-    if (!response.ok) {
-        throw new Error('Ошибка авторизации');
-    }
-    const data = await response.json();
-    return data.access_token;
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка авторизации');
+  }
 }
 
 /**
- * Регистрация нового пользователя (только для админа).
+ * Регистрация нового пользователя
  */
 export async function registerUser(
-    user: { username: string; email: string; password: string },
-    token: string
+  userData: { 
+    username: string; 
+    email: string; 
+    password: string;
+    phone?: string;
+    full_name?: string;
+  }
 ): Promise<any> {
-    const response = await fetch(`${API_ENDPOINTS.auth}/register`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(user),
-    });
-
-    if (!response.ok) {
-        throw new Error('Ошибка регистрации пользователя');
-    }
-    return await response.json();
+  try {
+    const response = await api.post('/auth/register', userData);
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка регистрации пользователя');
+  }
 }
 
 /**
  * Получение информации о текущем пользователе.
+ * ПРИМЕЧАНИЕ: В этой системе информация о пользователе возвращается при логине,
+ * поэтому мы используем сохраненные данные вместо дополнительного запроса к API.
  */
-export async function getCurrentUser(token: string): Promise<any> {
-    const response = await fetch(`${API_ENDPOINTS.auth}/me`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!response.ok) {
-        throw new Error('Ошибка получения информации о пользователе');
+export async function getCurrentUser(): Promise<any> {
+  try {
+    // Проверяем, есть ли у нас данные о пользователе в localStorage
+    const userId = localStorage.getItem('userId');
+    const username = localStorage.getItem('username');
+    
+    if (!userId || !username) {
+      throw new Error('Данные пользователя не найдены');
     }
-    return await response.json();
+    
+    // Если у нас есть сохраненные данные пользователя на клиенте
+    // Мы можем использовать их вместо запроса к API
+    // В этом случае мы возвращаем базовую информацию о пользователе
+    return {
+      id: Number(userId),
+      username: username,
+      // Если нужны другие поля, их можно также добавить в localStorage при входе
+      email: localStorage.getItem('userEmail') || null,
+      phone: localStorage.getItem('userPhone') || null,
+      full_name: localStorage.getItem('userFullName') || null
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(error.message);
+    }
+    throw new Error('Ошибка получения информации о пользователе');
+  }
 }
 
 /**
  * Получение списка товаров (с возможностью фильтрации по категории).
- * Проверяет несколько маршрутов, чтобы найти рабочий.
  */
-export async function getProducts(url: string = '/products'): Promise<any[]> {
-    // Список возможных путей для проверки
-    const possiblePaths = [
-        `${API_ENDPOINTS.api}${url}`,
-        `${API_BASE_URL}${url}`,
-        `${API_BASE_URL}/api${url}`
-    ];
-    
-    let lastError = null;
-    
-    // Пробуем каждый путь по очереди
-    for (const path of possiblePaths) {
-        try {
-            const response = await fetch(path);
-            if (response.ok) {
-                return await response.json();
-            }
-        } catch (error) {
-            console.log(`Ошибка при запросе к ${path}:`, error);
-            lastError = error;
-        }
-    }
-    
-    // Если все попытки не удались, бросаем последнюю ошибку
-    throw new Error(`Ошибка получения товаров: ${lastError?.message || 'Не удалось найти рабочий маршрут API'}`);
+export async function getProducts(categoryId?: number): Promise<any> {
+  try {
+    const url = categoryId 
+      ? `/api/products?category_id=${categoryId}`
+      : '/api/products';
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка получения списка товаров');
+  }
 }
 
 /**
- * Получение списка категорий.
- * Проверяет несколько маршрутов, чтобы найти рабочий.
+ * Получение информации о товаре по ID.
  */
-export async function getCategories(): Promise<any[]> {
-    // Список возможных путей для проверки
-    const possiblePaths = [
-        `${API_ENDPOINTS.api}/categories`,
-        `${API_BASE_URL}/categories`,
-        `${API_BASE_URL}/api/categories`,
-        `${API_BASE_URL}/products/categories`
-    ];
-    
-    let lastError = null;
-    
-    // Пробуем каждый путь по очереди
-    for (const path of possiblePaths) {
-        try {
-            const response = await fetch(path);
-            if (response.ok) {
-                return await response.json();
-            }
-        } catch (error) {
-            console.log(`Ошибка при запросе категорий к ${path}:`, error);
-            lastError = error;
-        }
-    }
-    
-    // Если все попытки не удались, бросаем последнюю ошибку
-    throw new Error(`Ошибка получения категорий: ${lastError?.message || 'Не удалось найти рабочий маршрут API'}`);
+export async function getProductById(productId: number): Promise<any> {
+  try {
+    const response = await api.get(`/api/products/${productId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка получения информации о товаре');
+  }
 }
 
 /**
- * Получение списка заказов для текущего пользователя.
+ * Получение корзины пользователя.
  */
-export async function getOrders(token: string): Promise<any[]> {
-    const response = await fetch(`${API_ENDPOINTS.api}/orders`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+export async function getCart(): Promise<any> {
+  try {
+    const response = await api.get('/api/cart');
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка получения корзины');
+  }
+}
+
+/**
+ * Добавление товара в корзину.
+ */
+export async function addToCart(productId: number, quantity: number = 1): Promise<any> {
+  try {
+    const response = await api.post('/api/cart/add', {
+      product_id: productId,
+      quantity
     });
-    if (!response.ok) {
-        throw new Error('Ошибка получения заказов');
-    }
-    return await response.json();
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка добавления товара в корзину');
+  }
 }
 
 /**
- * Получение списка платежей для текущего пользователя.
+ * Обновление профиля пользователя.
  */
-export async function getPayments(token: string): Promise<any[]> {
-    const response = await fetch(`${API_ENDPOINTS.api}/payments`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!response.ok) {
-        throw new Error('Ошибка получения платежей');
-    }
-    return await response.json();
+export async function updateUserProfile(profileData: any): Promise<any> {
+  try {
+    const response = await api.put('/auth/profile', profileData);
+    
+    // Обновляем данные в localStorage при успешном обновлении профиля
+    if (profileData.full_name) localStorage.setItem('userFullName', profileData.full_name);
+    if (profileData.email) localStorage.setItem('userEmail', profileData.email);
+    if (profileData.phone) localStorage.setItem('userPhone', profileData.phone);
+    
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка обновления профиля');
+  }
 }
 
 /**
- * Получение списка доставок для текущего пользователя.
+ * Изменение пароля пользователя.
  */
-export async function getShipments(token: string): Promise<any[]> {
-    const response = await fetch(`${API_ENDPOINTS.api}/shipments`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!response.ok) {
-        throw new Error('Ошибка получения доставок');
-    }
-    return await response.json();
-}
-
-/**
- * Проверяет доступность различных маршрутов API и возвращает рабочий маршрут.
- * Полезно для отладки проблем с API.
- */
-export async function checkApiRoutes() {
-    const routes = [
-        { name: 'Корень API', path: API_BASE_URL },
-        { name: 'Статус здоровья', path: `${API_BASE_URL}/health` },
-        { name: 'API продуктов (с префиксом)', path: `${API_BASE_URL}/api/products` },
-        { name: 'API продуктов (без префикса)', path: `${API_BASE_URL}/products` },
-        { name: 'API категорий (с префиксом)', path: `${API_BASE_URL}/api/categories` },
-        { name: 'API категорий (без префикса)', path: `${API_BASE_URL}/categories` },
-        { name: 'API категорий (альт. путь)', path: `${API_BASE_URL}/products/categories` }
-    ];
-    
-    const results = [];
-    
-    for (const route of routes) {
-        try {
-            const response = await fetch(route.path);
-            results.push({
-                name: route.name,
-                path: route.path,
-                status: response.status,
-                ok: response.ok,
-                data: response.ok ? await response.json() : null
-            });
-        } catch (error) {
-            results.push({
-                name: route.name,
-                path: route.path,
-                error: error.message
-            });
-        }
-    }
-    
-    return results;
+export async function changePassword(passwordData: { current_password: string, new_password: string }): Promise<any> {
+  try {
+    const response = await api.post('/auth/change-password', passwordData);
+    return response.data;
+  } catch (error) {
+    throw new Error('Ошибка изменения пароля');
+  }
 }

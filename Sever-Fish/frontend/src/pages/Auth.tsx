@@ -11,7 +11,7 @@ interface RegisterFormData {
 }
 
 interface LoginFormData {
-  phone: string;
+  username: string; // Изменено с phone на username для поддержки входа как по почте, так и по телефону
   password: string;
 }
 
@@ -32,7 +32,7 @@ const Auth: React.FC = () => {
 
   // Форма входа
   const [loginForm, setLoginForm] = useState<LoginFormData>({
-    phone: '',
+    username: '',
     password: ''
   });
 
@@ -81,7 +81,7 @@ const Auth: React.FC = () => {
     if (isLogin) {
       setLoginForm({
         ...loginForm,
-        phone: formattedValue
+        username: formattedValue
       });
     } else {
       setRegisterForm({
@@ -106,17 +106,25 @@ const Auth: React.FC = () => {
 
     // Очищаем номер телефона от форматирования
     const phoneNumber = registerForm.phone.replace(/\D/g, '');
-    const username = registerForm.email.split('@')[0];
+    
+    // Проверка на пустой email
+    if (!registerForm.email.trim()) {
+      setError('Email обязателен для заполнения');
+      setLoading(false);
+      return;
+    }
+    
+    // Генерируем уникальное имя пользователя на основе email и случайных цифр
+    // для избежания конфликтов
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const username = `${registerForm.email.split('@')[0]}${randomSuffix}`;
 
     try {
-      // Создаем URL с параметрами для регистрации
-      const url = new URL('http://127.0.0.1:8000/auth/register');
-      url.searchParams.append('username', username);
-      url.searchParams.append('password', registerForm.password);
+      const url = 'http://127.0.0.1:8000/auth/register';
       
-      console.log("URL для регистрации:", url.toString());
+      console.log("URL для регистрации:", url);
       
-      const response = await fetch(url.toString(), {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,11 +132,10 @@ const Auth: React.FC = () => {
         credentials: 'include',
         body: JSON.stringify({
           username: username,
+          password: registerForm.password,
           email: registerForm.email,
           phone: phoneNumber,
-          full_name: registerForm.full_name,
-          password: registerForm.password,
-          password_confirm: registerForm.password_confirm
+          full_name: registerForm.full_name
         }),
       });
 
@@ -155,7 +162,14 @@ const Auth: React.FC = () => {
 
       // После успешной регистрации переходим на форму входа
       setIsLoginMode(true);
-      alert('Регистрация успешна! Теперь вы можете войти в систему.');
+      
+      // Заполняем поля формы входа данными из регистрации для удобства
+      setLoginForm({
+        username: registerForm.email, // Используем email для входа
+        password: registerForm.password
+      });
+      
+      alert('Регистрация успешна! Теперь вы можете войти в систему используя email или телефон.');
     } catch (error) {
       console.error("Ошибка регистрации:", error);
       if (error instanceof Error) {
@@ -174,25 +188,27 @@ const Auth: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    // Очищаем номер телефона от форматирования
-    const phoneNumber = loginForm.phone.replace(/\D/g, '');
+    // Определяем, что ввел пользователь (email, телефон или username)
+    let usernameValue = loginForm.username;
+    
+    // Если это телефон, очищаем от форматирования
+    if (usernameValue.includes('+7')) {
+      usernameValue = usernameValue.replace(/\D/g, '');
+    }
 
     try {
-      // Создаем URL с параметрами для входа
-      const url = new URL('http://127.0.0.1:8000/auth/login');
-      url.searchParams.append('username', phoneNumber);
-      url.searchParams.append('password', loginForm.password);
+      const url = 'http://127.0.0.1:8000/auth/login';
       
-      console.log("URL для входа:", url.toString());
+      console.log("URL для входа:", url);
       
-      const response = await fetch(url.toString(), {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
         body: JSON.stringify({
-          username: phoneNumber,
+          username: usernameValue,
           password: loginForm.password
         }),
       });
@@ -218,11 +234,16 @@ const Auth: React.FC = () => {
         throw new Error(data.detail || 'Ошибка при входе');
       }
 
-      // Сохраняем токен в localStorage
+      // Сохраняем токен и данные пользователя в localStorage
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('tokenType', data.token_type);
-      localStorage.setItem('userId', data.user_id);
-      localStorage.setItem('username', data.username);
+      localStorage.setItem('userId', data.user.id);
+      localStorage.setItem('username', data.user.username);
+      
+      // Дополнительно сохраняем другие данные пользователя для использования без запроса к API
+      if (data.user.email) localStorage.setItem('userEmail', data.user.email);
+      if (data.user.phone) localStorage.setItem('userPhone', data.user.phone);
+      if (data.user.full_name) localStorage.setItem('userFullName', data.user.full_name);
 
       // Проверяем, есть ли сохраненный путь для перенаправления
       const redirectPath = localStorage.getItem('redirectAfterAuth');
@@ -276,16 +297,16 @@ const Auth: React.FC = () => {
         {isLoginMode ? (
           <form onSubmit={handleLogin} className="auth-form">
             <div className="form-group">
-              <label htmlFor="phone">Номер телефона</label>
+              <label htmlFor="username">Email или телефон</label>
               <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={loginForm.phone}
-                onChange={(e) => handlePhoneChange(e, true)}
-                placeholder="+7 (___) ___-__-__"
+                type="text"
+                id="username"
+                name="username"
+                value={loginForm.username}
+                onChange={handleLoginInputChange}
+                placeholder="Введите email или телефон"
                 required
-                autoComplete="tel"
+                autoComplete="username"
               />
             </div>
 

@@ -6,7 +6,8 @@ import logging
 from database import get_db
 import psycopg2.extras
 import traceback
-from pydantic import BaseModel  # Add this import for BaseModel
+from pydantic import BaseModel, EmailStr  # Добавляем EmailStr для валидации email
+
 # Fix import to use your local auth functions
 from utils.auth import verify_password, create_access_token, get_password_hash  # Use absolute imports
 
@@ -24,30 +25,54 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+# Модель для регистрации пользователя
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    email: str  # Используем EmailStr для автоматической валидации
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+
 # Маршрут для регистрации пользователя
 @router.post("/register")
 async def register(
-    username: str,
-    password: str,
-    full_name: Optional[str] = None,
-    email: Optional[str] = None,
-    phone: Optional[str] = None,
+    user_data: RegisterRequest,
     db = Depends(get_db)
 ):
     try:
-        # Проверяем, существует ли пользователь с таким именем
-        cursor = db.cursor()
-        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
-        existing_user = cursor.fetchone()
+        # Проверяем уникальность email и телефона
+        cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
         
-        if existing_user:
+        # Проверка email
+        cursor.execute("SELECT id FROM users WHERE email = %s", (user_data.email,))
+        existing_email = cursor.fetchone()
+        
+        if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Пользователь с таким именем уже существует"
+                detail="Пользователь с таким email уже существует"
+            )
+        
+        # Проверка телефона, если он указан
+        if user_data.phone:
+            cursor.execute("SELECT id FROM users WHERE phone = %s", (user_data.phone,))
+            existing_phone = cursor.fetchone()
+            
+            if existing_phone:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Пользователь с таким номером телефона уже существует"
+                )
+        
+        # Проверка на наличие email
+        if not user_data.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email обязателен для регистрации"
             )
         
         # Хешируем пароль перед сохранением
-        hashed_password = get_password_hash(password)
+        hashed_password = get_password_hash(user_data.password)
         
         # Создаем пользователя
         insert_query = """
@@ -57,14 +82,14 @@ async def register(
         """
         cursor.execute(
             insert_query,
-            (username, hashed_password, full_name, email, phone)
+            (user_data.username, hashed_password, user_data.full_name, user_data.email, user_data.phone)
         )
         db.commit()
         
         new_user = cursor.fetchone()
         
         # Создаем JWT токен для нового пользователя
-        token_data = {"sub": username, "user_id": new_user['id']}
+        token_data = {"sub": user_data.username, "user_id": new_user['id']}
         access_token = create_access_token(token_data)
         
         return {
@@ -100,7 +125,7 @@ async def login_oauth(
     password = form_data.password
     
     # Ищем пользователя в базе данных
-    cursor = db.cursor()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cursor.execute(
         "SELECT id, username, password_hash, full_name, email, phone FROM users WHERE username = %s",
         (username,)
@@ -132,13 +157,31 @@ async def login_json(
     try:
         logger.info(f"Попытка входа для пользователя: {login_data.username}")
         
-        # Ищем пользователя в базе данных
-        cursor = db.cursor()
+        # Вначале ищем по номеру телефона
+        cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+        # Проверяем, может быть это номер телефона
         cursor.execute(
-            "SELECT id, username, password_hash, full_name, email, phone FROM users WHERE username = %s",
+            "SELECT id, username, password_hash, full_name, email, phone FROM users WHERE phone = %s",
             (login_data.username,)
         )
         user = cursor.fetchone()
+        
+        # Если пользователь не найден по телефону, ищем по username
+        if not user:
+            cursor.execute(
+                "SELECT id, username, password_hash, full_name, email, phone FROM users WHERE username = %s",
+                (login_data.username,)
+            )
+            user = cursor.fetchone()
+            
+        # Если пользователь не найден ни по телефону, ни по username, ищем по email
+        if not user:
+            cursor.execute(
+                "SELECT id, username, password_hash, full_name, email, phone FROM users WHERE email = %s",
+                (login_data.username,)
+            )
+            user = cursor.fetchone()
         
         if not user:
             logger.warning(f"Пользователь не найден: {login_data.username}")
