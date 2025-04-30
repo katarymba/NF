@@ -15,11 +15,13 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from starlette.middleware.sessions import SessionMiddleware
-import pymysql
+import psycopg2
+import psycopg2.extras
 import re
 import uuid
 import shutil
 from enum import Enum
+from decimal import Decimal
 
 # Настройка логирования
 logging.basicConfig(
@@ -39,18 +41,21 @@ MAX_QUANTITY = 10
 
 # Создание подключения к базе данных
 def get_db():
-    connection = pymysql.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='northern_fish',
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
     try:
+        connection = psycopg2.connect(
+            host='localhost',
+            user='katarymba',
+            password='root',
+            dbname='sever_ryba_db'
+        )
+        connection.autocommit = True
         yield connection
+    except Exception as e:
+        logger.error(f"Error connecting to database: {str(e)}")
+        raise
     finally:
-        connection.close()
+        if 'connection' in locals():
+            connection.close()
 
 # Создание приложения FastAPI
 app = FastAPI(title="Северная рыба API")
@@ -58,10 +63,11 @@ app = FastAPI(title="Северная рыба API")
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # В продакшене укажите конкретные домены
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Добавление middleware для сессий
@@ -109,7 +115,6 @@ class ProductCreate(BaseModel):
     price: float
     category_id: Optional[int] = None
     stock_quantity: Optional[int] = None
-    weight: Optional[str] = None
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -117,17 +122,16 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = None
     category_id: Optional[int] = None
     stock_quantity: Optional[int] = None
-    weight: Optional[str] = None
 
 class ProductResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
     price: float
-    image_url: Optional[str] = None
     category_id: Optional[int] = None
     stock_quantity: Optional[int] = 0
-    weight: Optional[str] = None
+    image_url: Optional[str] = None  # We'll set a default value in the code
+    weight: Optional[str] = None     # We'll set a default value in the code
 
 class CategoryCreate(BaseModel):
     name: str
@@ -235,23 +239,24 @@ async def register(user: UserCreate, db = Depends(get_db)):
         
         # Создание пользователя
         cursor.execute(
-            "INSERT INTO users (email, password, name, phone) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO users (email, password, name, phone) VALUES (%s, %s, %s, %s) RETURNING id",
             (user.email, hashed_password, user.name, user.phone)
         )
-        db.commit()
+        user_id = cursor.fetchone()[0]
         
         # Получение созданного пользователя
-        user_id = cursor.lastrowid
         cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
         user_data = cursor.fetchone()
+        column_names = [desc[0] for desc in cursor.description]
+        user_dict = {column_names[i]: user_data[i] for i in range(len(column_names))}
         
         return {
-            "id": user_data["id"],
-            "email": user_data["email"],
-            "name": user_data["name"],
-            "phone": user_data["phone"],
-            "is_active": bool(user_data["is_active"]),
-            "is_admin": bool(user_data["is_admin"])
+            "id": user_dict["id"],
+            "email": user_dict["email"],
+            "name": user_dict["name"],
+            "phone": user_dict["phone"],
+            "is_active": True,
+            "is_admin": False
         }
     except HTTPException:
         raise
@@ -265,9 +270,19 @@ async def login(user_credentials: UserLogin, db = Depends(get_db)):
         # Поиск пользователя по email
         cursor = db.cursor()
         cursor.execute("SELECT * FROM users WHERE email = %s", (user_credentials.email,))
-        user = cursor.fetchone()
+        user_data = cursor.fetchone()
         
-        if not user or not verify_password(user_credentials.password, user["password"]):
+        if not user_data:
+            raise HTTPException(
+                status_code=401,
+                detail="Неверный email или пароль",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        column_names = [desc[0] for desc in cursor.description]
+        user = {column_names[i]: user_data[i] for i in range(len(column_names))}
+        
+        if not verify_password(user_credentials.password, user["password"]):
             raise HTTPException(
                 status_code=401,
                 detail="Неверный email или пароль",
@@ -328,18 +343,21 @@ async def get_profile(request: Request, db = Depends(get_db)):
             # Получаем пользователя из базы данных
             cursor = db.cursor()
             cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
+            user_data = cursor.fetchone()
             
-            if not user:
+            if not user_data:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")
+            
+            column_names = [desc[0] for desc in cursor.description]
+            user = {column_names[i]: user_data[i] for i in range(len(column_names))}
             
             return {
                 "id": user["id"],
                 "email": user["email"],
                 "name": user["name"],
                 "phone": user["phone"],
-                "is_active": bool(user["is_active"]),
-                "is_admin": bool(user["is_admin"])
+                "is_active": True,
+                "is_admin": False
             }
         except HTTPException:
             raise
@@ -362,13 +380,38 @@ async def get_products(db = Depends(get_db)):
     try:
         cursor = db.cursor()
         cursor.execute("""
-            SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
+            SELECT id, name, description, price, category_id, stock_quantity
             FROM products
         """)
-        products = cursor.fetchall()
+        products_raw = cursor.fetchall()
+        column_names = [desc[0] for desc in cursor.description]
+        
+        # Convert the results to the expected format
+        products = []
+        for product in products_raw:
+            product_dict = {}
+            for i, col_name in enumerate(column_names):
+                value = product[i]
+                # Convert Decimal to float for JSON serialization
+                if isinstance(value, Decimal):
+                    product_dict[col_name] = float(value)
+                else:
+                    product_dict[col_name] = value
+            
+            # Add missing fields with default values
+            product_dict['image_url'] = None  # default value
+            product_dict['weight'] = None     # default value
+            
+            # Ensure required fields have values
+            if product_dict.get('stock_quantity') is None:
+                product_dict['stock_quantity'] = 0
+            
+            products.append(product_dict)
+        
         return products
     except Exception as e:
         logger.error(f"Ошибка при получении списка продуктов: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 @product_router.get("/{product_id}", response_model=ProductResponse)
@@ -376,16 +419,35 @@ async def get_product(product_id: int, db = Depends(get_db)):
     try:
         cursor = db.cursor()
         cursor.execute("""
-            SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
+            SELECT id, name, description, price, category_id, stock_quantity
             FROM products
             WHERE id = %s
         """, (product_id,))
-        product = cursor.fetchone()
+        product_data = cursor.fetchone()
         
-        if not product:
+        if not product_data:
             raise HTTPException(status_code=404, detail="Товар не найден")
         
-        return product
+        column_names = [desc[0] for desc in cursor.description]
+        product_dict = {}
+        
+        for i, col_name in enumerate(column_names):
+            value = product_data[i]
+            # Convert Decimal to float for JSON serialization
+            if isinstance(value, Decimal):
+                product_dict[col_name] = float(value)
+            else:
+                product_dict[col_name] = value
+        
+        # Add missing fields with default values
+        product_dict['image_url'] = None  # default value
+        product_dict['weight'] = None     # default value
+        
+        # Ensure required fields have values
+        if product_dict.get('stock_quantity') is None:
+            product_dict['stock_quantity'] = 0
+        
+        return product_dict
     except HTTPException:
         raise
     except Exception as e:
@@ -398,10 +460,21 @@ async def get_categories(db = Depends(get_db)):
     try:
         cursor = db.cursor()
         cursor.execute("SELECT id, name FROM categories")
-        categories = cursor.fetchall()
+        categories_raw = cursor.fetchall()
+        
+        # Convert the result to the expected format with dictionaries
+        categories = []
+        for category in categories_raw:
+            category_dict = {
+                'id': category[0],
+                'name': category[1]
+            }
+            categories.append(category_dict)
+        
         return categories
     except Exception as e:
         logger.error(f"Ошибка при получении списка категорий: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 # Эндпоинты для корзины
@@ -440,13 +513,16 @@ async def add_to_cart(
         cursor = db.cursor()
         query = "SELECT id, stock_quantity FROM products WHERE id = %s"
         cursor.execute(query, (cart_item.product_id,))
-        product = cursor.fetchone()
+        product_data = cursor.fetchone()
         
-        if not product:
+        if not product_data:
             raise HTTPException(status_code=404, detail="Товар не найден")
         
+        product_id = product_data[0]
+        stock_quantity = product_data[1] or 0
+        
         # Проверяем наличие товара
-        if product['stock_quantity'] < cart_item.quantity:
+        if stock_quantity < cart_item.quantity:
             raise HTTPException(status_code=400, detail="Недостаточно товара на складе")
         
         # Получаем корзину из сессии с учетом аутентификации
@@ -479,25 +555,29 @@ async def add_to_cart(
         request.session[cart_key] = cart
         
         # Получаем информацию о продукте для ответа
-        query = """
-        SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
-        FROM products 
-        WHERE id = %s
-        """
-        cursor.execute(query, (cart_item.product_id,))
-        product_raw = cursor.fetchone()
+        cursor.execute("""
+            SELECT id, name, description, price, category_id, stock_quantity
+            FROM products 
+            WHERE id = %s
+        """, (cart_item.product_id,))
+        product_data = cursor.fetchone()
+        column_names = [desc[0] for desc in cursor.description]
         
-        # Преобразуем product_raw в ProductResponse
-        product = ProductResponse(
-            id=product_raw['id'],
-            name=product_raw['name'],
-            description=product_raw.get('description'),
-            price=product_raw['price'],
-            image_url=product_raw.get('image_url'),
-            category_id=product_raw.get('category_id'),
-            stock_quantity=product_raw.get('stock_quantity', 0),
-            weight=product_raw.get('weight')
-        )
+        product_dict = {}
+        for i, col_name in enumerate(column_names):
+            value = product_data[i]
+            if isinstance(value, Decimal):
+                product_dict[col_name] = float(value)
+            else:
+                product_dict[col_name] = value
+        
+        # Add missing fields with default values
+        product_dict['image_url'] = None  # default value
+        product_dict['weight'] = None     # default value
+        
+        # Ensure required fields have values
+        if product_dict.get('stock_quantity') is None:
+            product_dict['stock_quantity'] = 0
         
         # Находим индекс товара в корзине для id
         item_id = None
@@ -505,6 +585,18 @@ async def add_to_cart(
             if item['product_id'] == cart_item.product_id:
                 item_id = i
                 break
+        
+        # Создаем ProductResponse для ответа
+        product = ProductResponse(
+            id=product_dict['id'],
+            name=product_dict['name'],
+            description=product_dict.get('description'),
+            price=product_dict['price'],
+            image_url=product_dict.get('image_url'),
+            category_id=product_dict.get('category_id'),
+            stock_quantity=product_dict.get('stock_quantity', 0),
+            weight=product_dict.get('weight')
+        )
         
         return {
             'id': item_id,
@@ -552,25 +644,42 @@ async def get_cart(
         cart_with_products = []
         
         for index, item in enumerate(cart):
-            query = """
-            SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
-            FROM products 
-            WHERE id = %s
-            """
-            cursor.execute(query, (item['product_id'],))
-            product_raw = cursor.fetchone()
+            cursor.execute("""
+                SELECT id, name, description, price, category_id, stock_quantity
+                FROM products 
+                WHERE id = %s
+            """, (item['product_id'],))
+            product_data = cursor.fetchone()
             
-            if product_raw:  # Проверяем, что продукт существует
-                # Преобразуем product_raw в ProductResponse
+            if product_data:  # Проверяем, что продукт существует
+                column_names = [desc[0] for desc in cursor.description]
+                
+                product_dict = {}
+                for i, col_name in enumerate(column_names):
+                    value = product_data[i]
+                    if isinstance(value, Decimal):
+                        product_dict[col_name] = float(value)
+                    else:
+                        product_dict[col_name] = value
+                
+                # Add missing fields with default values
+                product_dict['image_url'] = None  # default value
+                product_dict['weight'] = None     # default value
+                
+                # Ensure required fields have values
+                if product_dict.get('stock_quantity') is None:
+                    product_dict['stock_quantity'] = 0
+                
+                # Создаем ProductResponse для ответа
                 product = ProductResponse(
-                    id=product_raw['id'],
-                    name=product_raw['name'],
-                    description=product_raw.get('description'),
-                    price=product_raw['price'],
-                    image_url=product_raw.get('image_url'),
-                    category_id=product_raw.get('category_id'),
-                    stock_quantity=product_raw.get('stock_quantity', 0),
-                    weight=product_raw.get('weight')
+                    id=product_dict['id'],
+                    name=product_dict['name'],
+                    description=product_dict.get('description'),
+                    price=product_dict['price'],
+                    image_url=product_dict.get('image_url'),
+                    category_id=product_dict.get('category_id'),
+                    stock_quantity=product_dict.get('stock_quantity', 0),
+                    weight=product_dict.get('weight')
                 )
                 
                 cart_with_products.append({
@@ -633,24 +742,40 @@ async def update_cart_quantity(
         
         # Загружаем информацию о продукте
         cursor = db.cursor()
-        query = """
-        SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
-        FROM products 
-        WHERE id = %s
-        """
-        cursor.execute(query, (cart[cart_id]['product_id'],))
-        product_raw = cursor.fetchone()
+        cursor.execute("""
+            SELECT id, name, description, price, category_id, stock_quantity
+            FROM products 
+            WHERE id = %s
+        """, (cart[cart_id]['product_id'],))
+        product_data = cursor.fetchone()
+        column_names = [desc[0] for desc in cursor.description]
         
-        # Преобразуем product_raw в ProductResponse
+        product_dict = {}
+        for i, col_name in enumerate(column_names):
+            value = product_data[i]
+            if isinstance(value, Decimal):
+                product_dict[col_name] = float(value)
+            else:
+                product_dict[col_name] = value
+        
+        # Add missing fields with default values
+        product_dict['image_url'] = None  # default value
+        product_dict['weight'] = None     # default value
+        
+        # Ensure required fields have values
+        if product_dict.get('stock_quantity') is None:
+            product_dict['stock_quantity'] = 0
+        
+        # Создаем ProductResponse для ответа
         product = ProductResponse(
-            id=product_raw['id'],
-            name=product_raw['name'],
-            description=product_raw.get('description'),
-            price=product_raw['price'],
-            image_url=product_raw.get('image_url'),
-            category_id=product_raw.get('category_id'),
-            stock_quantity=product_raw.get('stock_quantity', 0),
-            weight=product_raw.get('weight')
+            id=product_dict['id'],
+            name=product_dict['name'],
+            description=product_dict.get('description'),
+            price=product_dict['price'],
+            image_url=product_dict.get('image_url'),
+            category_id=product_dict.get('category_id'),
+            stock_quantity=product_dict.get('stock_quantity', 0),
+            weight=product_dict.get('weight')
         )
         
         return {
@@ -742,70 +867,20 @@ async def clear_cart(request: Request):
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Ошибка сервера при очистке корзины: {str(e)}")
 
-# Добавляем маршрут для API корзины
-@app.get("/api/cart", tags=["Cart"])
-async def get_api_cart(request: Request, db = Depends(get_db)):
-    """API маршрут для корзины"""
+# API routes for frontend
+@app.get("/api/products", tags=["Products API"])
+async def get_api_products(db = Depends(get_db)):
+    """API маршрут для получения продуктов"""
     try:
-        return await get_cart(request, db)
-    except Exception as e:
-        logger.error(f"Ошибка при получении корзины через API: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении корзины через API: {str(e)}")
-
-@app.post("/api/cart", tags=["Cart"])
-async def add_to_api_cart(cart_item: CartItemCreate, request: Request, db = Depends(get_db)):
-    """API маршрут для добавления в корзину"""
-    try:
-        return await add_to_cart(cart_item, request, db)
-    except Exception as e:
-        logger.error(f"Ошибка при обработке запроса к API корзины: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при добавлении в корзину через API: {str(e)}")
-
-@app.put("/api/cart/{cart_id}", tags=["Cart"])
-async def update_api_cart_quantity(
-    cart_id: int, 
-    quantity: int, 
-    request: Request,
-    db = Depends(get_db)
-):
-    """API маршрут для обновления количества товара в корзине"""
-    try:
-        return await update_cart_quantity(cart_id, quantity, request, db)
-    except Exception as e:
-        logger.error(f"Ошибка при обновлении количества через API: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при обновлении количества через API: {str(e)}")
-
-@app.delete("/api/cart/{cart_id}", tags=["Cart"])
-async def remove_from_api_cart(cart_id: int, request: Request):
-    """API маршрут для удаления товара из корзины"""
-    try:
-        return await remove_from_cart(cart_id, request)
-    except Exception as e:
-        logger.error(f"Ошибка при удалении товара из корзины через API: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при удалении товара из корзины через API: {str(e)}")
-
-@app.delete("/api/cart/clear", tags=["Cart"])
-async def clear_api_cart(request: Request):
-    """API маршрут для очистки корзины"""
-    try:
-        return await clear_cart(request)
-    except Exception as e:
-        logger.error(f"Ошибка при очистке корзины через API: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при очистке корзины через API: {str(e)}")
-
-# Подключаем роутеры
-app.include_router(auth_router)
-app.include_router(product_router)
-app.include_router(category_router)
-app.include_router(cart_router)
-app.include_router(order_router)
-
-# Эндпоинт для проверки работы сервера
-@app.get("/")
-async def root():
-    return {"message": "API Северная рыба работает!"}
+        cursor = db.cursor()
+        cursor.execute("""
+            SELECT id, name, description, price, category_id, stock_quantity
+            FROM products
+        """)
+        products_raw = cursor.fetchall()
+        column_names = [desc[0] for desc in cursor.description]
+        
+        # Convert the results to the expected format
+        products = []
+        for product in products_raw:
+            product_dict = {}
