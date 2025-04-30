@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Cart.css';
 import CheckoutForm from '../components/CheckoutForm';
-import { useCart } from './CartContext';
-import { API_BASE_URL } from '../services/api';
+import { useCart } from '../contexts/CartContext';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 // Компонент уведомления о необходимости авторизации
 const AuthNotification = () => {
@@ -138,13 +138,37 @@ const Cart = () => {
         }))
       };
       
-      // Отправляем запрос на создание заказа
-      await axios.post(`${API_BASE_URL}/orders/`, orderData, {
-        headers: {
-          'Authorization': `${tokenType} ${token}`,
-          'Content-Type': 'application/json'
+      // Пробуем разные URL для создания заказа
+      const orderApis = [
+        `${API_BASE_URL}/api/orders`,
+        `${API_BASE_URL}/orders`,
+        `${API_BASE_URL}/api/orders/`
+      ];
+      
+      let success = false;
+      
+      for (const api of orderApis) {
+        try {
+          console.log(`Попытка создания заказа по URL: ${api}`);
+          await axios.post(api, orderData, {
+            headers: {
+              'Authorization': `${tokenType} ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          success = true;
+          console.log(`Заказ успешно создан по ${api}`);
+          break;
+        } catch (err) {
+          console.error(`Ошибка при создании заказа по ${api}:`, err);
+          // Продолжаем пробовать следующий URL
         }
-      });
+      }
+      
+      if (!success) {
+        throw new Error('Не удалось создать заказ ни по одному из адресов');
+      }
       
       // Обновляем корзину и счетчик
       await refreshCart();
