@@ -1,7 +1,10 @@
-import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import axios from 'axios';
-import { API_BASE_URL } from '../utils/apiConfig';
 
+// Базовый URL API
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+
+// Типы
 export interface Product {
   id: number;
   name: string;
@@ -9,6 +12,7 @@ export interface Product {
   price: number;
   image_url?: string;
   category_id?: number;
+  stock_quantity?: number;
   weight?: string;
 }
 
@@ -16,6 +20,7 @@ export interface CartItem {
   id: number;
   product_id: number;
   quantity: number;
+  user_id?: number;
   product: Product;
 }
 
@@ -25,8 +30,8 @@ interface CartContextType {
   isLoading: boolean;
   error: string | null;
   addToCart: (productId: number, quantity?: number) => Promise<boolean>;
-  updateCartItemQuantity: (cartItemId: number, quantity: number) => Promise<boolean>;
-  removeFromCart: (cartItemId: number) => Promise<boolean>;
+  updateCartItemQuantity: (cartId: number, quantity: number) => Promise<boolean>;
+  removeFromCart: (cartId: number) => Promise<boolean>;
   clearCart: () => Promise<boolean>;
   refreshCart: () => Promise<void>;
 }
@@ -123,39 +128,33 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      // Пробуем оба возможных URL для корзины
-      const cartApis = [
-        `${API_BASE_URL}/cart/`,
-        `${API_BASE_URL}/api/cart`
-      ];
+      console.log(`Добавление товара ${productId} в корзину по адресу: ${API_BASE_URL}/api/cart`);
       
-      let success = false;
-      
-      for (const api of cartApis) {
-        try {
-          console.log(`Попытка добавления товара в корзину по URL: ${api}`);
-          await axios.post(
-            api,
-            { product_id: productId, quantity },
-            { headers }
-          );
-          success = true;
-          break;
-        } catch (err) {
-          console.error(`Ошибка при добавлении товара в корзину по ${api}:`, err);
-          // Продолжаем пробовать следующий URL
-        }
+      // Сначала пробуем основной API
+      try {
+        await axios.post(
+          `${API_BASE_URL}/api/cart`,
+          { product_id: productId, quantity },
+          { headers }
+        );
+        await fetchCart();
+        return true;
+      } catch (err) {
+        console.error(`Ошибка при добавлении в корзину по ${API_BASE_URL}/api/cart:`, err);
+        
+        // Если основной API не сработал, пробуем резервный
+        console.log(`Добавление товара ${productId} в корзину по адресу: ${API_BASE_URL}/cart/`);
+        await axios.post(
+          `${API_BASE_URL}/cart/`,
+          { product_id: productId, quantity },
+          { headers }
+        );
+        
+        await fetchCart();
+        return true;
       }
-      
-      if (!success) {
-        throw new Error('Не удалось добавить товар в корзину ни по одному из адресов');
-      }
-      
-      // Обновляем корзину после добавления
-      await fetchCart();
-      return true;
     } catch (err) {
-      console.error('Ошибка при добавлении товара в корзину:', err);
+      console.error(`Ошибка при добавлении в корзину по ${API_BASE_URL}/cart/:`, err);
       setError('Не удалось добавить товар в корзину');
       return false;
     } finally {
@@ -163,34 +162,34 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateCartItemQuantity = async (cartItemId: number, quantity: number): Promise<boolean> => {
+  const updateCartItemQuantity = async (cartId: number, quantity: number): Promise<boolean> => {
     const headers = getAuthHeaders();
     
     if (!headers) {
-      setError('Для изменения корзины необходимо авторизоваться');
+      setError('Для изменения количества товара необходимо авторизоваться');
       return false;
+    }
+    
+    if (quantity < 1) {
+      return await removeFromCart(cartId);
     }
     
     setIsLoading(true);
     setError(null);
     
     try {
-      // Пробуем оба возможных URL для обновления корзины
-      const cartItemApis = [
-        `${API_BASE_URL}/cart/${cartItemId}`,
-        `${API_BASE_URL}/api/cart/${cartItemId}`
+      // Пробуем оба возможных URL для корзины
+      const cartApis = [
+        `${API_BASE_URL}/cart/${cartId}?quantity=${quantity}`,
+        `${API_BASE_URL}/api/cart/${cartId}?quantity=${quantity}`
       ];
       
       let success = false;
       
-      for (const api of cartItemApis) {
+      for (const api of cartApis) {
         try {
           console.log(`Попытка обновления количества товара по URL: ${api}`);
-          await axios.patch(
-            api,
-            { quantity },
-            { headers }
-          );
+          await axios.put(api, {}, { headers });
           success = true;
           break;
         } catch (err) {
@@ -207,19 +206,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       await fetchCart();
       return true;
     } catch (err) {
-      console.error('Ошибка при изменении количества товара:', err);
-      setError('Не удалось изменить количество товара');
+      console.error('Ошибка при обновлении количества товара:', err);
+      setError('Не удалось обновить количество товара');
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const removeFromCart = async (cartItemId: number): Promise<boolean> => {
+  const removeFromCart = async (cartId: number): Promise<boolean> => {
     const headers = getAuthHeaders();
     
     if (!headers) {
-      setError('Для удаления товаров из корзины необходимо авторизоваться');
+      setError('Для удаления товара из корзины необходимо авторизоваться');
       return false;
     }
     
@@ -227,15 +226,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      // Пробуем оба возможных URL для удаления товара из корзины
-      const cartItemApis = [
-        `${API_BASE_URL}/cart/${cartItemId}`,
-        `${API_BASE_URL}/api/cart/${cartItemId}`
+      // Пробуем оба возможных URL для корзины
+      const cartApis = [
+        `${API_BASE_URL}/cart/${cartId}`,
+        `${API_BASE_URL}/api/cart/${cartId}`
       ];
       
       let success = false;
       
-      for (const api of cartItemApis) {
+      for (const api of cartApis) {
         try {
           console.log(`Попытка удаления товара из корзины по URL: ${api}`);
           await axios.delete(api, { headers });
@@ -275,10 +274,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      // Пробуем оба возможных URL для очистки корзины
+      // Пробуем оба возможных URL для корзины
       const cartApis = [
-        `${API_BASE_URL}/cart/`,
-        `${API_BASE_URL}/api/cart`
+        `${API_BASE_URL}/cart/clear`,
+        `${API_BASE_URL}/api/cart/clear`
       ];
       
       let success = false;
@@ -299,6 +298,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Не удалось очистить корзину ни по одному из адресов');
       }
       
+      // Обновляем корзину после очистки
       setCartItems([]);
       return true;
     } catch (err) {
@@ -310,8 +310,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Вычисляем общее количество товаров в корзине
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   return (
     <CartContext.Provider value={{

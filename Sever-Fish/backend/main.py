@@ -1,73 +1,124 @@
-from fastapi import FastAPI, Request, HTTPException, Depends, APIRouter
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
-from starlette.middleware.sessions import SessionMiddleware  # Добавляем для поддержки сессий
-# Fix the import to use your local auth functions from utils/auth - use absolute import
-from utils.auth import verify_password, create_access_token, get_password_hash  # Changed from relative to absolute import
-import uvicorn
 import logging
-import sys
-import os
 import traceback
-from pathlib import Path
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
-from datetime import datetime
-from database import get_db, get_db_connection  # Импортируем обе функции
-import psycopg2.pool
-from contextlib import asynccontextmanager
-from enum import Enum
+import os
+from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any, Union
 
-# Настройка путей для корректного импорта - IMPORTANT: This must be at the top before any imports!
-BASE_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(BASE_DIR))  # Changed from append to insert(0) to prioritize it
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from starlette.middleware.sessions import SessionMiddleware
+import pymysql
+import re
+import uuid
+import shutil
+from enum import Enum
 
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("api.log"),  # Добавляем логирование в файл
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-# Создаем пул соединений с БД
-db_pool = psycopg2.pool.SimpleConnectionPool(
-    minconn=1,
-    maxconn=10,
-    host="localhost",
-    port="5432",
-    dbname="sever_ryba_db",  # Изменено на существующую БД
-    user="katarymba",
-    password="root"
+# Константы
+SECRET_KEY = "your-secret-key"  # В реальном проекте используйте другой секретный ключ
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+MAX_QUANTITY = 10
+
+# Создание подключения к базе данных
+def get_db():
+    connection = pymysql.connect(
+        host='localhost',
+        user='root',
+        password='',
+        database='northern_fish',
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    try:
+        yield connection
+    finally:
+        connection.close()
+
+# Создание приложения FastAPI
+app = FastAPI(title="Северная рыба API")
+
+# Настройка CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # При запуске приложения
-    app.state.db_pool = db_pool
-    yield
-    # При остановке приложения
-    db_pool.closeall()
+# Добавление middleware для сессий
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# Определение допустимых статусов заказа
-class OrderStatus(str, Enum):
-    new = "new"
-    processed = "processed"
-    shipped = "shipped"
-    completed = "completed"
-    # pending = "pending"  # Это значение должно быть добавлено в enum если нужно использовать "pending"
+# Обработчик ошибок для всего приложения
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Необработанная ошибка: {str(exc)}")
+    logger.error(traceback.format_exc())
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Внутренняя ошибка сервера: {str(exc)}"}
+    )
 
-# Создаем модели данных для ответа API
-# Обновляем модель CategoryResponse, делая поле description необязательным
-class CategoryResponse(BaseModel):
-    id: int
+# Модели данных
+class UserCreate(BaseModel):
+    email: str
+    password: str
     name: str
-    slug: Optional[str] = ""  # Делаем поле необязательным и инициализируем пустой строкой
-    description: Optional[str] = None  # Это поле может отсутствовать в базе данных
-    
+    phone: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class User(BaseModel):
+    id: int
+    email: str
+    name: str
+    phone: str
+    is_active: bool = True
+    is_admin: bool = False
+
+class TokenData(BaseModel):
+    user_id: Optional[int] = None
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class ProductCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    category_id: Optional[int] = None
+    stock_quantity: Optional[int] = None
+    weight: Optional[str] = None
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    category_id: Optional[int] = None
+    stock_quantity: Optional[int] = None
+    weight: Optional[str] = None
+
 class ProductResponse(BaseModel):
     id: int
     name: str
@@ -76,24 +127,15 @@ class ProductResponse(BaseModel):
     image_url: Optional[str] = None
     category_id: Optional[int] = None
     stock_quantity: Optional[int] = 0
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    
+    weight: Optional[str] = None
+
 class CategoryCreate(BaseModel):
     name: str
-    slug: str
-    description: Optional[str] = None
     
-class ProductCreate(BaseModel):
+class CategoryResponse(BaseModel):
+    id: int
     name: str
-    description: Optional[str] = None
-    price: float
-    category_id: int
-    image_url: Optional[str] = None
-    weight: Optional[float] = None
-    stock_quantity: Optional[int] = 0
 
-# Классы для работы с корзиной
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int = 1
@@ -103,516 +145,280 @@ class CartItemResponse(BaseModel):
     product_id: int
     quantity: int
     user_id: Optional[int] = None
-    product: Optional[ProductResponse] = None
+    product: ProductResponse
 
-# Класс для заказов
+class OrderStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+class OrderCreate(BaseModel):
+    delivery_address: str
+    phone: str
+    email: str
+    name: str
+    comment: Optional[str] = None
+    payment_method: str
+
 class OrderResponse(BaseModel):
     id: int
-    user_id: Optional[int] = None
-    status: OrderStatus = OrderStatus.new  # Используем enum для статуса
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    total_amount: float = 0.0
+    user_id: Optional[int]
+    status: OrderStatus
+    total: float
+    delivery_address: str
+    phone: str
+    email: str
+    name: str
+    comment: Optional[str]
+    payment_method: str
+    created_at: str
+    items: List[Dict[str, Any]]
 
-# Модель для создания заказов
-class OrderCreate(BaseModel):
-    user_id: Optional[int] = None
-    status: OrderStatus = OrderStatus.new  # По умолчанию статус "new"
-    total_amount: float = 0.0
+# Создание экземпляров маршрутизаторов
+from fastapi import APIRouter
 
-# Создание приложения
-app = FastAPI(
-    title="Север-Рыба API",
-    description="API для интернет-магазина Север-Рыба",
-    version="1.0.0",
-    lifespan=lifespan
-)
+auth_router = APIRouter(prefix="/auth", tags=["Auth"])
+product_router = APIRouter(prefix="/products", tags=["Products"])
+category_router = APIRouter(prefix="/categories", tags=["Categories"])
+cart_router = APIRouter(prefix="/cart", tags=["Cart"])
+order_router = APIRouter(prefix="/orders", tags=["Orders"])
 
-# Настройка CORS для разрешения запросов с фронтенда
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    # Добавляем стандартные порты разработки React и без порта
-    "http://localhost",
-    "http://127.0.0.1",
-]
+# Функции безопасности
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Добавляем middleware для сессий
-app.add_middleware(
-    SessionMiddleware,
-    secret_key="0bde95d7a26d5fd30374db066e45d53fe7a9fbc886b099a14f37b830f6c6b12c",
-    max_age=1800  # 30 минут
-)
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
-# Первым middleware устанавливаем CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=86400,  # Увеличиваем время кэширования предзапросов CORS до 24 часов
-)
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
-# Функция для преобразования словаря в модель
-def dict_to_model(data_dict, model_class):
-    """Преобразует словарь в Pydantic модель, обрабатывая отсутствующие поля"""
-    if not data_dict:
-        return None
-    
-    # Очищаем от лишних полей, которых нет в модели
-    model_fields = model_class.__fields__.keys()
-    filtered_dict = {k: v for k, v in data_dict.items() if k in model_fields}
-    
-    # Для CategoryResponse добавляем slug, если его нет
-    if model_class == CategoryResponse and 'slug' not in filtered_dict:
-        filtered_dict['slug'] = filtered_dict.get('name', '').lower().replace(' ', '-')
-    
-    return model_class(**filtered_dict)
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
-# Функция для верификации JWT токена
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str):
     try:
-        from jose import jwt
-        
-        # Секретный ключ для проверки токена (должен совпадать с ключом при создании)
-        SECRET_KEY = "0bde95d7a26d5fd30374db066e45d53fe7a9fbc886b099a14f37b830f6c6b12c"
-        ALGORITHM = "HS256"
-        
-        # Декодируем токен
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+
+# Эндпоинты аутентификации
+@auth_router.post("/register", response_model=User)
+async def register(user: UserCreate, db = Depends(get_db)):
+    try:
+        # Проверка, что email уникален
+        cursor = db.cursor()
+        cursor.execute("SELECT id FROM users WHERE email = %s", (user.email,))
+        if cursor.fetchone():
+            raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
         
-        # Проверяем истечение срока действия
-        if 'exp' in payload and datetime.fromtimestamp(payload['exp']) < datetime.now():
-            logger.warning("Токен истек")
-            return None
+        # Проверка формата email
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", user.email):
+            raise HTTPException(status_code=400, detail="Неверный формат email")
         
-        # Проверяем наличие имени пользователя
-        if 'sub' not in payload:
-            logger.warning("Токен не содержит информацию о пользователе")
-            return None
+        # Проверка длины пароля
+        if len(user.password) < 6:
+            raise HTTPException(status_code=400, detail="Пароль должен содержать не менее 6 символов")
+        
+        # Хеширование пароля
+        hashed_password = get_password_hash(user.password)
+        
+        # Создание пользователя
+        cursor.execute(
+            "INSERT INTO users (email, password, name, phone) VALUES (%s, %s, %s, %s)",
+            (user.email, hashed_password, user.name, user.phone)
+        )
+        db.commit()
+        
+        # Получение созданного пользователя
+        user_id = cursor.lastrowid
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        user_data = cursor.fetchone()
         
         return {
-            "username": payload.get("sub"),
-            "user_id": payload.get("user_id")
+            "id": user_data["id"],
+            "email": user_data["email"],
+            "name": user_data["name"],
+            "phone": user_data["phone"],
+            "is_active": bool(user_data["is_active"]),
+            "is_admin": bool(user_data["is_admin"])
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Ошибка проверки токена: {e}")
-        return None
+        logger.error(f"Ошибка при регистрации пользователя: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
-# Импортируем роутеры
-try:
-    from routers import auth as auth_router
-    logger.info("Роутер auth импортирован успешно")
-except ImportError as e:
-    logger.error(f"Ошибка импорта роутера auth: {e}")
-    
-    # Создаем заглушку для роутера auth
-    auth_router_stub = APIRouter()
-    
-    @auth_router_stub.post("/register")
-    async def register_stub():
-        return {"message": "Регистрация недоступна, ошибка импорта модуля auth"}
-    
-    @auth_router_stub.post("/login")
-    async def login_stub():
-        return {"message": "Вход недоступен, ошибка импорта модуля auth"}
-    
-    auth_router = type('AuthRouter', (), {'router': auth_router_stub})
-
-# Маршруты для работы с товарами
-products_router = APIRouter(prefix="/products", tags=["Products"])
-
-# Add this endpoint at the root level of your main.py file, outside of any routers
-@app.get("/products", tags=["Products"])
-async def get_all_products_no_prefix(
-    skip: int = 0,
-    limit: int = 100,
-    db = Depends(get_db)
-):
-    """Direct products endpoint (no router prefix)"""
-    return await get_all_products(skip, limit, db)
-
-# Получить все товары
-@products_router.get("/", response_model=List[ProductResponse])
-async def get_all_products(
-    skip: int = 0,
-    limit: int = 100,
-    db = Depends(get_db)
-):
+@auth_router.post("/login", response_model=Token)
+async def login(user_credentials: UserLogin, db = Depends(get_db)):
     try:
-        logger.info(f"Запрос всех товаров (skip={skip}, limit={limit})")
+        # Поиск пользователя по email
         cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s", (user_credentials.email,))
+        user = cursor.fetchone()
         
-        # Проверяем структуру таблицы products
-        cursor.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'products'
-        """)
-        columns = [row['column_name'] for row in cursor.fetchall()]
-        logger.info(f"Структура таблицы products: {columns}")
-        
-        query = """
-        SELECT 
-            id, name, description, price, image_url, category_id, 
-            stock_quantity, created_at, updated_at
-        FROM products
-        ORDER BY id
-        LIMIT %s OFFSET %s
-        """
-        cursor.execute(query, (limit, skip))
-        products_raw = cursor.fetchall()
-        
-        # Преобразуем словари в модели
-        products = []
-        for product_data in products_raw:
-            # Убедимся, что все необходимые поля присутствуют
-            for field in ['description', 'image_url', 'category_id', 'stock_quantity', 'created_at', 'updated_at']:
-                if field not in product_data:
-                    product_data[field] = None if field != 'stock_quantity' else 0
-            
-            product = ProductResponse(
-                id=product_data['id'],
-                name=product_data['name'],
-                description=product_data.get('description'),
-                price=product_data['price'],
-                image_url=product_data.get('image_url'),
-                category_id=product_data.get('category_id'),
-                stock_quantity=product_data.get('stock_quantity', 0),
-                created_at=product_data.get('created_at'),
-                updated_at=product_data.get('updated_at')
+        if not user or not verify_password(user_credentials.password, user["password"]):
+            raise HTTPException(
+                status_code=401,
+                detail="Неверный email или пароль",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-            products.append(product)
         
-        logger.info(f"Успешно получено {len(products)} товаров")
-        return products
+        # Создание токена
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"user_id": user["id"]}, expires_delta=access_token_expires
+        )
+        
+        return {"access_token": access_token, "token_type": "Bearer"}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Ошибка при получении товаров: {str(e)}")
-        logger.error(traceback.format_exc())
-        if "does not exist" in str(e):
-            raise HTTPException(status_code=500, detail="Ошибка в структуре базы данных: таблица products не существует")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении товаров: {str(e)}")
+        logger.error(f"Ошибка при входе пользователя: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
-# Исправленная версия маршрута для получения категорий
-@products_router.get("/categories", response_model=List[CategoryResponse])
-async def get_categories(db = Depends(get_db)):
+@auth_router.get("/profile", response_model=User)
+async def get_profile(request: Request, db = Depends(get_db)):
     try:
-        logger.info("Запрос всех категорий")
-        cursor = db.cursor()
+        # Получаем авторизационный заголовок
+        authorization = request.headers.get("Authorization")
+        if not authorization:
+            raise HTTPException(
+                status_code=401,
+                detail="Не авторизован",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         
-        # Проверим структуру таблицы categories
         try:
-            cursor.execute("""
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE table_name = 'categories'
-            """)
-            columns = [row['column_name'] for row in cursor.fetchall()]
-            logger.info(f"Структура таблицы categories: {columns}")
-            
-            # Используем только те столбцы, которые фактически существуют
-            if 'description' in columns:
-                query = "SELECT id, name, description FROM categories ORDER BY id"
-            else:
-                query = "SELECT id, name FROM categories ORDER BY id"
-                
-            cursor.execute(query)
-            categories_raw = cursor.fetchall()
-            
-            # Преобразуем результаты в список моделей CategoryResponse
-            categories = []
-            for cat_data in categories_raw:
-                # Если description нет в данных, добавляем пустое значение
-                if 'description' not in cat_data:
-                    cat_data['description'] = None
-                
-                # Если slug нет в данных, создаем его из имени
-                if 'slug' not in cat_data:
-                    cat_data['slug'] = cat_data['name'].lower().replace(' ', '-')
-                
-                # Создаем модель напрямую
-                category = CategoryResponse(
-                    id=cat_data['id'],
-                    name=cat_data['name'],
-                    description=cat_data.get('description'),
-                    slug=cat_data.get('slug', cat_data['name'].lower().replace(' ', '-'))
+            auth_parts = authorization.split()
+            if len(auth_parts) != 2 or auth_parts[0].lower() != 'bearer':
+                raise HTTPException(
+                    status_code=401,
+                    detail="Неверный формат токена",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
-                categories.append(category)
             
-            logger.info(f"Успешно получено {len(categories)} категорий")
-            return categories
-        except Exception as schema_error:
-            logger.error(f"Ошибка при проверке структуры таблицы: {str(schema_error)}")
-            # Пробуем более простой запрос
-            cursor.execute("SELECT id, name FROM categories ORDER BY id")
-            categories_raw = cursor.fetchall()
-            
-            # Преобразуем результаты в список моделей CategoryResponse
-            categories = []
-            for cat_data in categories_raw:
-                # Добавляем отсутствующие поля для соответствия модели
-                # Создаем модель напрямую
-                category = CategoryResponse(
-                    id=cat_data['id'],
-                    name=cat_data['name'],
-                    description=None,
-                    slug=cat_data['name'].lower().replace(' ', '-')
+            token = auth_parts[1]
+            payload = verify_token(token)
+            if not payload:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Токен недействителен или истек срок его действия",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
-                categories.append(category)
             
-            logger.info(f"Успешно получено {len(categories)} категорий (упрощенный запрос)")
-            return categories
+            user_id = payload.get("user_id")
+            if not user_id:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Невозможно идентифицировать пользователя",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
             
-    except Exception as e:
-        logger.error(f"Ошибка при получении категорий: {str(e)}")
-        logger.error(traceback.format_exc())
-        if "does not exist" in str(e):
-            raise HTTPException(status_code=500, detail="Ошибка в структуре базы данных: таблица categories не существует")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении категорий: {str(e)}")
-    
-# ДОБАВЛЯЕМ альтернативный маршрут для категорий без слеша в конце
-@products_router.get("/categories/", include_in_schema=False)
-async def get_categories_alt(db = Depends(get_db)):
-    """Альтернативный маршрут для совместимости"""
-    return await get_categories(db)
-
-# ОБНОВЛЯЕМ маршрут для товаров через /api/products
-@app.get("/api/products", response_model=List[ProductResponse], tags=["Products"])
-async def get_api_products(
-    skip: int = 0,
-    limit: int = 100,
-    db = Depends(get_db)
-):
-    """API маршрут для продуктов"""
-    try:
-        logger.info(f"Запрос API продуктов (skip={skip}, limit={limit})")
-        cursor = db.cursor()
-        
-        # Проверяем структуру таблицы products
-        cursor.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'products'
-        """)
-        columns = [row['column_name'] for row in cursor.fetchall()]
-        logger.info(f"Структура таблицы products в API: {columns}")
-        
-        # Формируем запрос с учетом имеющихся столбцов
-        select_columns = ["id", "name", "price"]
-        for column in ["description", "image_url", "category_id", "stock_quantity", "created_at", "updated_at"]:
-            if column in columns:
-                select_columns.append(column)
-                
-        query = f"""
-        SELECT {', '.join(select_columns)}
-        FROM products
-        ORDER BY id
-        LIMIT %s OFFSET %s
-        """
-        
-        cursor.execute(query, (limit, skip))
-        products_raw = cursor.fetchall()
-        
-        # Преобразуем словари в модели
-        products = []
-        for product_data in products_raw:
-            # Создаем объект с обязательными полями
-            product_obj = {
-                "id": product_data['id'],
-                "name": product_data['name'],
-                "price": product_data['price'],
-                "stock_quantity": product_data.get('stock_quantity', 0)
+            # Получаем пользователя из базы данных
+            cursor = db.cursor()
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="Пользователь не найден")
+            
+            return {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "phone": user["phone"],
+                "is_active": bool(user["is_active"]),
+                "is_admin": bool(user["is_admin"])
             }
-            
-            # Добавляем опциональные поля, если они есть
-            optional_fields = ['description', 'image_url', 'category_id', 'created_at', 'updated_at']
-            for field in optional_fields:
-                if field in product_data:
-                    product_obj[field] = product_data[field]
-            
-            # Создаем модель
-            product = ProductResponse(**product_obj)
-            products.append(product)
-        
-        logger.info(f"Успешно получено {len(products)} API продуктов")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Ошибка при проверке токена: {str(e)}")
+            raise HTTPException(
+                status_code=401,
+                detail="Ошибка аутентификации",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка при получении профиля: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
+
+# Эндпоинты для продуктов
+@product_router.get("/", response_model=List[ProductResponse])
+async def get_products(db = Depends(get_db)):
+    try:
+        cursor = db.cursor()
+        cursor.execute("""
+            SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
+            FROM products
+        """)
+        products = cursor.fetchall()
         return products
     except Exception as e:
-        logger.error(f"Ошибка при получении API продуктов: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении API продуктов: {str(e)}")
+        logger.error(f"Ошибка при получении списка продуктов: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
-# ДОБАВЛЯЕМ новый маршрут для категорий через /api/categories
-@app.get("/api/categories", response_model=List[CategoryResponse], tags=["Categories"])
-async def get_api_categories(db = Depends(get_db)):
-    """API маршрут для категорий"""
-    return await get_categories(db)
-
-# Добавляем маршрут для категорий без префикса
-@app.get("/categories", tags=["Categories"])
-async def get_all_categories_no_prefix(db = Depends(get_db)):
-    return await get_categories(db)
-
-# Получить товар по ID
-@products_router.get("/{product_id}", response_model=ProductResponse)
-async def get_product_by_id(product_id: int, db = Depends(get_db)):
+@product_router.get("/{product_id}", response_model=ProductResponse)
+async def get_product(product_id: int, db = Depends(get_db)):
     try:
-        logger.info(f"Запрос товара с ID {product_id}")
         cursor = db.cursor()
-        query = """
-        SELECT 
-            id, name, description, price, image_url, category_id, 
-            stock_quantity, created_at, updated_at
-        FROM products
-        WHERE id = %s
-        """
-        cursor.execute(query, (product_id,))
-        product_raw = cursor.fetchone()
+        cursor.execute("""
+            SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
+            FROM products
+            WHERE id = %s
+        """, (product_id,))
+        product = cursor.fetchone()
         
-        if not product_raw:
-            logger.warning(f"Товар с ID={product_id} не найден")
+        if not product:
             raise HTTPException(status_code=404, detail="Товар не найден")
         
-        # Преобразуем словарь в модель
-        product = dict_to_model(product_raw, ProductResponse)
-        
-        logger.info(f"Успешно получен товар с ID {product_id}")
         return product
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Ошибка при получении товара с ID {product_id}: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении товара: {str(e)}")
+        logger.error(f"Ошибка при получении товара: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
-# Создать новый товар (для админов)
-@products_router.post("/", response_model=ProductResponse)
-async def create_product(product: ProductCreate, db = Depends(get_db)):
+# Эндпоинты для категорий
+@category_router.get("/", response_model=List[CategoryResponse])
+async def get_categories(db = Depends(get_db)):
     try:
-        logger.info(f"Запрос на создание нового товара: {product.name}")
         cursor = db.cursor()
-        
-        # Проверяем, существует ли категория
-        category_query = "SELECT id FROM categories WHERE id = %s"
-        cursor.execute(category_query, (product.category_id,))
-        category = cursor.fetchone()
-        
-        if not category:
-            logger.warning(f"Категория с ID={product.category_id} не найдена")
-            raise HTTPException(status_code=404, detail="Категория не найдена")
-        
-        # Создаем новый товар
-        insert_query = """
-        INSERT INTO products (
-            name, description, price, image_url, category_id, 
-            stock_quantity, created_at, updated_at
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, NOW(), NOW()
-        ) RETURNING id, name, description, price, image_url, category_id, 
-                   stock_quantity, created_at, updated_at
-        """
-        cursor.execute(
-            insert_query,
-            (
-                product.name,
-                product.description,
-                product.price,
-                product.image_url,
-                product.category_id,
-                product.stock_quantity
-            )
-        )
-        db.commit()  # Важно: фиксируем транзакцию
-        
-        new_product_raw = cursor.fetchone()
-        # Преобразуем словарь в модель
-        new_product = dict_to_model(new_product_raw, ProductResponse)
-        
-        logger.info(f"Успешно создан новый товар с ID {new_product.id}")
-        return new_product
-    except HTTPException:
-        raise
+        cursor.execute("SELECT id, name FROM categories")
+        categories = cursor.fetchall()
+        return categories
     except Exception as e:
-        db.rollback()  # В случае ошибки откатываем транзакцию
-        logger.error(f"Ошибка при создании товара: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при создании товара: {str(e)}")
+        logger.error(f"Ошибка при получении списка категорий: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
-# Подключаем маршруты products
-app.include_router(products_router)
-
-# Подключаем маршруты auth
-try:
-    app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
-    logger.info("Маршруты аутентификации успешно подключены")
-except Exception as e:
-    logger.error(f"Ошибка при подключении маршрутов аутентификации: {e}")
-
-# Маршруты для заказов
-orders_router = APIRouter(prefix="/orders", tags=["Orders"])
-
-@orders_router.get("/", response_model=List[OrderResponse])
-async def get_orders(db = Depends(get_db)):
-    """
-    Получение списка заказов
-    """
-    try:
-        logger.info("Запрос всех заказов")
-        cursor = db.cursor()
-        
-        query = """
-        SELECT id, user_id, status, created_at, updated_at, total_amount
-        FROM orders
-        ORDER BY id DESC
-        """
-        cursor.execute(query)
-        orders_raw = cursor.fetchall()
-        
-        # Преобразуем данные в модели
-        orders = []
-        for order_data in orders_raw:
-            # Убедимся, что статус заказа соответствует допустимым значениям
-            # Если статус 'pending', изменим его на 'new'
-            if order_data.get('status') == 'pending':
-                order_data['status'] = 'new'
-                
-            order = OrderResponse(
-                id=order_data['id'],
-                user_id=order_data.get('user_id'),
-                status=order_data.get('status', 'new'),
-                created_at=order_data.get('created_at'),
-                updated_at=order_data.get('updated_at'),
-                total_amount=order_data.get('total_amount', 0.0)
-            )
-            orders.append(order)
-        
-        return orders
-    except Exception as e:
-        logger.error(f"Ошибка при получении заказов: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении заказов: {str(e)}")
-
-# Подключаем маршруты orders
-app.include_router(orders_router)
-
-# Маршруты для работы с корзиной
-cart_router = APIRouter(prefix="/cart", tags=["Cart"])
-
-# Максимальное количество товара в корзине
-MAX_QUANTITY = 99
-
+# Эндпоинты для корзины
 @cart_router.post("/", response_model=CartItemResponse)
 async def add_to_cart(
-    cart_item: CartItemCreate, 
+    cart_item: CartItemCreate,
     request: Request,
     db = Depends(get_db)
 ):
     try:
+        # Проверка количества
+        if cart_item.quantity < 1 or cart_item.quantity > MAX_QUANTITY:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Количество должно быть от 1 до {MAX_QUANTITY}"
+            )
+        
         # Получаем авторизационный заголовок
         authorization = request.headers.get("Authorization")
         user_id = None
@@ -630,29 +436,18 @@ async def add_to_cart(
             except Exception as e:
                 logger.error(f"Ошибка проверки токена: {e}")
         
-        # Проверка существования продукта
+        # Проверяем, существует ли продукт
         cursor = db.cursor()
-        query = """
-        SELECT id, name, description, price, image_url, category_id, stock_quantity
-        FROM products 
-        WHERE id = %s
-        """
+        query = "SELECT id, stock_quantity FROM products WHERE id = %s"
         cursor.execute(query, (cart_item.product_id,))
-        product_raw = cursor.fetchone()
+        product = cursor.fetchone()
         
-        if not product_raw:
+        if not product:
             raise HTTPException(status_code=404, detail="Товар не найден")
         
-        # Преобразуем product_raw в ProductResponse
-        product = ProductResponse(
-            id=product_raw['id'],
-            name=product_raw['name'],
-            description=product_raw.get('description'),
-            price=product_raw['price'],
-            image_url=product_raw.get('image_url'),
-            category_id=product_raw.get('category_id'),
-            stock_quantity=product_raw.get('stock_quantity', 0)
-        )
+        # Проверяем наличие товара
+        if product['stock_quantity'] < cart_item.quantity:
+            raise HTTPException(status_code=400, detail="Недостаточно товара на складе")
         
         # Получаем корзину из сессии с учетом аутентификации
         cart_key = f'cart_{user_id}' if user_id else 'cart'
@@ -683,11 +478,38 @@ async def add_to_cart(
         # Сохраняем корзину в сессии
         request.session[cart_key] = cart
         
-        # Возвращаем добавленный товар с информацией о продукте
+        # Получаем информацию о продукте для ответа
+        query = """
+        SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
+        FROM products 
+        WHERE id = %s
+        """
+        cursor.execute(query, (cart_item.product_id,))
+        product_raw = cursor.fetchone()
+        
+        # Преобразуем product_raw в ProductResponse
+        product = ProductResponse(
+            id=product_raw['id'],
+            name=product_raw['name'],
+            description=product_raw.get('description'),
+            price=product_raw['price'],
+            image_url=product_raw.get('image_url'),
+            category_id=product_raw.get('category_id'),
+            stock_quantity=product_raw.get('stock_quantity', 0),
+            weight=product_raw.get('weight')
+        )
+        
+        # Находим индекс товара в корзине для id
+        item_id = None
+        for i, item in enumerate(cart):
+            if item['product_id'] == cart_item.product_id:
+                item_id = i
+                break
+        
         return {
-            'id': len(cart) - 1,  # Индекс последнего элемента
+            'id': item_id,
             'product_id': cart_item.product_id,
-            'quantity': cart_item.quantity,
+            'quantity': cart[item_id]['quantity'] if item_id is not None else cart_item.quantity,
             'user_id': user_id,
             'product': product
         }
@@ -696,7 +518,7 @@ async def add_to_cart(
     except Exception as e:
         logger.error(f"Ошибка при добавлении товара в корзину: {str(e)}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при добавлении товара в корзину: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при добавлении товара: {str(e)}")
 
 @cart_router.get("/", response_model=List[CartItemResponse])
 async def get_cart(
@@ -731,7 +553,7 @@ async def get_cart(
         
         for index, item in enumerate(cart):
             query = """
-            SELECT id, name, description, price, image_url, category_id, stock_quantity
+            SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
             FROM products 
             WHERE id = %s
             """
@@ -747,7 +569,8 @@ async def get_cart(
                     price=product_raw['price'],
                     image_url=product_raw.get('image_url'),
                     category_id=product_raw.get('category_id'),
-                    stock_quantity=product_raw.get('stock_quantity', 0)
+                    stock_quantity=product_raw.get('stock_quantity', 0),
+                    weight=product_raw.get('weight')
                 )
                 
                 cart_with_products.append({
@@ -811,7 +634,7 @@ async def update_cart_quantity(
         # Загружаем информацию о продукте
         cursor = db.cursor()
         query = """
-        SELECT id, name, description, price, image_url, category_id, stock_quantity
+        SELECT id, name, description, price, image_url, category_id, stock_quantity, weight
         FROM products 
         WHERE id = %s
         """
@@ -826,7 +649,8 @@ async def update_cart_quantity(
             price=product_raw['price'],
             image_url=product_raw.get('image_url'),
             category_id=product_raw.get('category_id'),
-            stock_quantity=product_raw.get('stock_quantity', 0)
+            stock_quantity=product_raw.get('stock_quantity', 0),
+            weight=product_raw.get('weight')
         )
         
         return {
@@ -922,407 +746,66 @@ async def clear_cart(request: Request):
 @app.get("/api/cart", tags=["Cart"])
 async def get_api_cart(request: Request, db = Depends(get_db)):
     """API маршрут для корзины"""
-    return await get_cart(request, db)
+    try:
+        return await get_cart(request, db)
+    except Exception as e:
+        logger.error(f"Ошибка при получении корзины через API: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении корзины через API: {str(e)}")
 
 @app.post("/api/cart", tags=["Cart"])
 async def add_to_api_cart(cart_item: CartItemCreate, request: Request, db = Depends(get_db)):
     """API маршрут для добавления в корзину"""
-    return await add_to_cart(cart_item, request, db)
+    try:
+        return await add_to_cart(cart_item, request, db)
+    except Exception as e:
+        logger.error(f"Ошибка при обработке запроса к API корзины: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при добавлении в корзину через API: {str(e)}")
 
-# Подключаем маршруты корзины
+@app.put("/api/cart/{cart_id}", tags=["Cart"])
+async def update_api_cart_quantity(
+    cart_id: int, 
+    quantity: int, 
+    request: Request,
+    db = Depends(get_db)
+):
+    """API маршрут для обновления количества товара в корзине"""
+    try:
+        return await update_cart_quantity(cart_id, quantity, request, db)
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении количества через API: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при обновлении количества через API: {str(e)}")
+
+@app.delete("/api/cart/{cart_id}", tags=["Cart"])
+async def remove_from_api_cart(cart_id: int, request: Request):
+    """API маршрут для удаления товара из корзины"""
+    try:
+        return await remove_from_cart(cart_id, request)
+    except Exception as e:
+        logger.error(f"Ошибка при удалении товара из корзины через API: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при удалении товара из корзины через API: {str(e)}")
+
+@app.delete("/api/cart/clear", tags=["Cart"])
+async def clear_api_cart(request: Request):
+    """API маршрут для очистки корзины"""
+    try:
+        return await clear_cart(request)
+    except Exception as e:
+        logger.error(f"Ошибка при очистке корзины через API: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при очистке корзины через API: {str(e)}")
+
+# Подключаем роутеры
+app.include_router(auth_router)
+app.include_router(product_router)
+app.include_router(category_router)
 app.include_router(cart_router)
+app.include_router(order_router)
 
-# Маршрут для профиля пользователя
-@app.get("/auth/profile", tags=["Authentication"])
-async def get_user_profile(request: Request):
-    try:
-        # Получаем авторизационный заголовок
-        authorization = request.headers.get("Authorization")
-        
-        if not authorization:
-            raise HTTPException(status_code=401, detail="Не предоставлены учетные данные")
-        
-        # Проверяем авторизацию пользователя
-        try:
-            auth_parts = authorization.split()
-            if len(auth_parts) != 2 or auth_parts[0].lower() != 'bearer':
-                raise HTTPException(status_code=401, detail="Неверный формат токена")
-            
-            token = auth_parts[1]
-            # Проверяем токен и получаем данные пользователя
-            user_data = verify_token(token)
-            
-            if not user_data:
-                raise HTTPException(status_code=401, detail="Недействительный токен")
-            
-            # Получаем данные пользователя из БД
-            conn = app.state.db_pool.getconn()
-            try:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT id, username, email, phone, full_name, birthday
-                    FROM users
-                    WHERE id = %s
-                """, (user_data.get('user_id'),))
-                
-                db_user = cursor.fetchone()
-                
-                if not db_user:
-                    raise HTTPException(status_code=404, detail="Пользователь не найден")
-                
-                return {
-                    "id": db_user['id'],
-                    "username": db_user['username'],
-                    "email": db_user.get('email'),
-                    "phone": db_user.get('phone'),
-                    "full_name": db_user.get('full_name'),
-                    "birthday": db_user.get('birthday').isoformat() if db_user.get('birthday') else None
-                }
-            finally:
-                app.state.db_pool.putconn(conn)
-                
-        except Exception as e:
-            logger.error(f"Ошибка проверки токена: {e}")
-            raise HTTPException(status_code=401, detail="Ошибка авторизации")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Ошибка при получении профиля пользователя: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении профиля: {str(e)}")
-
-# Маршрут для обновления профиля пользователя
-@app.put("/auth/profile", tags=["Authentication"])
-async def update_user_profile(
-    request: Request,
-    profile_data: dict
-):
-    try:
-        # Получаем авторизационный заголовок
-        authorization = request.headers.get("Authorization")
-        
-        if not authorization:
-            raise HTTPException(status_code=401, detail="Не предоставлены учетные данные")
-        
-        # Проверяем авторизацию пользователя
-        try:
-            auth_parts = authorization.split()
-            if len(auth_parts) != 2 or auth_parts[0].lower() != 'bearer':
-                raise HTTPException(status_code=401, detail="Неверный формат токена")
-            
-            token = auth_parts[1]
-            # Проверяем токен и получаем данные пользователя
-            user_data = verify_token(token)
-            
-            if not user_data:
-                raise HTTPException(status_code=401, detail="Недействительный токен")
-            
-            # Обновляем данные пользователя в БД
-            conn = app.state.db_pool.getconn()
-            try:
-                cursor = conn.cursor()
-                
-                # Собираем поля для обновления
-                update_fields = []
-                update_values = []
-                
-                if 'full_name' in profile_data:
-                    update_fields.append("full_name = %s")
-                    update_values.append(profile_data['full_name'])
-                
-                if 'email' in profile_data:
-                    update_fields.append("email = %s")
-                    update_values.append(profile_data['email'])
-                
-                if 'phone' in profile_data:
-                    update_fields.append("phone = %s")
-                    update_values.append(profile_data['phone'])
-                
-                if 'birthday' in profile_data and profile_data['birthday']:
-                    update_fields.append("birthday = %s")
-                    update_values.append(profile_data['birthday'])
-                
-                if not update_fields:
-                    raise HTTPException(status_code=400, detail="Не указаны поля для обновления")
-                
-                # Добавляем ID пользователя в значения
-                update_values.append(user_data.get('user_id'))
-                
-                # Формируем SQL запрос
-                sql = f"""
-                    UPDATE users
-                    SET {', '.join(update_fields)}
-                    WHERE id = %s
-                    RETURNING id, username, email, phone, full_name, birthday
-                """
-                
-                cursor.execute(sql, update_values)
-                conn.commit()
-                
-                updated_user = cursor.fetchone()
-                
-                if not updated_user:
-                    raise HTTPException(status_code=404, detail="Пользователь не найден")
-                
-                return {
-                    "id": updated_user['id'],
-                    "username": updated_user['username'],
-                    "email": updated_user.get('email'),
-                    "phone": updated_user.get('phone'),
-                    "full_name": updated_user.get('full_name'),
-                    "birthday": updated_user.get('birthday').isoformat() if updated_user.get('birthday') else None
-                }
-                
-            finally:
-                app.state.db_pool.putconn(conn)
-                
-        except Exception as e:
-            logger.error(f"Ошибка обновления профиля: {e}")
-            raise HTTPException(status_code=401, detail=f"Ошибка обновления профиля: {str(e)}")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Ошибка при обновлении профиля пользователя: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при обновлении профиля: {str(e)}")
-
-# Маршрут для смены пароля
-@app.post("/auth/change-password", tags=["Authentication"])
-async def change_password(
-    request: Request,
-    password_data: dict
-):
-    try:
-        # Получаем авторизационный заголовок
-        authorization = request.headers.get("Authorization")
-        
-        if not authorization:
-            raise HTTPException(status_code=401, detail="Не предоставлены учетные данные")
-        
-        # Проверяем наличие необходимых полей
-        if 'current_password' not in password_data or 'new_password' not in password_data:
-            raise HTTPException(status_code=400, detail="Необходимо указать текущий и новый пароль")
-        
-        # Проверяем авторизацию пользователя
-        try:
-            auth_parts = authorization.split()
-            if len(auth_parts) != 2 or auth_parts[0].lower() != 'bearer':
-                raise HTTPException(status_code=401, detail="Неверный формат токена")
-            
-            token = auth_parts[1]
-            # Проверяем токен и получаем данные пользователя
-            user_data = verify_token(token)
-            
-            if not user_data:
-                raise HTTPException(status_code=401, detail="Недействительный токен")
-            
-            # Меняем пароль пользователя
-            conn = app.state.db_pool.getconn()
-            try:
-                from passlib.context import CryptContext
-                # Контекст для хеширования паролей
-                pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-                
-                cursor = conn.cursor()
-                
-                # Проверяем текущий пароль
-                cursor.execute("""
-                    SELECT password_hash FROM users WHERE id = %s
-                """, (user_data.get('user_id'),))
-                
-                user_password = cursor.fetchone()
-                
-                if not user_password:
-                    raise HTTPException(status_code=404, detail="Пользователь не найден")
-                
-                # Проверяем совпадение текущего пароля
-                if not pwd_context.verify(password_data['current_password'], user_password['password_hash']):
-                    raise HTTPException(status_code=400, detail="Неверный текущий пароль")
-                
-                # Хешируем новый пароль
-                hashed_password = pwd_context.hash(password_data['new_password'])
-                
-                # Обновляем пароль в БД
-                cursor.execute("""
-                    UPDATE users SET password_hash = %s WHERE id = %s
-                """, (hashed_password, user_data.get('user_id')))
-                
-                conn.commit()
-                
-                return {"message": "Пароль успешно изменен"}
-                
-            finally:
-                app.state.db_pool.putconn(conn)
-                
-        except Exception as e:
-            logger.error(f"Ошибка смены пароля: {e}")
-            raise HTTPException(status_code=401, detail=f"Ошибка смены пароля: {str(e)}")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Ошибка при смене пароля: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера при смене пароля: {str(e)}")
-
-# Маршрут для отображения всех зарегистрированных маршрутов в API
-@app.get("/routes", tags=["System"])
-async def list_routes():
-    """
-    Отображает все доступные маршруты API.
-    """
-    routes = []
-    for route in app.routes:
-        methods = [method for method in route.methods] if hasattr(route, "methods") else ["GET"]
-        routes.append({
-            "path": route.path,
-            "name": route.name,
-            "methods": methods
-        })
-    
-    return {
-        "total_routes": len(routes),
-        "routes": routes
-    }
-
-# Корневой маршрут с информацией об API и доступных маршрутах
-@app.get("/", tags=["Root"])
+# Эндпоинт для проверки работы сервера
+@app.get("/")
 async def root():
-    """
-    Корневой маршрут API, возвращает информацию о доступных маршрутах.
-    """
-    routes_info = [
-        {"path": "/products/", "description": "Получение списка всех товаров"},
-        {"path": "/products/categories", "description": "Получение списка всех категорий"},
-        {"path": "/api/products", "description": "API для получения списка всех товаров"},
-        {"path": "/api/categories", "description": "API для получения списка всех категорий"},
-        {"path": "/products/{product_id}", "description": "Получение информации о конкретном товаре"},
-        {"path": "/products/category/{category_slug}", "description": "Получение товаров по категории"},
-        {"path": "/cart/", "description": "Работа с корзиной"},
-        {"path": "/api/cart", "description": "API для работы с корзиной"},
-        {"path": "/orders/", "description": "Работа с заказами"},
-        {"path": "/auth/register", "description": "Регистрация нового пользователя"},
-        {"path": "/auth/login", "description": "Вход пользователя"},
-        {"path": "/auth/profile", "description": "Получение и обновление профиля пользователя"},
-        {"path": "/auth/change-password", "description": "Смена пароля пользователя"},
-        {"path": "/docs", "description": "Документация API"},
-    ]
-    
-    return {
-        "message": "Добро пожаловать в API Север-Рыба",
-        "version": "1.0.0",
-        "documentation": "/docs",
-        "available_routes": routes_info
-    }
-
-# Обработчик ошибок для всего приложения
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """
-    Глобальный обработчик исключений для перехвата и логирования ошибок.
-    """
-    error_msg = f"Необработанная ошибка при обработке запроса {request.url}: {str(exc)}"
-    logger.error(error_msg, exc_info=True)
-    
-    # Возвращаем клиенту понятное сообщение об ошибке
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Произошла внутренняя ошибка сервера. Пожалуйста, попробуйте позже."}
-    )
-
-# Проверка здоровья API
-@app.get("/health", tags=["System"])
-async def health_check():
-    """
-    Маршрут для проверки работоспособности API.
-    """
-    # Проверка подключения к БД
-    try:
-        # Используем get_db_connection напрямую
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        result = cursor.fetchone()
-        
-        # Проверяем доступные таблицы
-        cursor.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        """)
-        tables = [row['table_name'] for row in cursor.fetchall()]
-        
-        conn.close()
-        db_status = "connected"
-        
-        return {
-            "status": "healthy", 
-            "api_version": "1.0.0",
-            "database": db_status,
-            "tables": tables  # Возвращаем список таблиц для отладки
-        }
-    except Exception as e:
-        logger.error(f"Ошибка при проверке соединения с БД: {str(e)}")
-        return {
-            "status": "error", 
-            "api_version": "1.0.0",
-            "database": f"error: {str(e)}"
-        }
-
-# Диагностический маршрут для проверки CORS
-@app.get("/cors-test", tags=["System"])
-async def cors_test(request: Request):
-    """
-    Маршрут для проверки настроек CORS.
-    """
-    origin = request.headers.get("Origin", "Unknown")
-    
-    return {
-        "message": "CORS test successful",
-        "your_origin": origin,
-        "allowed_origins": origins
-    }
-
-# Маршрут для проверки CORS
-@app.options("/{full_path:path}")
-async def options_route(request: Request, full_path: str):
-    """
-    Обработчик OPTIONS запросов для проверки CORS.
-    """
-    # Извлекаем запрошенные заголовки
-    requested_origin = request.headers.get("Origin", "")
-    
-    # Для отладки логируем информацию о запросе
-    logger.info(f"OPTIONS запрос от {requested_origin} к пути: {full_path}")
-    logger.info(f"Заголовки запроса: {dict(request.headers)}")
-    
-    # Собираем ответные заголовки
-    headers = {
-        "Access-Control-Allow-Origin": requested_origin if requested_origin in origins else origins[0],
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "86400",  # кэш на 24 часа
-    }
-    
-    # Логируем отправляемые заголовки
-    logger.info(f"Ответные CORS заголовки: {headers}")
-    
-    return PlainTextResponse("", status_code=200, headers=headers)
-
-if __name__ == "__main__":
-    # Информация о запуске сервера
-    host = "0.0.0.0"
-    port = 8000
-    logger.info(f"Запуск сервера Север-Рыба API на http://{host}:{port}")
-    
-    # Запуск сервера с более подробными логами
-    uvicorn.run(
-        "main:app",
-        host=host,
-        port=port,
-        reload=True,
-        log_level="debug"  # Повышаем уровень логирования для отладки
-    )
+    return {"message": "API Северная рыба работает!"}
