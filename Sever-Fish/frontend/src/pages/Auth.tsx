@@ -106,26 +106,24 @@ const Auth: React.FC = () => {
 
     // Очищаем номер телефона от форматирования
     const phoneNumber = registerForm.phone.replace(/\D/g, '');
+    const username = registerForm.email.split('@')[0];
 
     try {
-      // Отладочное сообщение для проверки данных
-      console.log("Отправляем данные для регистрации:", {
-        username: registerForm.email.split('@')[0],
-        email: registerForm.email,
-        phone: phoneNumber,
-        full_name: registerForm.full_name,
-        password: registerForm.password,
-        password_confirm: registerForm.password_confirm
-      });
-
-      const response = await fetch('http://127.0.0.1:8000/auth/register', {
+      // Создаем URL с параметрами для регистрации
+      const url = new URL('http://127.0.0.1:8000/auth/register');
+      url.searchParams.append('username', username);
+      url.searchParams.append('password', registerForm.password);
+      
+      console.log("URL для регистрации:", url.toString());
+      
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Добавляем поддержку куки
+        credentials: 'include',
         body: JSON.stringify({
-          username: registerForm.email.split('@')[0],
+          username: username,
           email: registerForm.email,
           phone: phoneNumber,
           full_name: registerForm.full_name,
@@ -180,14 +178,21 @@ const Auth: React.FC = () => {
     const phoneNumber = loginForm.phone.replace(/\D/g, '');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/login', {
+      // Создаем URL с параметрами для входа
+      const url = new URL('http://127.0.0.1:8000/auth/login');
+      url.searchParams.append('username', phoneNumber);
+      url.searchParams.append('password', loginForm.password);
+      
+      console.log("URL для входа:", url.toString());
+      
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Добавляем поддержку куки
+        credentials: 'include',
         body: JSON.stringify({
-          phone: phoneNumber,
+          username: phoneNumber,
           password: loginForm.password
         }),
       });
