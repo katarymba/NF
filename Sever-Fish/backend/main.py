@@ -2,8 +2,8 @@ from fastapi import FastAPI, Request, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.middleware.sessions import SessionMiddleware  # Добавляем для поддержки сессий
-# Fix the import to use your local auth functions from utils/auth
-from utils.auth import verify_password, create_access_token, get_password_hash
+# Fix the import to use your local auth functions from utils/auth - use absolute import
+from utils.auth import verify_password, create_access_token, get_password_hash  # Changed from relative to absolute import
 import uvicorn
 import logging
 import sys
@@ -16,10 +16,11 @@ from datetime import datetime
 from database import get_db, get_db_connection  # Импортируем обе функции
 import psycopg2.pool
 from contextlib import asynccontextmanager
+from enum import Enum
 
-# Настройка путей для корректного импорта
+# Настройка путей для корректного импорта - IMPORTANT: This must be at the top before any imports!
 BASE_DIR = Path(__file__).resolve().parent
-sys.path.append(str(BASE_DIR))
+sys.path.insert(0, str(BASE_DIR))  # Changed from append to insert(0) to prioritize it
 
 # Настройка логирования
 logging.basicConfig(
@@ -50,6 +51,14 @@ async def lifespan(app: FastAPI):
     yield
     # При остановке приложения
     db_pool.closeall()
+
+# Определение допустимых статусов заказа
+class OrderStatus(str, Enum):
+    new = "new"
+    processed = "processed"
+    shipped = "shipped"
+    completed = "completed"
+    # pending = "pending"  # Это значение должно быть добавлено в enum если нужно использовать "pending"
 
 # Создаем модели данных для ответа API
 # Обновляем модель CategoryResponse, делая поле description необязательным
@@ -95,6 +104,21 @@ class CartItemResponse(BaseModel):
     quantity: int
     user_id: Optional[int] = None
     product: Optional[ProductResponse] = None
+
+# Класс для заказов
+class OrderResponse(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    status: OrderStatus = OrderStatus.new  # Используем enum для статуса
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    total_amount: float = 0.0
+
+# Модель для создания заказов
+class OrderCreate(BaseModel):
+    user_id: Optional[int] = None
+    status: OrderStatus = OrderStatus.new  # По умолчанию статус "new"
+    total_amount: float = 0.0
 
 # Создание приложения
 app = FastAPI(
@@ -203,6 +227,16 @@ except ImportError as e:
 
 # Маршруты для работы с товарами
 products_router = APIRouter(prefix="/products", tags=["Products"])
+
+# Add this endpoint at the root level of your main.py file, outside of any routers
+@app.get("/products", tags=["Products"])
+async def get_all_products_no_prefix(
+    skip: int = 0,
+    limit: int = 100,
+    db = Depends(get_db)
+):
+    """Direct products endpoint (no router prefix)"""
+    return await get_all_products(skip, limit, db)
 
 # Получить все товары
 @products_router.get("/", response_model=List[ProductResponse])
@@ -518,6 +552,53 @@ try:
     logger.info("Маршруты аутентификации успешно подключены")
 except Exception as e:
     logger.error(f"Ошибка при подключении маршрутов аутентификации: {e}")
+
+# Маршруты для заказов
+orders_router = APIRouter(prefix="/orders", tags=["Orders"])
+
+@orders_router.get("/", response_model=List[OrderResponse])
+async def get_orders(db = Depends(get_db)):
+    """
+    Получение списка заказов
+    """
+    try:
+        logger.info("Запрос всех заказов")
+        cursor = db.cursor()
+        
+        query = """
+        SELECT id, user_id, status, created_at, updated_at, total_amount
+        FROM orders
+        ORDER BY id DESC
+        """
+        cursor.execute(query)
+        orders_raw = cursor.fetchall()
+        
+        # Преобразуем данные в модели
+        orders = []
+        for order_data in orders_raw:
+            # Убедимся, что статус заказа соответствует допустимым значениям
+            # Если статус 'pending', изменим его на 'new'
+            if order_data.get('status') == 'pending':
+                order_data['status'] = 'new'
+                
+            order = OrderResponse(
+                id=order_data['id'],
+                user_id=order_data.get('user_id'),
+                status=order_data.get('status', 'new'),
+                created_at=order_data.get('created_at'),
+                updated_at=order_data.get('updated_at'),
+                total_amount=order_data.get('total_amount', 0.0)
+            )
+            orders.append(order)
+        
+        return orders
+    except Exception as e:
+        logger.error(f"Ошибка при получении заказов: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера при получении заказов: {str(e)}")
+
+# Подключаем маршруты orders
+app.include_router(orders_router)
 
 # Маршруты для работы с корзиной
 cart_router = APIRouter(prefix="/cart", tags=["Cart"])
@@ -1121,6 +1202,7 @@ async def root():
         {"path": "/products/category/{category_slug}", "description": "Получение товаров по категории"},
         {"path": "/cart/", "description": "Работа с корзиной"},
         {"path": "/api/cart", "description": "API для работы с корзиной"},
+        {"path": "/orders/", "description": "Работа с заказами"},
         {"path": "/auth/register", "description": "Регистрация нового пользователя"},
         {"path": "/auth/login", "description": "Вход пользователя"},
         {"path": "/auth/profile", "description": "Получение и обновление профиля пользователя"},

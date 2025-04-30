@@ -135,7 +135,7 @@ interface ProductFilter {
 const API_BASE_URL = 'http://localhost:8080/api/warehouse'; // Изменено на реальный API эндпоинт
 
 // Отключаем режим моковых данных для использования реальной базы
-const USE_MOCK_DATA = false;
+const USE_MOCK_DATA = true;
 
 // Текущая дата и время для системы
 const CURRENT_DATE = '2025-04-29 17:08:54';
