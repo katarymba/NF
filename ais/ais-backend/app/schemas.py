@@ -22,7 +22,7 @@ class AdministratorBase(BaseModel):
     is_active: bool = Field(default=True)
     permissions: Optional[str] = None
     position: Optional[str] = None
-    phone: str = Field(..., min_length=5, max_length=20)  # Изменено на обязательное поле
+    phone: str = Field(..., min_length=5, max_length=20)  
 
 class AdministratorCreate(AdministratorBase):
     password: str = Field(..., min_length=8)

@@ -1,4 +1,3 @@
-# ais/ais-backend/app/main.py
 import os
 import logging
 from datetime import datetime
@@ -26,9 +25,9 @@ try:
     # Проверка подключения к базе данных
     db = SessionLocal()
     db.execute(text("SELECT 1"))
-    logger.info("✅ Подключение к базе данных установлено!")
+    logger.info("Подключение к базе данных установлено!")
 except Exception as e:
-    logger.error(f"❌ Ошибка подключения к базе данных: {e}")
+    logger.error(f"Ошибка подключения к базе данных: {e}")
     raise e
 finally:
     if 'db' in locals():

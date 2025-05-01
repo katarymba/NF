@@ -66,32 +66,6 @@ const ProductManagementModal: React.FC<ProductModalProps> = ({
     }
     setError(null);
   }, [product, categories, isOpen]);
-  
-  // Обработка темной темы для полей ввода
-  useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const formInputs = document.querySelectorAll('.product-form-input');
-    
-    formInputs.forEach(input => {
-      const element = input as HTMLElement;
-      
-      if (isDarkMode) {
-        const darkProps = element.dataset.darkThemeProps;
-        if (darkProps) {
-          // Применяем стили темной темы
-          darkProps.split(';').forEach(prop => {
-            if (!prop.trim()) return;
-            const [key, value] = prop.split(':');
-            element.style.setProperty(key.trim(), value.trim());
-          });
-        }
-      } else {
-        // Сбрасываем к светлой теме
-        element.style.backgroundColor = 'white';
-        element.style.color = 'black';
-      }
-    });
-  }, [isOpen]); // Перезапускаем при открытии окна
 
   // Обработчики изменения полей
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -172,12 +146,6 @@ const ProductManagementModal: React.FC<ProductModalProps> = ({
                 value={formData.name}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 product-form-input"
-                style={{ 
-                  backgroundColor: 'white', 
-                  color: 'black' 
-                }}
-                data-dark-theme-props="background-color: #374151; color: white;"
-                style={{color: 'inherit'}}
                 required
               />
             </div>
@@ -191,7 +159,7 @@ const ProductManagementModal: React.FC<ProductModalProps> = ({
                 value={formData.description || ''}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 product-form-input"
               />
             </div>
 
@@ -200,14 +168,14 @@ const ProductManagementModal: React.FC<ProductModalProps> = ({
                 <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
                   Цена (₽) *
                 </label>
-                                  <input
+                <input
                   type="number"
                   name="price"
                   value={formData.price}
                   onChange={handleChange}
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white product-form-input"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 product-form-input"
                   required
                 />
               </div>
@@ -222,7 +190,7 @@ const ProductManagementModal: React.FC<ProductModalProps> = ({
                   value={formData.stock_quantity}
                   onChange={handleChange}
                   min="0"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 product-form-input"
                   required
                 />
               </div>
@@ -236,7 +204,7 @@ const ProductManagementModal: React.FC<ProductModalProps> = ({
                 name="category_id"
                 value={formData.category_id}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 product-form-input"
                 required
               >
                 <option value="">Выберите категорию</option>
