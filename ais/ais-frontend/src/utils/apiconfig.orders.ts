@@ -25,17 +25,35 @@ export const API_ORDERS_ENDPOINTS = {
   ORDERS_BY_CUSTOMER: (customerId: number) => `${API_BASE_URL}/customers/${customerId}/orders`,
 };
 
-// Типы для работы с заказами
+// Интерфейс заказа, адаптированный для соответствия бэкенду
 export interface Order {
   id: number;
-  customerName: string;
+  
+  // Основные поля для соответствия бэкенду
+  customer_name?: string;
+  client_name?: string;
+  user_id?: number;
   status: string;
-  totalAmount: number;
-  createdAt: string;
-  trackingNumber: string;
-  deliveryAddress?: string;
-  estimatedDelivery?: string;
+  total_amount?: number;
+  total_price?: number;
+  created_at?: string;
+  tracking_number?: string;
+  delivery_address?: string;
+  estimated_delivery?: string;
+  contact_phone?: string;
+  payment_method?: string;
+  delivery_notes?: string;
+  courier_name?: string;
   items?: OrderItem[];
+  order_items?: any;
+  
+  // Эти поля добавлены для обратной совместимости, если где-то
+  // в коде используются camelCase имена
+  customerName?: string;
+  totalAmount?: number;
+  createdAt?: string;
+  trackingNumber?: string;
+  deliveryAddress?: string;
   contactPhone?: string;
   paymentMethod?: string;
   deliveryNotes?: string;
@@ -44,7 +62,9 @@ export interface Order {
 
 export interface OrderItem {
   id: number;
+  product_id?: number;     // Для совместимости с бэкендом
   name: string;
+  product_name?: string;   // Для совместимости с бэкендом
   quantity: number;
   price: number;
 }
