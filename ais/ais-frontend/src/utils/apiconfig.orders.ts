@@ -77,3 +77,61 @@ export enum DeliveryStatus {
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled'
 }
+
+// Добавленные функции ниже:
+
+// Получение русского текстового представления статуса
+export const getStatusText = (status: string): string => {
+  switch (status) {
+    case DeliveryStatus.PENDING:
+      return 'Ожидает обработки';
+    case DeliveryStatus.PROCESSING:
+      return 'В обработке';
+    case DeliveryStatus.SHIPPED:
+      return 'Отправлен';
+    case DeliveryStatus.DELIVERED:
+      return 'Доставлен';
+    case DeliveryStatus.CANCELLED:
+      return 'Отменен';
+    default:
+      return 'Неизвестный статус';
+  }
+};
+
+// Получение класса CSS для статуса
+export const getStatusClass = (status: string): string => {
+  switch (status) {
+    case DeliveryStatus.PENDING:
+      return 'status-pending';
+    case DeliveryStatus.PROCESSING:
+      return 'status-processing';
+    case DeliveryStatus.SHIPPED:
+      return 'status-shipped';
+    case DeliveryStatus.DELIVERED:
+      return 'status-delivered';
+    case DeliveryStatus.CANCELLED:
+      return 'status-cancelled';
+    default:
+      return 'status-unknown';
+  }
+};
+
+// Форматирование цены
+export const formatPrice = (price: number): string => {
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    minimumFractionDigits: 2
+  }).format(price);
+};
+
+// Форматирование даты
+export const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
