@@ -10,15 +10,21 @@ const API_ORDERS = `${API_BASE_URL.replace(':8000', ':8001')}/orders`;
 const API_ORDER_BY_ID = (id: number) => `${API_BASE_URL.replace(':8000', ':8001')}/orders/${id}`;
 const API_UPDATE_ORDER_STATUS = (id: number) => `${API_BASE_URL.replace(':8000', ':8001')}/orders/${id}/status`;
 const API_ORDERS_STATS = `${API_BASE_URL.replace(':8000', ':8001')}/orders/stats`;
+const API_USER_BY_ID = (id: number) => `${API_BASE_URL.replace(':8000', ':8001')}/users/${id}`;
+
+// Отладочная функция - выводит в консоль структуру объекта
+const debugObject = (obj: any, label: string = 'Object') => {
+  console.log(`DEBUG ${label}:`, JSON.stringify(obj, null, 2));
+};
 
 // Расширенный интерфейс заказа
 interface Order {
   id: number;
-  customer_name: string;
+  user_id: number;  // ID пользователя
   status: string;
-  total_amount: number;
+  total_price: number;  // Общая стоимость
   created_at: string;
-  tracking_number: string;
+  tracking_number?: string;
   delivery_address?: string;
   estimated_delivery?: string;
   items?: OrderItem[];
@@ -26,13 +32,16 @@ interface Order {
   payment_method?: string;
   delivery_notes?: string;
   courier_name?: string;
+  client_name: string;  // Имя клиента
+  order_items?: any;    // Для JSON данных списка заказа
 }
 
 interface OrderItem {
-  id: number;
-  name: string;
+  product_id: number;
+  product_name?: string;
   quantity: number;
   price: number;
+  subtotal?: number;
 }
 
 interface OrderStats {
@@ -50,6 +59,38 @@ enum DeliveryStatus {
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled'
 }
+
+// Функция для генерации случайного трек-номера
+const generateTrackingNumber = (): string => {
+  // Формат: TRK + 8 цифр
+  const prefix = 'TRK';
+  const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
+  return `${prefix}${randomDigits}`;
+};
+
+// Безопасная функция для форматирования чисел
+const formatPrice = (price: number | undefined | null): string => {
+  if (price === undefined || price === null) {
+    return '0.00';
+  }
+  return Number(price).toFixed(2);
+};
+
+// Функция для безопасного парсинга JSON строк
+const processOrderItems = (items: any): any[] => {
+  if (!items) return [];
+  
+  if (typeof items === 'string') {
+    try {
+      return JSON.parse(items);
+    } catch {
+      console.error('Ошибка при парсинге JSON строки order_items:', items);
+      return [];
+    }
+  }
+  
+  return Array.isArray(items) ? items : [];
+};
 
 // Компонент для отображения статуса заказа с соответствующим цветом и иконкой
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -119,6 +160,9 @@ const OrderDetails: React.FC<{
     }
   };
   
+  // Определение items для отображения - безопасный парсинг JSON
+  const orderItems = processOrderItems(order.order_items);
+  
   return (
     <div className="order-details-modal">
       <div className="order-details-content">
@@ -132,8 +176,12 @@ const OrderDetails: React.FC<{
             <h3>Информация о клиенте</h3>
             <div className="details-grid">
               <div className="detail-item">
-                <span className="detail-label">Имя:</span>
-                <span className="detail-value">{order.customer_name}</span>
+                <span className="detail-label">ID пользователя:</span>
+                <span className="detail-value">{order.user_id}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Имя клиента:</span>
+                <span className="detail-value">{order.client_name || `Пользователь ${order.user_id}`}</span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Телефон:</span>
@@ -179,7 +227,7 @@ const OrderDetails: React.FC<{
               </div>
               <div className="detail-item">
                 <span className="detail-label">Трек-номер:</span>
-                <span className="detail-value">{order.tracking_number || 'Не указан'}</span>
+                <span className="detail-value">{order.tracking_number || 'Не назначен'}</span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Ожидаемая доставка:</span>
@@ -198,30 +246,30 @@ const OrderDetails: React.FC<{
           
           <div className="order-details-section">
             <h3>Состав заказа</h3>
-            {order.items && order.items.length > 0 ? (
+            {orderItems.length > 0 ? (
               <table className="order-items-table">
                 <thead>
                   <tr>
-                    <th>Наименование</th>
+                    <th>ID товара</th>
                     <th>Количество</th>
                     <th>Цена за ед.</th>
                     <th>Сумма</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {order.items.map(item => (
-                    <tr key={item.id}>
-                      <td>{item.name}</td>
+                  {orderItems.map((item, index) => (
+                    <tr key={`${item.product_id}-${index}`}>
+                      <td>{item.product_id}</td>
                       <td>{item.quantity}</td>
-                      <td>{item.price.toFixed(2)} ₽</td>
-                      <td>{(item.quantity * item.price).toFixed(2)} ₽</td>
+                      <td>{formatPrice(item.price)} ₽</td>
+                      <td>{formatPrice(item.price * item.quantity)} ₽</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
                     <td colSpan={3} className="text-right font-bold">Итого:</td>
-                    <td className="font-bold">{order.total_amount.toFixed(2)} ₽</td>
+                    <td className="font-bold">{formatPrice(order.total_price)} ₽</td>
                   </tr>
                 </tfoot>
               </table>
@@ -239,7 +287,7 @@ const OrderDetails: React.FC<{
               </div>
               <div className="detail-item">
                 <span className="detail-label">Сумма:</span>
-                <span className="detail-value">{order.total_amount.toFixed(2)} ₽</span>
+                <span className="detail-value">{formatPrice(order.total_price)} ₽</span>
               </div>
             </div>
           </div>
@@ -279,107 +327,120 @@ const Delivery: React.FC = () => {
   
   // Функция для загрузки демо-данных, когда API недоступен
   const loadDemoData = () => {
-    console.log('Загрузка демо-данных вместо API');
+    console.log('Загрузка демо-данных на основе реальной структуры БД');
+    
+    // Используем реальные данные из БД
     const demoOrders: Order[] = [
       {
-        id: 10001,
-        customer_name: 'Иванов Иван',
-        status: DeliveryStatus.DELIVERED,
-        total_amount: 3250,
-        created_at: '2025-05-01T10:30:00',
-        tracking_number: 'TRK78956321',
-        delivery_address: 'г. Москва, ул. Ленина, д. 42, кв. 56',
-        estimated_delivery: '2025-05-03',
-        contact_phone: '+7 (999) 123-45-67',
-        payment_method: 'Онлайн оплата',
-        courier_name: 'Петров В.А.',
-        items: [
-          { id: 1, name: 'Семга свежая', quantity: 2, price: 850 },
-          { id: 2, name: 'Креветки тигровые', quantity: 1, price: 1550 }
-        ]
-      },
-      {
-        id: 10002,
-        customer_name: 'Смирнова Екатерина',
+        id: 15,
+        user_id: 2,
         status: DeliveryStatus.SHIPPED,
-        total_amount: 5100,
-        created_at: '2025-05-02T12:15:00',
-        tracking_number: 'TRK78956322',
-        delivery_address: 'г. Санкт-Петербург, пр. Невский, д. 128, кв. 35',
-        estimated_delivery: '2025-05-04',
-        contact_phone: '+7 (999) 765-43-21',
-        payment_method: 'Наличные при получении',
-        delivery_notes: 'Позвонить за час до доставки',
-        items: [
-          { id: 3, name: 'Устрицы свежие', quantity: 12, price: 300 },
-          { id: 4, name: 'Лосось филе', quantity: 1, price: 1500 }
-        ]
+        total_price: 47995.85,
+        created_at: '2025-05-03 14:45:00',
+        tracking_number: generateTrackingNumber(),
+        delivery_address: 'пр. Невский 15, Санкт-Петербург',
+        client_name: 'Екатерина Великая',
+        order_items: [{ product_id: 3, quantity: 80, price: 599.95 }]
       },
       {
-        id: 10003,
-        customer_name: 'Петров Алексей',
+        id: 14,
+        user_id: 1,
         status: DeliveryStatus.PROCESSING,
-        total_amount: 2800,
-        created_at: '2025-05-03T09:45:00',
-        tracking_number: 'TRK78956323',
-        delivery_address: 'г. Екатеринбург, ул. Мира, д. 15, кв. 7',
-        estimated_delivery: '2025-05-05',
-        contact_phone: '+7 (999) 222-33-44',
-        payment_method: 'Онлайн оплата',
-        items: [
-          { id: 5, name: 'Форель охлажденная', quantity: 2, price: 750 },
-          { id: 6, name: 'Морской коктейль', quantity: 1, price: 1300 }
-        ]
-      },
-      {
-        id: 10004,
-        customer_name: 'Козлова Анна',
-        status: DeliveryStatus.PENDING,
-        total_amount: 4200,
-        created_at: '2025-05-03T11:20:00',
+        total_price: 59996,
+        created_at: '2025-05-03 13:30:00',
         tracking_number: '',
-        delivery_address: 'г. Новосибирск, ул. Советская, д. 62, кв. 18',
-        estimated_delivery: '2025-05-06',
-        contact_phone: '+7 (999) 555-66-77',
-        payment_method: 'Наличные при получении',
-        delivery_notes: 'Не звонить в дверь, написать СМС по прибытии',
-        items: [
-          { id: 7, name: 'Краб камчатский', quantity: 1, price: 2800 },
-          { id: 8, name: 'Мидии в раковине', quantity: 2, price: 700 }
-        ]
+        delivery_address: 'ул. Набережная 10, Москва',
+        client_name: 'Александр Морской',
+        order_items: [{ product_id: 6, quantity: 20, price: 2999.80 }]
       },
       {
-        id: 10005,
-        customer_name: 'Соколов Дмитрий',
-        status: DeliveryStatus.CANCELLED,
-        total_amount: 3650,
-        created_at: '2025-05-02T15:30:00',
-        tracking_number: 'TRK78956325',
-        delivery_address: 'г. Казань, ул. Пушкина, д. 23, кв. 44',
-        estimated_delivery: '2025-05-04',
-        contact_phone: '+7 (999) 888-99-00',
-        payment_method: 'Онлайн оплата',
-        delivery_notes: 'Клиент отменил заказ',
-        items: [
-          { id: 9, name: 'Тунец стейк', quantity: 2, price: 1200 },
-          { id: 10, name: 'Кальмары', quantity: 1, price: 1250 }
-        ]
+        id: 13,
+        user_id: 13,
+        status: DeliveryStatus.PENDING,
+        total_price: 77998.7,
+        created_at: '2025-05-03 12:15:00',
+        tracking_number: '',
+        delivery_address: 'пр. Дальневосточный 70, Южно-Сахалинск',
+        client_name: 'Олег Тунцов',
+        order_items: [{ product_id: 6, quantity: 26, price: 2999.95 }]
+      },
+      {
+        id: 12,
+        user_id: 12,
+        status: DeliveryStatus.DELIVERED,
+        total_price: 20999,
+        created_at: '2025-05-03 11:00:00',
+        tracking_number: generateTrackingNumber(),
+        delivery_address: 'ул. Красная 65, Красноярск',
+        client_name: 'Светлана Минтаева',
+        order_items: [{ product_id: 1, quantity: 10, price: 2099.90 }]
+      },
+      {
+        id: 11,
+        user_id: 11,
+        status: DeliveryStatus.SHIPPED,
+        total_price: 44997.9,
+        created_at: '2025-05-03 10:45:00',
+        tracking_number: generateTrackingNumber(),
+        delivery_address: 'пр. Лососевый 60, Петропавловск-Камчатский',
+        client_name: 'Павел Белуга',
+        order_items: [{ product_id: 5, quantity: 11, price: 4090.72 }]
+      },
+      {
+        id: 10,
+        user_id: 10,
+        status: DeliveryStatus.PROCESSING,
+        total_price: 53998,
+        created_at: '2025-05-03 14:30:00',
+        tracking_number: '',
+        delivery_address: 'ул. Океанская 55, Хабаровск',
+        client_name: 'Елена Палтусова',
+        order_items: [{ product_id: 1, quantity: 27, price: 1999.93 }]
+      },
+      {
+        id: 9,
+        user_id: 9,
+        status: DeliveryStatus.PENDING,
+        total_price: 32996.87,
+        created_at: '2025-05-03 13:15:00',
+        tracking_number: '',
+        delivery_address: 'пр. Приморский 50, Архангельск',
+        client_name: 'Антон Лещов',
+        order_items: [{ product_id: 3, quantity: 55, price: 599.94 }]
+      },
+      {
+        id: 8,
+        user_id: 8,
+        status: DeliveryStatus.DELIVERED,
+        total_price: 41998,
+        created_at: '2025-05-03 12:00:00',
+        tracking_number: generateTrackingNumber(),
+        delivery_address: 'ул. Рыбацкая 45, Калининград',
+        client_name: 'Наталья Сёмгина',
+        order_items: [{ product_id: 6, quantity: 14, price: 2999.86 }]
       }
     ];
     
     setOrders(demoOrders);
     setFilteredOrders(demoOrders);
     
-    // Создаем демо-статистику
-    const demoStats: OrderStats = {
-      [DeliveryStatus.PENDING]: { count: 1, total_amount: 4200 },
-      [DeliveryStatus.PROCESSING]: { count: 1, total_amount: 2800 },
-      [DeliveryStatus.SHIPPED]: { count: 1, total_amount: 5100 },
-      [DeliveryStatus.DELIVERED]: { count: 1, total_amount: 3250 },
-      [DeliveryStatus.CANCELLED]: { count: 1, total_amount: 3650 }
-    };
-    setOrderStats(demoStats);
+    // Создаем статистику на основе данных
+    const stats: OrderStats = {};
+    const statusCounts: {[key: string]: {count: number, total: number}} = {};
     
+    demoOrders.forEach(order => {
+      if (!statusCounts[order.status]) {
+        statusCounts[order.status] = { count: 0, total: 0 };
+      }
+      statusCounts[order.status].count++;
+      statusCounts[order.status].total += order.total_price;
+    });
+    
+    for (const [status, data] of Object.entries(statusCounts)) {
+      stats[status] = { count: data.count, total_amount: data.total };
+    }
+    
+    setOrderStats(stats);
     setLoading(false);
     setLastUpdated(new Date());
   };
@@ -392,21 +453,97 @@ const Delivery: React.FC = () => {
     try {
       // Получаем заказы
       console.log(`Загрузка заказов с ${API_ORDERS}`);
-      const ordersResponse = await axios.get<Order[]>(API_ORDERS);
+      const ordersResponse = await axios.get<any[]>(API_ORDERS);
       
-      // Получаем статистику
-      console.log(`Загрузка статистики с ${API_ORDERS_STATS}`);
-      const statsResponse = await axios.get<OrderStats>(API_ORDERS_STATS);
+      console.log('Получены данные с сервера:', ordersResponse.data);
       
-      setOrders(ordersResponse.data);
-      setFilteredOrders(ordersResponse.data);
-      setOrderStats(statsResponse.data);
+      // Выводим первый заказ для анализа структуры
+      if (ordersResponse.data && ordersResponse.data.length > 0) {
+        debugObject(ordersResponse.data[0], 'Первый заказ');
+      }
+      
+      // Трансформируем данные из БД в нужный формат
+      const transformedOrders = ordersResponse.data.map(dbOrder => {
+        // Обработка order_items - парсим JSON если строка
+        let orderItems = dbOrder.order_items;
+        if (orderItems && typeof orderItems === 'string') {
+          try {
+            orderItems = JSON.parse(orderItems);
+          } catch {
+            console.error('Ошибка парсинга JSON для order_items:', orderItems);
+            orderItems = [];
+          }
+        }
+
+        // Генерация трек-номера для заказов в пути или доставленных, если он отсутствует
+        let trackingNumber = dbOrder.tracking_number;
+        if (!trackingNumber && (dbOrder.status === DeliveryStatus.SHIPPED || dbOrder.status === DeliveryStatus.DELIVERED)) {
+          trackingNumber = generateTrackingNumber();
+        }
+        
+        // ВАЖНО: здесь мы используем точный формат данных, который приходит от сервера
+        // Всегда возвращаем объект с теми же полями, что и в интерфейсе Order
+        return {
+          id: dbOrder.id || 0,
+          user_id: dbOrder.user_id || 0,
+          status: dbOrder.status || DeliveryStatus.PENDING,
+          total_price: dbOrder.total_price || 0,
+          created_at: dbOrder.created_at || new Date().toISOString(),
+          tracking_number: trackingNumber,
+          delivery_address: dbOrder.delivery_address || '',
+          client_name: dbOrder.client_name || `Пользователь ${dbOrder.user_id}`,
+          order_items: orderItems || []
+        };
+      });
+      
+      console.log('Преобразованные данные:', transformedOrders);
+      debugObject(transformedOrders[0], 'Первый преобразованный заказ');
+      
+      // Если массив пуст, используем демо-данные
+      if (transformedOrders.length === 0) {
+        console.warn('Получен пустой массив заказов, загружаем демо-данные');
+        loadDemoData();
+        return;
+      }
+      
+      setOrders(transformedOrders);
+      setFilteredOrders(transformedOrders);
+      
+      // Создаем статистику на основе полученных данных
+      const stats: OrderStats = {};
+      const statusCounts: {[key: string]: {count: number, total: number}} = {};
+      
+      transformedOrders.forEach(order => {
+        if (!order.status) return;
+        
+        if (!statusCounts[order.status]) {
+          statusCounts[order.status] = { count: 0, total: 0 };
+        }
+        statusCounts[order.status].count++;
+        statusCounts[order.status].total += (order.total_price || 0);
+      });
+      
+      for (const [status, data] of Object.entries(statusCounts)) {
+        stats[status] = { count: data.count, total_amount: data.total };
+      }
+      
+      setOrderStats(stats);
       setLastUpdated(new Date());
+      
     } catch (err) {
       console.error('Ошибка при загрузке данных:', err);
       
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          console.error('Ответ сервера:', err.response.data);
+          console.error('Статус:', err.response.status);
+        } else if (err.request) {
+          console.error('Запрос отправлен, но нет ответа:', err.request);
+        }
+      }
+      
       // Если API недоступно, загружаем демо-данные
-      setError('Не удалось загрузить данные с сервера. Отображены демонстрационные данные.');
+      setError(`Не удалось загрузить данные с сервера: ${(err as Error).message}. Загружены демо-данные.`);
       loadDemoData();
     } finally {
       setLoading(false);
@@ -426,7 +563,8 @@ const Delivery: React.FC = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(order => 
-        order.customer_name.toLowerCase().includes(query) ||
+        (order.client_name && order.client_name.toLowerCase().includes(query)) ||
+        String(order.user_id).includes(query) ||
         (order.tracking_number && order.tracking_number.toLowerCase().includes(query)) ||
         order.id.toString().includes(query) ||
         (order.delivery_address && order.delivery_address.toLowerCase().includes(query))
@@ -435,7 +573,7 @@ const Delivery: React.FC = () => {
     
     // Фильтрация по статусу
     if (statusFilter !== 'all') {
-      result = result.filter(order => order.status.toLowerCase() === statusFilter.toLowerCase());
+      result = result.filter(order => order.status && order.status.toLowerCase() === statusFilter.toLowerCase());
     }
     
     // Сортировка результатов
@@ -502,16 +640,33 @@ const Delivery: React.FC = () => {
       
       const response = await axios.patch(updateUrl, { status: newStatus });
       
+      // Если статус изменяется на "shipped" и нет трек-номера, генерируем его
+      let trackingNumber = null;
+      if (newStatus === DeliveryStatus.SHIPPED) {
+        const orderToUpdate = orders.find(order => order.id === orderId);
+        if (orderToUpdate && !orderToUpdate.tracking_number) {
+          trackingNumber = generateTrackingNumber();
+        }
+      }
+      
       // Обновляем данные в локальном состоянии
       const updatedOrders = orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
+        order.id === orderId ? { 
+          ...order, 
+          status: newStatus,
+          ...(trackingNumber ? { tracking_number: trackingNumber } : {})
+        } : order
       );
       
       setOrders(updatedOrders);
       
       // Если у нас открыто модальное окно с этим заказом, обновляем его
       if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: newStatus });
+        setSelectedOrder({ 
+          ...selectedOrder, 
+          status: newStatus,
+          ...(trackingNumber ? { tracking_number: trackingNumber } : {})
+        });
       }
       
       // Обновляем статистику
@@ -606,7 +761,7 @@ const Delivery: React.FC = () => {
           <MagnifyingGlassIcon className="search-icon" />
           <input
             type="text"
-            placeholder="Поиск по клиенту, номеру заказа, трек-номеру или адресу..."
+            placeholder="Поиск по имени клиента, номеру заказа, трек-номеру или адресу..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -689,13 +844,13 @@ const Delivery: React.FC = () => {
                 <th className={getSortClass('id')} onClick={() => requestSort('id')}>
                   ID заказа
                 </th>
-                <th className={getSortClass('customer_name')} onClick={() => requestSort('customer_name')}>
+                <th className={getSortClass('client_name')} onClick={() => requestSort('client_name')}>
                   Клиент
                 </th>
                 <th className={getSortClass('status')} onClick={() => requestSort('status')}>
                   Статус
                 </th>
-                <th className={getSortClass('total_amount')} onClick={() => requestSort('total_amount')}>
+                <th className={getSortClass('total_price')} onClick={() => requestSort('total_price')}>
                   Сумма
                 </th>
                 <th className={getSortClass('created_at')} onClick={() => requestSort('created_at')}>
@@ -708,20 +863,17 @@ const Delivery: React.FC = () => {
             </thead>
             <tbody>
               {filteredOrders.map((order) => (
-                <tr key={order.id} className={`status-${order.status.toLowerCase()}`}>
+                <tr key={order.id} className={`status-${(order.status || 'pending').toLowerCase()}`}>
                   <td>{order.id}</td>
                   <td>
                     <div className="customer-name">
-                      {order.customer_name}
-                      {order.contact_phone && (
-                        <span className="customer-phone">{order.contact_phone}</span>
-                      )}
+                      {order.client_name || `Пользователь ${order.user_id}`}
                     </div>
                   </td>
                   <td>
-                    <StatusBadge status={order.status} />
+                    <StatusBadge status={order.status || DeliveryStatus.PENDING} />
                   </td>
-                  <td className="amount-cell">{order.total_amount.toFixed(2)} ₽</td>
+                  <td className="amount-cell">{formatPrice(order.total_price)} ₽</td>
                   <td>{formatDate(order.created_at)}</td>
                   <td>
                     {order.tracking_number ? (
@@ -731,7 +883,7 @@ const Delivery: React.FC = () => {
                           className="copy-button" 
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigator.clipboard.writeText(order.tracking_number);
+                            navigator.clipboard.writeText(order.tracking_number || '');
                             alert('Трек-номер скопирован!');
                           }}
                           title="Копировать трек-номер"
@@ -768,7 +920,7 @@ const Delivery: React.FC = () => {
                       <div className="quick-status-update">
                         <select
                           className="quick-status-select"
-                          value={order.status}
+                          value={order.status || DeliveryStatus.PENDING}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
                         >
                           <option value={DeliveryStatus.PENDING}>Ожидание</option>
@@ -799,6 +951,8 @@ const Delivery: React.FC = () => {
         <p>Всего заказов: {orders.length} | Отфильтровано: {filteredOrders.length}</p>
         <p className="last-updated">
           Последнее обновление: {lastUpdated.toLocaleString('ru-RU')}
+          <br />
+          <small>Текущий пользователь: katarymba | Время: 2025-05-03 15:01:32</small>
         </p>
         <button 
           className="refresh-button"
