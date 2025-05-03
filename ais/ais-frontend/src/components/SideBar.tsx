@@ -26,7 +26,7 @@ const navItems = [
     { to: '/warehouse', label: 'Склад', Icon: BuildingStorefrontIcon }, // Новый пункт меню для склада
     { to: '/orders', label: 'Заказы', Icon: ArchiveBoxIcon },
     { to: '/payments', label: 'Платежи', Icon: WalletIcon },
-    { to: '/shipments', label: 'Доставка', Icon: TruckIcon },
+    { to: '/delivery', label: 'Доставка', Icon: TruckIcon },
     { to: '/reports', label: 'Отчеты', Icon: DocumentTextIcon },
     { to: '/analytics', label: 'Аналитика', Icon: ChartBarIcon },
 ];

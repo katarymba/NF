@@ -13,21 +13,19 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import SyncPage from './pages/SyncPage';
 import Reports from './pages/Reports'; // Импорт страницы отчетов
 import Warehouse from './pages/Warehouse'; // Импорт страницы склада
+import Delivery from './pages/Delivery'; // Импорт страницы доставки
 import Home from './pages/Home';
 
 const App: React.FC = () => {
-    // Получаем токен из localStorage при инициализации
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-    // Функция для установки токена
     const handleToken = (newToken: string) => {
         console.log("Token received:", newToken.substring(0, 10) + "...");
         localStorage.setItem('token', newToken);
         setToken(newToken);
     };
 
-    // Проверяем валидность токена при загрузке приложения
     useEffect(() => {
         const checkAuth = async () => {
             const storedToken = localStorage.getItem('token');
@@ -41,7 +39,6 @@ const App: React.FC = () => {
                     });
                     
                     if (!response.ok) {
-                        // Токен недействителен, удаляем его
                         console.log("Токен недействителен, выполняется выход");
                         localStorage.removeItem('token');
                         setToken(null);
@@ -61,7 +58,6 @@ const App: React.FC = () => {
         checkAuth();
     }, []);
 
-    // Показываем индикатор загрузки, пока проверяем авторизацию
     if (isCheckingAuth) {
         return <div className="flex items-center justify-center h-screen">Загрузка...</div>;
     }
@@ -91,7 +87,6 @@ const App: React.FC = () => {
                         element={<Products />}
                     />
 
-                    {/* Добавляем новый маршрут для страницы склада */}
                     <Route
                         path="warehouse"
                         element={<Warehouse token={token || ''} />}
@@ -112,20 +107,24 @@ const App: React.FC = () => {
                         element={<Payments token={''} />}
                     />
                     
-                    {/* Маршрут для страницы отчетов */}
                     <Route
                         path="reports"
                         element={<Reports />}
                     />
-                    
+
                     <Route
                         path="analytics"
                         element={<AnalyticsDashboard />}
                     />
-                    
+
                     <Route
                         path="sync"
                         element={<SyncPage />}
+                    />
+
+                    <Route
+                        path="delivery"
+                        element={<Delivery />}
                     />
                     
                     <Route
