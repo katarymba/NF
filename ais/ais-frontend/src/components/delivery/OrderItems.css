@@ -1,0 +1,76 @@
+/* 
+ * Стили для компонента элементов заказа
+ * @file ais/ais-frontend/src/components/delivery/OrderItems.css
+ */
+
+ .order-items {
+    margin-top: 20px;
+  }
+  
+  .order-items h3 {
+    color: #344767;
+    font-size: 1.125rem;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .items-count {
+    font-size: 0.875rem;
+    color: #5a636c;
+    margin-left: 8px;
+    font-weight: normal;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+  }
+  
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 500px;
+  }
+  
+  .items-table th {
+    background-color: #f8f9fa;
+    color: #5a636c;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 15px;
+    font-size: 0.875rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .items-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    color: #344767;
+  }
+  
+  .items-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .items-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+  }
+  
+  .items-table tr:hover {
+    background-color: #f1f3f5;
+  }
+  
+  /* Адаптивные стили */
+  @media (max-width: 768px) {
+    .order-items h3 {
+      font-size: 1rem;
+    }
+    
+    .items-table th,
+    .items-table td {
+      padding: 10px 12px;
+      font-size: 0.875rem;
+    }
+  }

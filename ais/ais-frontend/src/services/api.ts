@@ -175,3 +175,65 @@ export async function deleteProduct(productId: number): Promise<void> {
    method: 'DELETE'
  });
 }
+
+/**
+ * Получение пользователя по ID
+ */
+export async function getUserById(userId: number): Promise<any> {
+  try {
+    return await fetchWithAuth(`${API_ENDPOINTS.api}/users/${userId}`);
+  } catch (error) {
+    console.error(`Error getting user #${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Получение заказа по ID
+ */
+export async function getOrderById(orderId: number): Promise<any> {
+  try {
+    return await fetchWithAuth(`${API_ENDPOINTS.api}/orders/${orderId}`);
+  } catch (error) {
+    console.error(`Error getting order #${orderId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Получение заказов пользователя
+ */
+export async function getUserOrders(userId: number): Promise<any[]> {
+  try {
+    return await fetchWithAuth(`${API_ENDPOINTS.api}/users/${userId}/orders`);
+  } catch (error) {
+    console.error(`Error getting orders for user #${userId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Обновление статуса заказа
+ */
+export async function updateOrderStatus(orderId: number, status: string): Promise<any> {
+  return fetchWithAuth(`${API_ENDPOINTS.api}/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ status })
+  });
+}
+
+/**
+ * Обновление адреса доставки
+ */
+export async function updateDeliveryAddress(orderId: number, deliveryAddress: string): Promise<any> {
+  return fetchWithAuth(`${API_ENDPOINTS.api}/orders/${orderId}/delivery-address`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ delivery_address: deliveryAddress })
+  });
+}

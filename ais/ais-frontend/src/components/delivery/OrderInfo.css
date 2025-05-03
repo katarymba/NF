@@ -1,0 +1,95 @@
+/* 
+ * Стили для компонента информации о заказе
+ * @file ais/ais-frontend/src/components/delivery/OrderInfo.css
+ */
+
+ .order-info-container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    height: 100%;
+  }
+  
+  .order-info-container h2 {
+    color: #344767;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .order-date {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .delivery-address {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .order-total {
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px 15px;
+  }
+  
+  .order-total .info-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #344767;
+  }
+  
+  /* Стили для состояния загрузки */
+  .order-items-skeleton {
+    height: 200px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    margin: 20px 0;
+  }
+  
+  /* Адаптивные стили */
+  @media (max-width: 768px) {
+    .order-info-container {
+      padding: 15px;
+    }
+    
+    .order-info-container h2 {
+      font-size: 1.25rem;
+    }
+    
+    .order-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .order-total {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .order-total .info-value {
+      font-size: 1.125rem;
+    }
+  }

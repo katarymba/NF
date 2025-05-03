@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { MapPinIcon, TruckIcon, ClockIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import './Delivery.css';
+import '../styles/Delivery.css';
 import { API_BASE_URL } from '../utils/apiConfig';
 import { API_ORDERS_ENDPOINTS, Order as ApiOrder, OrderItem as ApiOrderItem, DeliveryStatus } from '../utils/apiconfig.orders';
 

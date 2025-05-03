@@ -1,0 +1,82 @@
+/* 
+ * Стили для компонента бейджа статуса заказа
+ * @file ais/ais-frontend/src/components/delivery/OrderStatusBadge.css
+ */
+
+ .status-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 16px;
+    padding: 4px 10px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  
+  .status-badge.small {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+  
+  .status-badge.medium {
+    font-size: 13px;
+    padding: 4px 10px;
+  }
+  
+  .status-badge.large {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
+  
+  .status-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+  }
+  
+  .status-badge.small .status-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .status-badge.large .status-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+  }
+  
+  /* Стили для разных статусов */
+  .status-pending {
+    background-color: #fff8e1;
+    color: #ff8f00;
+    border: 1px solid #ffe082;
+  }
+  
+  .status-processing {
+    background-color: #e3f2fd;
+    color: #0277bd;
+    border: 1px solid #90caf9;
+  }
+  
+  .status-shipped {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+  }
+  
+  .status-delivered {
+    background-color: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #81c784;
+  }
+  
+  .status-cancelled {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+  }
+  
+  .status-unknown {
+    background-color: #f5f5f5;
+    color: #616161;
+    border: 1px solid #e0e0e0;
+  }
