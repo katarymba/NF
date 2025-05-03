@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { MapPinIcon, TruckIcon, ClockIcon, CheckCircleIcon, XCircleIcon, ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import './Delivery.css';
-import { API_BASE_URL } from '../../config/apiconfig';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 // Добавим эндпоинт для заказов в конфигурацию API
 // Обновим порт с 8000 на 8001
