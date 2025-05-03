@@ -1,236 +1,565 @@
-// ais/ais-frontend/src/pages/Orders.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Table, Tag, Button, Card, Select, Input, DatePicker, Typography, Space, Spin, Tooltip, Modal, Drawer, Form, notification } from 'antd';
+import { SearchOutlined, FilterOutlined, ReloadOutlined, EyeOutlined, EditOutlined, ExportOutlined, SyncOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import { getOrders } from '../services/api';
+import axios from 'axios';
+import { Order, DeliveryStatus, getStatusText, getStatusClass, formatPrice, formatDate } from '../utils/apiconfig.orders';
+import { sendOrderToSeverRyba } from '../services/integration';
+import dayjs from 'dayjs';
+import '../styles/Orders.css';
 
-interface Order {
-   id: number;
-   total_price: number;
-   status: string;
-   created_at: string;
-   customer_name?: string;
-   // Дополнительные поля
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { RangePicker } = DatePicker;
+
+interface OrderWithPayment extends Order {
+  payment_method?: string;
+  payment_status?: string;
+  transaction_id?: string;
+  payment_created_at?: string;
+  client_name?: string;
+  phone?: string;
+  email?: string;
 }
 
 interface OrdersProps {
-   token: string;
+  token: string;
 }
 
 const Orders: React.FC<OrdersProps> = ({ token }) => {
-   const [orders, setOrders] = useState<Order[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [error, setError] = useState<string | null>(null);
-   const [filter, setFilter] = useState<string>('all');
+  const [orders, setOrders] = useState<OrderWithPayment[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchText, setSearchText] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+  const [orderDetails, setOrderDetails] = useState<OrderWithPayment | null>(null);
+  const [detailsVisible, setDetailsVisible] = useState<boolean>(false);
+  const [editVisible, setEditVisible] = useState<boolean>(false);
+  const [editForm] = Form.useForm();
+  const [syncingOrder, setSyncingOrder] = useState<number | null>(null);
 
-   useEffect(() => {
-       const fetchOrders = async () => {
-           try {
-               setLoading(true);
-               // Используем функцию из api.ts, которая корректно обрабатывает ошибки
-               const data = await getOrders();
-               setOrders(data);
-               setError(null);
-           } catch (err) {
-               console.error('Ошибка при загрузке заказов:', err);
-               setError('Не удалось загрузить данные заказов');
-           } finally {
-               setLoading(false);
-           }
-       };
+  const API_BASE_URL = 'http://localhost:8080/ais';
 
-       if (token) {
-           fetchOrders();
-       } else {
-           setLoading(false);
-           setError('Требуется авторизация');
-       }
-   }, [token]);
+  // Получение данных заказов с платежами
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      // Получаем данные из АИС API
+      const response = await axios.get(`${API_BASE_URL}/api/orders/with-payments`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (response.data) {
+        setOrders(response.data);
+      } else {
+        notification.error({
+          message: 'Ошибка при загрузке данных',
+          description: 'Не удалось загрузить данные заказов'
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при получении заказов:', error);
+      notification.error({
+        message: 'Ошибка при загрузке данных',
+        description: 'Проверьте соединение с сервером'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-   // Функция форматирования даты
-   const formatDate = (dateString: string): string => {
-       try {
-           const options: Intl.DateTimeFormatOptions = {
-               year: 'numeric',
-               month: 'short',
-               day: 'numeric',
-               hour: '2-digit',
-               minute: '2-digit'
-           };
-           return new Date(dateString).toLocaleDateString('ru-RU', options);
-       } catch (e) {
-           return dateString;
-       }
-   };
+  useEffect(() => {
+    if (token) {
+      fetchOrders();
+    }
+  }, [token]);
 
-   // Функция форматирования цены
-   const formatPrice = (price: number): string => {
-       try {
-           return price.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,") + ' ₽';
-       } catch (e) {
-           return `${price} ₽`;
-       }
-   };
+  // Обновление статуса заказа
+  const updateOrderStatus = async (id: number, status: string) => {
+    try {
+      await axios.patch(`${API_BASE_URL}/api/orders/${id}/status`, 
+        { status },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      notification.success({
+        message: 'Статус обновлен',
+        description: `Статус заказа №${id} изменен на "${getStatusText(status)}"`
+      });
+      fetchOrders(); // Обновляем список заказов
+    } catch (error) {
+      console.error('Ошибка при обновлении статуса:', error);
+      notification.error({
+        message: 'Ошибка при обновлении',
+        description: 'Не удалось обновить статус заказа'
+      });
+    }
+  };
 
-   // Функция получения класса для статуса заказа
-   const getStatusClass = (status: string): string => {
-       switch (status) {
-           case 'new':
-               return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-           case 'processing':
-               return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-           case 'shipped':
-               return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-           case 'completed':
-               return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-           case 'cancelled':
-               return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-           default:
-               return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-       }
-   };
+  // Отправка заказа в Север-Рыбу
+  const syncOrderWithSeverRyba = async (orderId: number) => {
+    setSyncingOrder(orderId);
+    try {
+      await sendOrderToSeverRyba(orderId, token);
+      notification.success({
+        message: 'Синхронизация выполнена',
+        description: `Заказ №${orderId} успешно отправлен в Север-Рыбу`
+      });
+    } catch (error) {
+      console.error(`Ошибка при отправке заказа ${orderId} в Север-Рыбу:`, error);
+      notification.error({
+        message: 'Ошибка синхронизации',
+        description: 'Не удалось отправить заказ в Север-Рыбу'
+      });
+    } finally {
+      setSyncingOrder(null);
+    }
+  };
 
-   // Функция получения названия статуса заказа
-   const getStatusLabel = (status: string): string => {
-       const statusLabels: {[key: string]: string} = {
-           'new': 'Новый',
-           'processing': 'Обрабатывается',
-           'shipped': 'Отправлен',
-           'completed': 'Выполнен',
-           'cancelled': 'Отменен'
-       };
-       return statusLabels[status] || status;
-   };
+  // Открытие деталей заказа
+  const showOrderDetails = (order: OrderWithPayment) => {
+    setOrderDetails(order);
+    setDetailsVisible(true);
+  };
 
-   // Фильтрация заказов по статусу
-   const filteredOrders = filter === 'all' 
-       ? orders 
-       : orders.filter(order => order.status === filter);
+  // Открытие формы редактирования
+  const showEditForm = (order: OrderWithPayment) => {
+    setOrderDetails(order);
+    editForm.setFieldsValue({
+      status: order.status,
+      delivery_address: order.delivery_address,
+      contact_phone: order.contact_phone,
+      delivery_notes: order.delivery_notes
+    });
+    setEditVisible(true);
+  };
 
-   // Если нет данных, показываем заглушку
-   if (loading) {
-       return (
-           <div className="flex justify-center items-center h-48">
-               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-           </div>
-       );
-   }
+  // Сохранение изменений заказа
+  const handleSaveChanges = async (values: any) => {
+    if (!orderDetails?.id) return;
+    
+    try {
+      await axios.patch(
+        `${API_BASE_URL}/api/orders/${orderDetails.id}`, 
+        values,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      notification.success({
+        message: 'Заказ обновлен',
+        description: `Заказ №${orderDetails.id} успешно обновлен`
+      });
+      setEditVisible(false);
+      fetchOrders(); // Обновляем список заказов
+    } catch (error) {
+      console.error('Ошибка при обновлении заказа:', error);
+      notification.error({
+        message: 'Ошибка при обновлении',
+        description: 'Не удалось обновить данные заказа'
+      });
+    }
+  };
 
-   if (error) {
-       return (
-           <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
-               <p>{error}</p>
-               <p className="mt-2 text-sm">На данный момент сервер с заказами может быть недоступен. Это тестовая версия приложения.</p>
-           </div>
-       );
-   }
+  // Применение фильтров
+  const filteredOrders = orders.filter(order => {
+    // Фильтр по строке поиска
+    const searchMatch = !searchText || 
+      order.id.toString().includes(searchText) || 
+      (order.client_name && order.client_name.toLowerCase().includes(searchText.toLowerCase())) ||
+      (order.transaction_id && order.transaction_id.includes(searchText));
+    
+    // Фильтр по статусу
+    const statusMatch = !statusFilter || order.status === statusFilter;
+    
+    // Фильтр по диапазону дат
+    let dateMatch = true;
+    if (dateRange && dateRange[0] && dateRange[1] && order.created_at) {
+      const orderDate = dayjs(order.created_at);
+      dateMatch = orderDate.isAfter(dateRange[0]) && orderDate.isBefore(dateRange[1]);
+    }
+    
+    return searchMatch && statusMatch && dateMatch;
+  });
 
-   return (
-       <div className="container mx-auto p-4">
-           <div className="flex justify-between items-center mb-6">
-               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Заказы</h1>
-               <div className="flex space-x-2">
-                   <select 
-                       value={filter}
-                       onChange={(e) => setFilter(e.target.value)}
-                       className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-2 px-3 shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                   >
-                       <option value="all">Все заказы</option>
-                       <option value="new">Новые</option>
-                       <option value="processing">В обработке</option>
-                       <option value="shipped">Отправленные</option>
-                       <option value="completed">Выполненные</option>
-                       <option value="cancelled">Отмененные</option>
-                   </select>
-               </div>
-           </div>
-           
-           {filteredOrders.length === 0 ? (
-               <div className="text-center py-12">
-                   <p className="text-gray-500 dark:text-gray-400">Нет заказов для отображения</p>
-                   {/* Пример заказа для удобства разработки */}
-                   <div className="mt-8 p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                       <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300">Пример заказа (данные для разработки)</h2>
-                       <div className="mt-2 bg-white dark:bg-gray-800 shadow-sm p-4 rounded-md">
-                           <div className="flex justify-between">
-                               <div>
-                                   <p className="font-medium">Заказ #123456</p>
-                                   <p className="text-sm text-gray-500">Иванов Иван</p>
-                               </div>
-                               <div className="text-right">
-                                   <p className="text-sm text-gray-500">12 апр. 2025, 15:30</p>
-                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                       Новый
-                                   </span>
-                               </div>
-                           </div>
-                           <p className="mt-2 font-medium">Сумма: 12 500 ₽</p>
-                       </div>
-                   </div>
-               </div>
-           ) : (
-               <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-                   <div className="overflow-x-auto">
-                       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                           <thead className="bg-gray-50 dark:bg-gray-700">
-                               <tr>
-                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                       ID
-                                   </th>
-                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                       Клиент
-                                   </th>
-                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                       Дата
-                                   </th>
-                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                       Сумма
-                                   </th>
-                                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                       Статус
-                                   </th>
-                                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                       Действия
-                                   </th>
-                               </tr>
-                           </thead>
-                           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                               {filteredOrders.map((order) => (
-                                   <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                           #{order.id}
-                                       </td>
-                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                           {order.customer_name || 'Неизвестно'}
-                                       </td>
-                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                           {formatDate(order.created_at)}
-                                       </td>
-                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
-                                           {formatPrice(order.total_price)}
-                                       </td>
-                                       <td className="px-6 py-4 whitespace-nowrap">
-                                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(order.status)}`}>
-                                               {getStatusLabel(order.status)}
-                                           </span>
-                                       </td>
-                                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                           <Link 
-                                               to={`/orders/${order.id}`}
-                                               className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
-                                           >
-                                               Подробнее
-                                           </Link>
-                                       </td>
-                                   </tr>
-                               ))}
-                           </tbody>
-                       </table>
-                   </div>
-               </div>
-           )}
-       </div>
-   );
+  // Экспорт в Excel
+  const exportToExcel = () => {
+    notification.info({
+      message: 'Экспорт данных',
+      description: 'Подготовка файла для экспорта...'
+    });
+
+    try {
+      window.open(`${API_BASE_URL}/api/orders/export?format=excel&token=${encodeURIComponent(token)}`, '_blank');
+    } catch (error) {
+      notification.error({
+        message: 'Ошибка при экспорте',
+        description: 'Не удалось экспортировать данные'
+      });
+    }
+  };
+
+  // Очистка всех фильтров
+  const clearFilters = () => {
+    setSearchText('');
+    setStatusFilter(null);
+    setDateRange(null);
+  };
+
+  // Колонки таблицы
+  const columns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      sorter: (a: OrderWithPayment, b: OrderWithPayment) => a.id - b.id,
+      render: (id: number) => (
+        <Link to={`/orders/${id}`}>{id}</Link>
+      ),
+    },
+    {
+      title: 'Клиент',
+      dataIndex: 'client_name',
+      key: 'client_name',
+      render: (text: string, record: OrderWithPayment) => (
+        <div>
+          <div>{text}</div>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            ID: {record.user_id}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: 'Сумма',
+      dataIndex: 'total_price',
+      key: 'total_price',
+      render: (price: number) => formatPrice(price),
+      sorter: (a: OrderWithPayment, b: OrderWithPayment) => 
+        (a.total_price || 0) - (b.total_price || 0),
+    },
+    {
+      title: 'Дата создания',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (date: string) => formatDate(date),
+      sorter: (a: OrderWithPayment, b: OrderWithPayment) => 
+        new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime(),
+    },
+    {
+      title: 'Статус',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag className={getStatusClass(status)}>
+          {getStatusText(status)}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Оплата',
+      dataIndex: 'payment_status',
+      key: 'payment_status',
+      render: (status: string, record: OrderWithPayment) => (
+        <div>
+          <Tag color={
+            status === 'completed' ? 'green' : 
+            status === 'processing' ? 'blue' : 
+            status === 'pending' ? 'orange' : 'default'
+          }>
+            {status === 'completed' ? 'Оплачен' : 
+             status === 'processing' ? 'Обрабатывается' : 
+             status === 'pending' ? 'Ожидает' : 'Неизвестно'}
+          </Tag>
+          <div style={{ fontSize: '12px', marginTop: '4px' }}>
+            {record.payment_method}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Действия',
+      key: 'actions',
+      render: (text: string, record: OrderWithPayment) => (
+        <Space>
+          <Tooltip title="Просмотр деталей">
+            <Link to={`/orders/${record.id}`}>
+              <Button 
+                type="primary" 
+                size="small" 
+                icon={<EyeOutlined />}
+              />
+            </Link>
+          </Tooltip>
+          <Tooltip title="Редактировать">
+            <Button 
+              type="default" 
+              size="small" 
+              icon={<EditOutlined />} 
+              onClick={() => showEditForm(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Отправить в Север-Рыбу">
+            <Button 
+              type="default" 
+              size="small" 
+              icon={<SyncOutlined spin={syncingOrder === record.id} />} 
+              onClick={() => syncOrderWithSeverRyba(record.id)}
+              loading={syncingOrder === record.id}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className="orders-page">
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <Title level={3}>Управление заказами</Title>
+          <Space>
+            <Button 
+              type="primary" 
+              icon={<ReloadOutlined />} 
+              onClick={fetchOrders}
+              loading={loading}
+            >
+              Обновить
+            </Button>
+            <Button 
+              type="default" 
+              icon={<ExportOutlined />} 
+              onClick={exportToExcel}
+            >
+              Экспорт в Excel
+            </Button>
+          </Space>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <Space wrap>
+            <Input 
+              placeholder="Поиск по ID, клиенту или транзакции" 
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 300 }}
+              prefix={<SearchOutlined />}
+              allowClear
+            />
+            <Select 
+              placeholder="Статус заказа" 
+              style={{ width: 180 }} 
+              value={statusFilter}
+              onChange={setStatusFilter}
+              allowClear
+            >
+              <Option value={DeliveryStatus.PENDING}>Ожидает обработки</Option>
+              <Option value={DeliveryStatus.PROCESSING}>В обработке</Option>
+              <Option value={DeliveryStatus.SHIPPED}>Отправлен</Option>
+              <Option value={DeliveryStatus.DELIVERED}>Доставлен</Option>
+              <Option value={DeliveryStatus.CANCELLED}>Отменен</Option>
+            </Select>
+            <RangePicker 
+              placeholder={['Дата с', 'Дата по']}
+              onChange={(dates) => setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null])}
+              value={dateRange}
+            />
+            <Button type="default" onClick={clearFilters} icon={<FilterOutlined />}>
+              Сбросить фильтры
+            </Button>
+          </Space>
+        </div>
+
+        <Spin spinning={loading}>
+          <Table 
+            dataSource={filteredOrders}
+            columns={columns}
+            rowKey="id"
+            pagination={{ 
+              pageSize: 10,
+              showSizeChanger: true, 
+              showTotal: (total) => `Всего: ${total} заказов`,
+              pageSizeOptions: ['10', '20', '50']
+            }}
+          />
+        </Spin>
+      </Card>
+
+      {/* Модальное окно с деталями заказа */}
+      <Drawer
+        title={`Детали заказа №${orderDetails?.id}`}
+        width={600}
+        onClose={() => setDetailsVisible(false)}
+        open={detailsVisible}
+        extra={
+          <Space>
+            <Button type="primary" onClick={() => showEditForm(orderDetails as OrderWithPayment)}>
+              Редактировать
+            </Button>
+          </Space>
+        }
+      >
+        {orderDetails && (
+          <div>
+            <Card title="Основная информация" style={{ marginBottom: '16px' }}>
+              <p><strong>Клиент:</strong> {orderDetails.client_name}</p>
+              <p><strong>ID пользователя:</strong> {orderDetails.user_id}</p>
+              <p><strong>Дата создания:</strong> {formatDate(orderDetails.created_at || '')}</p>
+              <p><strong>Статус:</strong> <Tag className={getStatusClass(orderDetails.status)}>{getStatusText(orderDetails.status)}</Tag></p>
+              <p><strong>Сумма заказа:</strong> {formatPrice(orderDetails.total_price || 0)}</p>
+            </Card>
+            
+            <Card title="Информация об оплате" style={{ marginBottom: '16px' }}>
+              <p><strong>Способ оплаты:</strong> {orderDetails.payment_method}</p>
+              <p><strong>Статус оплаты:</strong> {
+                orderDetails.payment_status === 'completed' ? 'Оплачен' : 
+                orderDetails.payment_status === 'processing' ? 'Обрабатывается' : 
+                orderDetails.payment_status === 'pending' ? 'Ожидает оплаты' : 'Неизвестно'
+              }</p>
+              <p><strong>ID транзакции:</strong> {orderDetails.transaction_id}</p>
+              <p><strong>Дата оплаты:</strong> {orderDetails.payment_created_at && formatDate(orderDetails.payment_created_at)}</p>
+            </Card>
+            
+            <Card title="Информация о доставке" style={{ marginBottom: '16px' }}>
+              <p><strong>Адрес доставки:</strong> {orderDetails.delivery_address}</p>
+              <p><strong>Трек-номер:</strong> {orderDetails.tracking_number || 'Не присвоен'}</p>
+              <p><strong>Примечание к доставке:</strong> {orderDetails.delivery_notes || 'Нет'}</p>
+            </Card>
+            
+            <Card title="Товары в заказе">
+              <Table 
+                dataSource={(() => {
+                  // Обработка разных форматов данных о товарах
+                  if (orderDetails.items && Array.isArray(orderDetails.items)) {
+                    return orderDetails.items;
+                  }
+                  if (orderDetails.order_items) {
+                    // Если order_items это JSON-строка, пробуем распарсить
+                    if (typeof orderDetails.order_items === 'string') {
+                      try {
+                        return JSON.parse(orderDetails.order_items);
+                      } catch (e) {
+                        console.error('Ошибка парсинга JSON:', e);
+                        return [];
+                      }
+                    }
+                    // Если order_items уже объект или массив
+                    if (Array.isArray(orderDetails.order_items)) {
+                      return orderDetails.order_items;
+                    }
+                  }
+                  return [];
+                })()}
+                pagination={false}
+                rowKey={(record, index) => `${record.product_id || ''}-${index}`}
+                columns={[
+                  {
+                    title: 'ID товара',
+                    dataIndex: 'product_id',
+                    key: 'product_id',
+                  },
+                  {
+                    title: 'Название',
+                    dataIndex: 'name',
+                    key: 'name',
+                    render: (text, record: any) => text || record.product_name || 'Товар',
+                  },
+                  {
+                    title: 'Количество',
+                    dataIndex: 'quantity',
+                    key: 'quantity',
+                  },
+                  {
+                    title: 'Цена за ед.',
+                    dataIndex: 'price',
+                    key: 'price',
+                    render: (price: number) => formatPrice(price),
+                  },
+                  {
+                    title: 'Итого',
+                    key: 'total',
+                    render: (text, record: any) => formatPrice(record.price * record.quantity),
+                  },
+                ]}
+              />
+            </Card>
+          </div>
+        )}
+      </Drawer>
+
+      {/* Форма редактирования заказа */}
+      <Modal
+        title={`Редактирование заказа №${orderDetails?.id}`}
+        open={editVisible}
+        onCancel={() => setEditVisible(false)}
+        footer={null}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleSaveChanges}
+        >
+          <Form.Item
+            name="status"
+            label="Статус заказа"
+            rules={[{ required: true, message: 'Выберите статус заказа' }]}
+          >
+            <Select>
+              <Option value={DeliveryStatus.PENDING}>Ожидает обработки</Option>
+              <Option value={DeliveryStatus.PROCESSING}>В обработке</Option>
+              <Option value={DeliveryStatus.SHIPPED}>Отправлен</Option>
+              <Option value={DeliveryStatus.DELIVERED}>Доставлен</Option>
+              <Option value={DeliveryStatus.CANCELLED}>Отменен</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="delivery_address"
+            label="Адрес доставки"
+          >
+            <Input.TextArea rows={2} />
+          </Form.Item>
+
+          <Form.Item
+            name="contact_phone"
+            label="Телефон для связи"
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="delivery_notes"
+            label="Примечание к доставке"
+          >
+            <Input.TextArea rows={3} />
+          </Form.Item>
+
+          <Form.Item>
+            <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button onClick={() => setEditVisible(false)}>
+                Отмена
+              </Button>
+              <Button type="primary" htmlType="submit">
+                Сохранить
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
 };
 
 export default Orders;

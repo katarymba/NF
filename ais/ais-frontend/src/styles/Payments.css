@@ -1,0 +1,584 @@
+/* Основные стили страницы платежей */
+.payments-page {
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  
+  .payments-page h1 {
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  
+  /* Статистические карточки */
+  .stats-cards {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  
+  .stat-card {
+    flex: 1;
+    min-width: 180px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .stat-title {
+    font-size: 14px;
+    color: #5f6368;
+    margin-bottom: 12px;
+  }
+  
+  .stat-value {
+    font-size: 32px;
+    font-weight: 500;
+    color: #202124;
+  }
+  
+  .stat-value.completed {
+    color: #34a853;
+  }
+  
+  .stat-value.pending {
+    color: #fbbc05;
+  }
+  
+  .stat-value.processing {
+    color: #4285f4;
+  }
+  
+  /* Панель действий */
+  .actions-panel {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 16px;
+    background-color: #fff;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #5f6368;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .btn:hover {
+    background-color: #f1f3f4;
+  }
+  
+  .btn-primary {
+    background-color: #4285f4;
+    color: white;
+    border: none;
+  }
+  
+  .btn-primary:hover {
+    background-color: #3b78e7;
+  }
+  
+  .icon {
+    margin-right: 8px;
+  }
+  
+  /* Фильтры */
+  .filters-panel {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .filters-panel h3 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #202124;
+  }
+  
+  .filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 16px;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .filter-group label {
+    font-size: 14px;
+    color: #202124;
+    margin-bottom: 8px;
+  }
+  
+  /* Базовые стили для полей формы, адаптируемые под текущую тему */
+  :root {
+    --input-bg-light: #ffffff;
+    --input-border-light: #dadce0;
+    --input-text-light: #202124;
+    --input-bg-dark: #202124;
+    --input-border-dark: #5f6368;
+    --input-text-dark: #ffffff;
+  }
+  
+  /* Селекторы для определения текущей темы */
+  html:not([data-theme="dark"]) .filter-group select,
+  html:not([data-theme="dark"]) .filter-group input,
+  html:not([data-theme="dark"]) .form-group select,
+  html:not([data-theme="dark"]) .form-group input {
+    background-color: var(--input-bg-light);
+    color: var(--input-text-light);
+    border: 1px solid var(--input-border-light);
+  }
+  
+  html[data-theme="dark"] .filter-group select,
+  html[data-theme="dark"]) .filter-group input,
+  html[data-theme="dark"]) .form-group select,
+  html[data-theme="dark"]) .form-group input {
+    background-color: var(--input-bg-dark);
+    color: var(--input-text-dark);
+    border: 1px solid var(--input-border-dark);
+  }
+  
+  .filter-group select,
+  .filter-group input {
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    appearance: none;
+  }
+  
+  /* Стрелки для выпадающих списков */
+  .filter-group select {
+    padding-right: 30px;
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  
+  html:not([data-theme="dark"]) .filter-group select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23202124' d='M6 8.825L1.763 4.5 2.487 3.775 6 7.364 9.513 3.775 10.237 4.5z'/%3E%3C/svg%3E");
+  }
+  
+  html[data-theme="dark"] .filter-group select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 8.825L1.763 4.5 2.487 3.775 6 7.364 9.513 3.775 10.237 4.5z'/%3E%3C/svg%3E");
+  }
+  
+  /* Плейсхолдеры для поиска */
+  html:not([data-theme="dark"]) .filter-group input::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  
+  html[data-theme="dark"] .filter-group input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  /* Вкладки */
+  .tabs-container {
+    display: flex;
+    border-bottom: 1px solid #dadce0;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  
+  .tabs-container::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .tab {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #5f6368;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    border: none;
+    background: transparent;
+  }
+  
+  .tab:hover {
+    color: #4285f4;
+  }
+  
+  .tab.active {
+    color: #4285f4;
+    font-weight: 500;
+  }
+  
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #4285f4;
+  }
+  
+  /* Таблица платежей */
+  .table-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  
+  html[data-theme="dark"] .table-container {
+    background-color: #2d2e30;
+  }
+  
+  .payments-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .payments-table th {
+    background-color: #ffffff;
+    color: #5f6368;
+    font-weight: 500;
+    text-align: left;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 14px;
+  }
+  
+  html[data-theme="dark"] .payments-table th {
+    background-color: #2d2e30;
+    border-bottom: 1px solid #3c4043;
+    color: #9aa0a6;
+  }
+  
+  .payments-table td {
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 14px;
+    color: #202124;
+  }
+  
+  html[data-theme="dark"] .payments-table td {
+    border-bottom: 1px solid #3c4043;
+    color: #e8eaed;
+  }
+  
+  .payments-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .payments-table tr:hover td {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  html[data-theme="dark"] .payments-table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Статусы */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    padding: 0 12px;
+    font-size: 12px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+  
+  .status-badge.completed {
+    background-color: #e6f4ea;
+    color: #188038;
+  }
+  
+  .status-badge.pending {
+    background-color: #fef7e0;
+    color: #b06000;
+  }
+  
+  .status-badge.processing {
+    background-color: #e8f0fe;
+    color: #1967d2;
+  }
+  
+  .status-badge.failed {
+    background-color: #fce8e6;
+    color: #c5221f;
+  }
+  
+  /* Кнопки действий в таблице */
+  .actions-cell {
+    white-space: nowrap;
+    text-align: right;
+  }
+  
+  .btn-action {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    margin-left: 8px;
+  }
+  
+  .btn-action.edit {
+    background-color: #4285f4;
+    color: white;
+  }
+  
+  .btn-action.delete {
+    background-color: #ea4335;
+    color: white;
+  }
+  
+  /* Пустые данные */
+  .empty-row {
+    height: 200px;
+  }
+  
+  .no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0;
+    color: #5f6368;
+  }
+  
+  html[data-theme="dark"] .no-data {
+    color: #9aa0a6;
+  }
+  
+  .no-data .icon {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+  
+  /* Загрузчик */
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+  }
+  
+  .spinner {
+    border: 2px solid rgba(66, 133, 244, 0.1);
+    border-top: 2px solid #4285f4;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Модальное окно */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 600px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 38px rgba(0, 0, 0, 0.14), 0 9px 46px rgba(0, 0, 0, 0.12);
+  }
+  
+  html[data-theme="dark"] .modal-content {
+    background-color: #2d2e30;
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  html[data-theme="dark"] .modal-header {
+    border-bottom: 1px solid #3c4043;
+  }
+  
+  .modal-header h2 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+    color: #202124;
+  }
+  
+  html[data-theme="dark"] .modal-header h2 {
+    color: #e8eaed;
+  }
+  
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #5f6368;
+  }
+  
+  html[data-theme="dark"] .modal-close {
+    color: #9aa0a6;
+  }
+  
+  .modal-body {
+    padding: 24px;
+  }
+  
+  .form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .form-group {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .form-group label {
+    display: block;
+    font-size: 14px;
+    color: #202124;
+    margin-bottom: 8px;
+  }
+  
+  html[data-theme="dark"] .form-group label {
+    color: #e8eaed;
+  }
+  
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  
+  .form-group input[type="datetime-local"] {
+    padding: 0 8px;
+  }
+  
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  
+  .btn-cancel {
+    background-color: transparent;
+    color: #5f6368;
+    border: 1px solid #dadce0;
+  }
+  
+  html[data-theme="dark"] .btn-cancel {
+    color: #e8eaed;
+    border: 1px solid #3c4043;
+  }
+  
+  .btn-cancel:hover {
+    background-color: #f1f3f4;
+  }
+  
+  html[data-theme="dark"] .btn-cancel:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Медиа-запросы для адаптивности */
+  @media (max-width: 768px) {
+    .filters-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+      flex-direction: column;
+    }
+    
+    .stats-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    
+    .btn {
+      padding: 0 12px;
+      font-size: 13px;
+    }
+  }
+  
+  /* Светлая/темная тема для всех компонентов */
+  /* Статистические карточки */
+  html[data-theme="dark"] .stat-card {
+    background-color: #2d2e30;
+  }
+  
+  html[data-theme="dark"] .stat-title {
+    color: #9aa0a6;
+  }
+  
+  html[data-theme="dark"] .stat-value {
+    color: #e8eaed;
+  }
+  
+  /* Кнопки */
+  html[data-theme="dark"] .btn {
+    background-color: #3c4043;
+    border-color: #5f6368;
+    color: #e8eaed;
+  }
+  
+  html[data-theme="dark"] .btn:hover {
+    background-color: #4d5156;
+  }
+  
+  /* Фильтры */
+  html[data-theme="dark"] .filters-panel {
+    background-color: #2d2e30;
+  }
+  
+  html[data-theme="dark"] .filters-panel h3 {
+    color: #e8eaed;
+  }
+  
+  /* Опции для выпадающих списков */
+  html[data-theme="dark"] select option {
+    background-color: #2d2e30;
+    color: #e8eaed;
+  }

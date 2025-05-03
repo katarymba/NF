@@ -314,24 +314,3 @@ class PaymentResponse(PaymentInDB):
 class PaymentListResponse(PaymentInDB):
   pass
 
-# ------------------------------
-# Схема для объединенных данных заказа и платежа
-# ------------------------------
-class OrderWithPayment(BaseModel):
-    id: int
-    user_id: int
-    client_name: Optional[str] = None
-    total_price: float
-    created_at: datetime
-    status: str
-    delivery_address: Optional[str] = None
-    tracking_number: Optional[str] = None
-    payment_method: Optional[str] = None
-    payment_status: Optional[str] = None
-    transaction_id: Optional[str] = None
-    payment_created_at: Optional[datetime] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    order_items: Optional[List[dict]] = None
-    
-    model_config = ConfigDict(from_attributes=True)

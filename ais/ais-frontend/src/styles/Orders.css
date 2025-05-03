@@ -1,0 +1,99 @@
+/* Стили для страницы заказов */
+
+.orders-page {
+    padding: 20px;
+  }
+  
+  .status-pending {
+    color: #fa8c16;
+    background-color: #fff7e6;
+    border-color: #ffd591;
+  }
+  
+  .status-processing {
+    color: #1890ff;
+    background-color: #e6f7ff;
+    border-color: #91d5ff;
+  }
+  
+  .status-shipped {
+    color: #52c41a;
+    background-color: #f6ffed;
+    border-color: #b7eb8f;
+  }
+  
+  .status-delivered {
+    color: #52c41a;
+    background-color: #f6ffed;
+    border-color: #b7eb8f;
+  }
+  
+  .status-cancelled {
+    color: #f5222d;
+    background-color: #fff1f0;
+    border-color: #ffa39e;
+  }
+  
+  .order-details-card {
+    margin-bottom: 16px;
+    border-radius: 8px;
+  }
+  
+  .order-details-card .ant-card-head {
+    background-color: #fafafa;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+  }
+  
+  .order-item-row {
+    transition: all 0.3s;
+  }
+  
+  .order-item-row:hover {
+    background-color: #f5f5f5;
+  }
+  
+  /* Анимация для загрузки */
+  .loading-spinner {
+    animation: spin 1.2s infinite linear;
+  }
+  
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* Стили для фильтров */
+  .filters-container {
+    margin-bottom: 20px;
+  }
+  
+  /* Стиль для кнопок действий */
+  .action-buttons .ant-btn {
+    margin-right: 8px;
+  }
+  
+  /* Стили для мобильной версии */
+  @media (max-width: 768px) {
+    .filters-container {
+      flex-direction: column;
+    }
+    
+    .filters-container > * {
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .page-header .ant-btn-group {
+      margin-top: 10px;
+    }
+  }
