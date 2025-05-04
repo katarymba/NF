@@ -38,32 +38,60 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   const [editForm] = Form.useForm();
   const [syncingOrder, setSyncingOrder] = useState<number | null>(null);
 
-  const API_BASE_URL = 'http://localhost:8080/ais';
+  // Исправлено: используем корректный URL для API
+  const API_BASE_URL = 'http://localhost:8080';
 
   // Получение данных заказов с платежами
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      // Получаем данные из АИС API
-      const response = await axios.get(`${API_BASE_URL}/api/orders/with-payments`, {
+      // Получаем данные из базы PostgreSQL через API
+      const response = await axios.get(`${API_BASE_URL}/api/orders`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       
       if (response.data) {
-        setOrders(response.data);
+        // Правильная обработка данных из PostgreSQL
+        const formattedOrders = response.data.map((order: any) => {
+          // Обработка order_items если они представлены в виде строки JSON
+          let orderItems = order.order_items;
+          if (typeof orderItems === 'string') {
+            try {
+              orderItems = JSON.parse(orderItems);
+            } catch (e) {
+              console.error('Ошибка при парсинге order_items:', e);
+              orderItems = [];
+            }
+          }
+          
+          return {
+            ...order,
+            order_items: orderItems,
+            // Преобразование платежного метода в русский текст
+            payment_method: order.payment_method === 'online_card' ? 'Онлайн картой' : 
+                            order.payment_method === 'sbp' ? 'СБП' : 
+                            order.payment_method === 'cash' ? 'Наличными' : order.payment_method,
+            // Устанавливаем статус оплаты на основе наличия payment_method
+            payment_status: order.payment_method ? 'completed' : 'pending',
+            // Добавляем другие необходимые поля
+            items: orderItems
+          };
+        });
+        
+        setOrders(formattedOrders);
       } else {
         notification.error({
           message: 'Ошибка при загрузке данных',
-          description: 'Не удалось загрузить данные заказов'
+          description: 'Не удалось загрузить данные заказов из базы данных'
         });
       }
     } catch (error) {
       console.error('Ошибка при получении заказов:', error);
       notification.error({
         message: 'Ошибка при загрузке данных',
-        description: 'Проверьте соединение с сервером'
+        description: 'Проверьте соединение с сервером и базой данных PostgreSQL'
       });
     } finally {
       setLoading(false);
@@ -107,7 +135,29 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   const syncOrderWithSeverRyba = async (orderId: number) => {
     setSyncingOrder(orderId);
     try {
-      await sendOrderToSeverRyba(orderId, token);
+      // Здесь мы напрямую используем данные из PostgreSQL
+      const orderToSync = orders.find(order => order.id === orderId);
+      
+      if (!orderToSync) {
+        throw new Error('Заказ не найден');
+      }
+      
+      // Формируем данные для отправки в Север-Рыбу в соответствии с форматом их таблицы
+      const syncData = {
+        id: orderToSync.id,
+        user_id: orderToSync.user_id,
+        total_price: orderToSync.total_price,
+        created_at: orderToSync.created_at,
+        status: orderToSync.status,
+        client_name: orderToSync.client_name || 'Не указан',
+        delivery_address: orderToSync.delivery_address,
+        order_items: orderToSync.order_items || orderToSync.items,
+        payment_method: orderToSync.payment_method
+      };
+      
+      // Отправка данных через интеграционный сервис
+      await sendOrderToSeverRyba(orderId, token, syncData);
+      
       notification.success({
         message: 'Синхронизация выполнена',
         description: `Заказ №${orderId} успешно отправлен в Север-Рыбу`
@@ -234,7 +284,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
       key: 'client_name',
       render: (text: string, record: OrderWithPayment) => (
         <div>
-          <div>{text}</div>
+          <div>{text || 'Клиент не указан'}</div>
           <Text type="secondary" style={{ fontSize: '12px' }}>
             ID: {record.user_id}
           </Text>
@@ -269,21 +319,21 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
     },
     {
       title: 'Оплата',
-      dataIndex: 'payment_status',
-      key: 'payment_status',
-      render: (status: string, record: OrderWithPayment) => (
+      dataIndex: 'payment_method',
+      key: 'payment_method',
+      render: (method: string, record: OrderWithPayment) => (
         <div>
           <Tag color={
-            status === 'completed' ? 'green' : 
-            status === 'processing' ? 'blue' : 
-            status === 'pending' ? 'orange' : 'default'
+            record.payment_status === 'completed' ? 'green' : 
+            record.payment_status === 'processing' ? 'blue' : 
+            record.payment_status === 'pending' ? 'orange' : 'default'
           }>
-            {status === 'completed' ? 'Оплачен' : 
-             status === 'processing' ? 'Обрабатывается' : 
-             status === 'pending' ? 'Ожидает' : 'Неизвестно'}
+            {record.payment_status === 'completed' ? 'Оплачен' : 
+             record.payment_status === 'processing' ? 'Обрабатывается' : 
+             record.payment_status === 'pending' ? 'Ожидает' : 'Неизвестно'}
           </Tag>
           <div style={{ fontSize: '12px', marginTop: '4px' }}>
-            {record.payment_method}
+            {method}
           </div>
         </div>
       ),
@@ -294,13 +344,12 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
       render: (text: string, record: OrderWithPayment) => (
         <Space>
           <Tooltip title="Просмотр деталей">
-            <Link to={`/orders/${record.id}`}>
-              <Button 
-                type="primary" 
-                size="small" 
-                icon={<EyeOutlined />}
-              />
-            </Link>
+            <Button 
+              type="primary" 
+              size="small" 
+              icon={<EyeOutlined />}
+              onClick={() => showOrderDetails(record)}
+            />
           </Tooltip>
           <Tooltip title="Редактировать">
             <Button 
@@ -405,7 +454,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
         open={detailsVisible}
         extra={
           <Space>
-            <Button type="primary" onClick={() => showEditForm(orderDetails as OrderWithPayment)}>
+            <Button type="primary" onClick={() => orderDetails && showEditForm(orderDetails)}>
               Редактировать
             </Button>
           </Space>
@@ -414,7 +463,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
         {orderDetails && (
           <div>
             <Card title="Основная информация" style={{ marginBottom: '16px' }}>
-              <p><strong>Клиент:</strong> {orderDetails.client_name}</p>
+              <p><strong>Клиент:</strong> {orderDetails.client_name || 'Не указан'}</p>
               <p><strong>ID пользователя:</strong> {orderDetails.user_id}</p>
               <p><strong>Дата создания:</strong> {formatDate(orderDetails.created_at || '')}</p>
               <p><strong>Статус:</strong> <Tag className={getStatusClass(orderDetails.status)}>{getStatusText(orderDetails.status)}</Tag></p>
@@ -422,14 +471,14 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
             </Card>
             
             <Card title="Информация об оплате" style={{ marginBottom: '16px' }}>
-              <p><strong>Способ оплаты:</strong> {orderDetails.payment_method}</p>
+              <p><strong>Способ оплаты:</strong> {orderDetails.payment_method || 'Не указан'}</p>
               <p><strong>Статус оплаты:</strong> {
                 orderDetails.payment_status === 'completed' ? 'Оплачен' : 
                 orderDetails.payment_status === 'processing' ? 'Обрабатывается' : 
                 orderDetails.payment_status === 'pending' ? 'Ожидает оплаты' : 'Неизвестно'
               }</p>
-              <p><strong>ID транзакции:</strong> {orderDetails.transaction_id}</p>
-              <p><strong>Дата оплаты:</strong> {orderDetails.payment_created_at && formatDate(orderDetails.payment_created_at)}</p>
+              <p><strong>ID транзакции:</strong> {orderDetails.transaction_id || 'Нет данных'}</p>
+              <p><strong>Дата оплаты:</strong> {orderDetails.payment_created_at ? formatDate(orderDetails.payment_created_at) : 'Нет данных'}</p>
             </Card>
             
             <Card title="Информация о доставке" style={{ marginBottom: '16px' }}>
