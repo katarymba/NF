@@ -283,7 +283,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Введите текст для поиска..."
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
           />
         </div>
         
@@ -294,7 +294,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
           <select
             value={filter === null ? '' : filter}
             onChange={(e) => handleFilterChange(e.target.value ? Number(e.target.value) : null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
           >
             <option value="">Все категории</option>
             {categories.map((category) => (
@@ -313,7 +313,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
             >
               <option value="name">По названию</option>
               <option value="price">По цене</option>
@@ -480,7 +480,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                       required
                       value={newProduct.name}
                       onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
                     />
                   </div>
                   
@@ -493,7 +493,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                       rows={3}
                       value={newProduct.description}
                       onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
                     />
                   </div>
                   
@@ -506,7 +506,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                       required
                       value={newProduct.category_id}
                       onChange={(e) => setNewProduct({...newProduct, category_id: Number(e.target.value)})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
                     >
                       <option value="">Выберите категорию</option>
                       {categories.map((category) => (
@@ -529,7 +529,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                       required
                       value={newProduct.price}
                       onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
                     />
                   </div>
                   
@@ -544,7 +544,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                       required
                       value={newProduct.stock_quantity}
                       onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value)})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
                     />
                   </div>
                   
@@ -557,7 +557,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                       type="text"
                       value={newProduct.image_url}
                       onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
                     />
                   </div>
                 </div>

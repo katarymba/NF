@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Получение URL сервисов из переменных окружения
 AIS_API = os.getenv("AIS_API", "http://localhost:8001")
-SEVER_RYBA_API = os.getenv("SEVER_RYBA_API", "http://localhost:8002")
+SEVER_RYBA_API = os.getenv("SEVER_RYBA_API", "http://localhost:8000")
 
 app = FastAPI(
     title="NF API Gateway",

@@ -6,7 +6,7 @@ import logging
 from app.database import get_db
 from app.models import Order, OrderItem, Product, User, Stock, StockMovement, MovementType
 from app.services.notifications import send_email_notification, send_sms_notification
-from app.schemas.orders import OrderStatus, OrderPriority, ShippingMethod
+from app.schemas import OrderStatus, OrderPriority, ShippingMethod
 
 router = APIRouter()
 logger = logging.getLogger("order-automation")
