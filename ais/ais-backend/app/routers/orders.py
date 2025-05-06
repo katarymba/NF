@@ -1,433 +1,248 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta, date
-import pandas as pd
-import json
-from io import BytesIO
-
+from typing import List, Optional
+from datetime import datetime
+import traceback
+import logging
 from ..database import get_db
-from ..models import Order, OrderItem, Payment, User, Product
-from ..schemas import OrderWithPayment, OrderUpdate
-from ..auth import get_current_user
-from ..utils.excel import create_excel
+from ..models import Order
+from ..schemas import OrderUpdate, OrderResponse
 
-router = APIRouter(prefix="/orders", tags=["orders"])
+# Настраиваем логгер
+logger = logging.getLogger(__name__)
 
+router = APIRouter(
+    prefix="/api/orders",
+    tags=["delivery"],
+    responses={404: {"description": "Not found"}},
+)
 
-@router.get("/with-payments", response_model=List[OrderWithPayment])
-def get_orders_with_payments(
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user),
-        skip: int = 0,
-        limit: int = 100,
-        status: Optional[str] = None
+@router.get("", response_model=List[OrderResponse])
+def get_orders(
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100
 ):
     """
-    Получение списка заказов с информацией о платежах
+    Получение списка всех заказов для системы доставки
     """
-    query = db.query(
-        Order,
-        Payment.payment_method,
-        Payment.payment_status,
-        Payment.transaction_id,
-        Payment.created_at.label("payment_created_at"),
-        User.full_name,
-        User.email,
-        User.phone
-    ).join(
-        Payment,
-        Order.id == Payment.order_id,
-        isouter=True
-    ).join(
-        User,
-        Order.user_id == User.id,
-        isouter=True
-    )
-
-    if status:
-        query = query.filter(Order.status == status)
-
-    # Добавление пагинации
-    result = query.offset(skip).limit(limit).all()
-
-    # Преобразование результатов
-    orders_with_payments = []
-    for row in result:
-        order_dict = row[0].__dict__
-        order_dict.pop('_sa_instance_state', None)
-
-        # Добавление информации о платеже
-        order_dict['payment_method'] = row.payment_method
-        order_dict['payment_status'] = row.payment_status
-        order_dict['transaction_id'] = row.transaction_id
-        order_dict['payment_created_at'] = row.payment_created_at
-
-        # Добавление информации о пользователе, если клиента нет в заказе
-        if not order_dict.get('client_name') and row.full_name:
-            order_dict['client_name'] = row.full_name
-
-        order_dict['email'] = row.email
-        order_dict['phone'] = row.phone
-
-        # Обработка order_items и добавление имен продуктов
-        if order_dict.get('order_items'):
-            try:
-                order_items = json.loads(order_dict['order_items'])
-                for item in order_items:
-                    product_id = item.get('product_id')
-                    if product_id:
-                        product = db.query(Product).filter(Product.id == product_id).first()
-                        if product:
-                            item['product_name'] = product.name
-                order_dict['order_items'] = order_items
-            except (json.JSONDecodeError, TypeError):
-                order_dict['order_items'] = []
-
-        orders_with_payments.append(order_dict)
-
-    return orders_with_payments
-
-
-@router.get("/{order_id}/with-payment", response_model=OrderWithPayment)
-def get_order_with_payment(
-        order_id: int,
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
-):
-    """
-    Получение информации о конкретном заказе с данными платежа
-    """
-    result = db.query(
-        Order,
-        Payment.payment_method,
-        Payment.payment_status,
-        Payment.transaction_id,
-        Payment.created_at.label("payment_created_at"),
-        User.full_name,
-        User.email,
-        User.phone
-    ).join(
-        Payment,
-        Order.id == Payment.order_id,
-        isouter=True
-    ).join(
-        User,
-        Order.user_id == User.id,
-        isouter=True
-    ).filter(
-        Order.id == order_id
-    ).first()
-
-    if not result:
-        raise HTTPException(status_code=404, detail="Заказ не найден")
-
-    order_dict = result[0].__dict__
-    order_dict.pop('_sa_instance_state', None)
-
-    # Добавление информации о платеже
-    order_dict['payment_method'] = result.payment_method
-    order_dict['payment_status'] = result.payment_status
-    order_dict['transaction_id'] = result.transaction_id
-    order_dict['payment_created_at'] = result.payment_created_at
-
-    # Добавление информации о пользователе, если клиента нет в заказе
-    if not order_dict.get('client_name') and result.full_name:
-        order_dict['client_name'] = result.full_name
-
-    order_dict['email'] = result.email
-    order_dict['phone'] = result.phone
-
-    # Обработка order_items и добавление имен продуктов
-    if order_dict.get('order_items'):
-        try:
-            order_items = json.loads(order_dict['order_items'])
-            for item in order_items:
-                product_id = item.get('product_id')
-                if product_id:
-                    product = db.query(Product).filter(Product.id == product_id).first()
-                    if product:
-                        item['product_name'] = product.name
-            order_dict['order_items'] = order_items
-        except (json.JSONDecodeError, TypeError):
-            order_dict['order_items'] = []
-
-    return order_dict
-
-
-# Добавляем новый эндпоинт для обновления данных доставки
-@router.patch("/{order_id}", response_model=OrderWithPayment)
-def update_order_delivery(
-        order_id: int,
-        order_update: OrderUpdate,
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
-):
-    """
-    Обновление данных заказа, включая информацию о доставке
-    """
-    db_order = db.query(Order).filter(Order.id == order_id).first()
-    if not db_order:
-        raise HTTPException(status_code=404, detail="Заказ не найден")
-
-    # Обновляем только предоставленные поля
-    update_data = order_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_order, key, value)
-
     try:
-        db.commit()
-        db.refresh(db_order)
-        
-        # Получаем обновленный заказ с информацией о платеже
-        updated_order = get_order_with_payment(order_id, db, current_user)
-        return updated_order
+        logger.info("Получение списка заказов для системы доставки")
+        orders = db.query(Order).offset(skip).limit(limit).all()
+        return orders
     except Exception as e:
-        db.rollback()
+        logger.error(f"Ошибка при получении списка заказов: {str(e)}")
+        stack_trace = traceback.format_exc()
+        logger.debug(f"Стек вызовов: {stack_trace}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла ошибка при обновлении заказа: {str(e)}"
+            detail=f"Произошла ошибка при получении списка заказов: {str(e)}"
         )
 
-
-@router.get("/export")
-def export_orders(
-        background_tasks: BackgroundTasks,
-        format: str = Query("excel", description="Формат экспорта: excel или csv"),
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        status: Optional[str] = None,
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
-):
-    """
-    Экспорт заказов в Excel или CSV
-    """
-    # Построение базового запроса с учетом полей доставки
-    query = db.query(
-        Order.id,
-        Order.user_id,
-        Order.status,
-        Order.total_price,
-        Order.created_at,
-        Order.delivery_address,
-        Order.tracking_number,
-        Order.courier_name,
-        Order.estimated_delivery,
-        Order.delivery_notes,
-        Payment.payment_method,
-        Payment.payment_status,
-        Payment.transaction_id,
-        Payment.created_at.label("payment_created_at"),
-        User.email,
-        User.phone,
-        User.full_name.label("client_name")
-    ).join(
-        Payment,
-        Order.id == Payment.order_id,
-        isouter=True
-    ).join(
-        User,
-        Order.user_id == User.id,
-        isouter=True
-    )
-
-    # Применение фильтров
-    if start_date:
-        query = query.filter(Order.created_at >= start_date)
-    if end_date:
-        query = query.filter(Order.created_at <= end_date)
-    if status:
-        query = query.filter(Order.status == status)
-
-    # Получение результатов
-    result = query.all()
-
-    # Создание DataFrame с новыми полями доставки
-    df = pd.DataFrame(result, columns=[
-        'ID заказа', 'ID пользователя', 'Статус', 'Сумма', 'Дата создания', 
-        'Адрес доставки', 'Трек-номер', 'Курьер', 'Ожидаемая дата доставки', 'Комментарий к доставке',
-        'Способ оплаты', 'Статус оплаты', 'ID транзакции',
-        'Дата оплаты', 'Email', 'Телефон', 'Клиент'
-    ])
-
-    # Форматирование данных
-    df['Дата создания'] = df['Дата создания'].dt.strftime('%d.%m.%Y %H:%M')
-    df['Дата оплаты'] = df['Дата оплаты'].dt.strftime('%d.%m.%Y %H:%M')
-    df['Ожидаемая дата доставки'] = df['Ожидаемая дата доставки'].dt.strftime('%d.%m.%Y')
-
-    # Замена статусов на русскоязычные
-    status_map = {
-        'pending': 'Ожидает обработки',
-        'processing': 'В обработке',
-        'shipped': 'Отправлен',
-        'delivered': 'Доставлен',
-        'cancelled': 'Отменен',
-        'new': 'Новый',
-        'processed': 'Обработан',
-        'completed': 'Завершен'
-    }
-    df['Статус'] = df['Статус'].map(status_map)
-
-    payment_status_map = {
-        'pending': 'Ожидает оплаты',
-        'processing': 'Обрабатывается',
-        'completed': 'Оплачен',
-        'failed': 'Ошибка оплаты'
-    }
-    df['Статус оплаты'] = df['Статус оплаты'].map(payment_status_map)
-
-    # Создание файла нужного формата
-    if format.lower() == "excel":
-        output = BytesIO()
-        df.to_excel(output, index=False, sheet_name='Заказы')
-        output.seek(0)
-        filename = f"orders_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-
-        return create_excel(
-            df,
-            filename=filename,
-            sheet_name="Заказы"
-        )
-    else:
-        # По умолчанию CSV
-        output = BytesIO()
-        df.to_csv(output, index=False, encoding='utf-8-sig')
-        output.seek(0)
-        filename = f"orders_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-
-        return {
-            "file_url": f"/downloads/{filename}",
-            "message": "Экспорт успешно выполнен"
-        }
-
-
-# Добавляем эндпоинт API для использования на фронтенде
-@router.get("/api/orders", tags=["api"])
-def get_api_orders(
-        skip: int = 0, 
-        limit: int = 100, 
-        db: Session = Depends(get_db)
-):
-    """
-    Получение списка заказов для API фронтенда
-    """
-    orders = db.query(Order).offset(skip).limit(limit).all()
-    
-    # Подготавливаем ответ
-    result = []
-    for order in orders:
-        order_dict = {
-            "id": order.id,
-            "user_id": order.user_id,
-            "client_name": order.client_name,
-            "total_price": order.total_price,
-            "created_at": order.created_at.isoformat(),
-            "status": order.status,
-            "delivery_address": order.delivery_address,
-            "contact_phone": order.contact_phone,
-            "payment_method": order.payment_method,
-            "tracking_number": order.tracking_number,
-            "courier_name": order.courier_name,
-            "delivery_notes": order.delivery_notes,
-            "estimated_delivery": order.estimated_delivery.isoformat() if order.estimated_delivery else None
-        }
-        
-        # Обрабатываем order_items
-        if order.order_items:
-            try:
-                order_items = json.loads(order.order_items)
-                # Добавляем названия товаров
-                for item in order_items:
-                    product_id = item.get('product_id')
-                    if product_id:
-                        product = db.query(Product).filter(Product.id == product_id).first()
-                        if product:
-                            item['product_name'] = product.name
-                order_dict["order_items"] = order_items
-            except (json.JSONDecodeError, TypeError):
-                order_dict["order_items"] = []
-        else:
-            order_dict["order_items"] = []
-            
-        result.append(order_dict)
-    
-    return result
-
-
-@router.get("/api/orders/{order_id}", tags=["api"])
-def get_api_order(order_id: int, db: Session = Depends(get_db)):
-    """
-    Получение заказа по ID для API фронтенда
-    """
-    order = db.query(Order).filter(Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Заказ не найден")
-    
-    # Подготавливаем данные заказа
-    order_dict = {
-        "id": order.id,
-        "user_id": order.user_id,
-        "client_name": order.client_name,
-        "total_price": order.total_price,
-        "created_at": order.created_at.isoformat(),
-        "status": order.status,
-        "delivery_address": order.delivery_address,
-        "contact_phone": order.contact_phone,
-        "payment_method": order.payment_method,
-        "tracking_number": order.tracking_number,
-        "courier_name": order.courier_name,
-        "delivery_notes": order.delivery_notes,
-        "estimated_delivery": order.estimated_delivery.isoformat() if order.estimated_delivery else None
-    }
-    
-    # Обрабатываем order_items
-    if order.order_items:
-        try:
-            order_items = json.loads(order.order_items)
-            # Добавляем названия товаров
-            for item in order_items:
-                product_id = item.get('product_id')
-                if product_id:
-                    product = db.query(Product).filter(Product.id == product_id).first()
-                    if product:
-                        item['product_name'] = product.name
-            order_dict["order_items"] = order_items
-        except (json.JSONDecodeError, TypeError):
-            order_dict["order_items"] = []
-    else:
-        order_dict["order_items"] = []
-        
-    return order_dict
-
-
-@router.patch("/api/orders/{order_id}", tags=["api"])
-def update_api_order(
-    order_id: int, 
-    order_update: OrderUpdate,
+@router.get("/{order_id}", response_model=OrderResponse)
+def get_order(
+    order_id: int,
     db: Session = Depends(get_db)
 ):
     """
-    Обновление данных заказа для API фронтенда
+    Получение информации о конкретном заказе по ID
     """
-    order = db.query(Order).filter(Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Заказ не найден")
-    
-    # Обновляем только предоставленные поля
-    update_data = order_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(order, key, value)
-    
     try:
+        logger.info(f"Получение информации о заказе с ID {order_id}")
+        order = db.query(Order).filter(Order.id == order_id).first()
+        
+        if not order:
+            logger.warning(f"Заказ с ID {order_id} не найден")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Заказ с ID {order_id} не найден"
+            )
+        
+        return order
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка при получении информации о заказе: {str(e)}")
+        stack_trace = traceback.format_exc()
+        logger.debug(f"Стек вызовов: {stack_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла ошибка при получении информации о заказе: {str(e)}"
+        )
+
+@router.patch("/{order_id}", response_model=OrderResponse)
+def update_order_partial(
+    order_id: int,
+    order_update: OrderUpdate,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """
+    Частичное обновление данных заказа (PATCH)
+    """
+    try:
+        # Получаем информацию о пользователе (если доступна)
+        username = "system"
+        if request and hasattr(request.state, "user") and request.state.user:
+            username = request.state.user.username
+        
+        logger.info(f"Пользователь {username} выполняет частичное обновление заказа с ID {order_id}")
+        logger.info(f"Данные для обновления: {order_update.dict(exclude_unset=True)}")
+        
+        # Получаем заказ из базы данных
+        order = db.query(Order).filter(Order.id == order_id).first()
+        
+        if not order:
+            logger.warning(f"Заказ с ID {order_id} не найден при попытке обновления")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Заказ с ID {order_id} не найден"
+            )
+        
+        # Обновляем только предоставленные поля
+        update_data = order_update.dict(exclude_unset=True)
+        
+        # Логируем изменения для аудита
+        for field, value in update_data.items():
+            old_value = getattr(order, field, None)
+            if old_value != value:
+                logger.info(f"Обновление поля {field} заказа {order_id}: '{old_value}' -> '{value}'")
+            
+            # Установка нового значения
+            setattr(order, field, value)
+        
+        # Добавляем timestamp обновления, если такое поле есть
+        if hasattr(order, "updated_at"):
+            order.updated_at = datetime.now()
+        
+        # Сохраняем изменения в базе данных
         db.commit()
         db.refresh(order)
         
-        # Возвращаем обновленный заказ
-        return get_api_order(order_id, db)
+        logger.info(f"Заказ с ID {order_id} успешно обновлен")
+        
+        return order
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
+        logger.error(f"Ошибка при обновлении заказа: {str(e)}")
+        stack_trace = traceback.format_exc()
+        logger.debug(f"Стек вызовов: {stack_trace}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Произошла ошибка при обновлении заказа: {str(e)}"
+        )
+
+@router.put("/{order_id}", response_model=OrderResponse)
+def update_order_full(
+    order_id: int,
+    order_update: OrderUpdate,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """
+    Полное обновление данных заказа (PUT)
+    """
+    # Так как логика та же самая, мы используем ту же функцию,
+    # что и для PATCH запроса
+    return update_order_partial(order_id, order_update, db, request)
+
+@router.patch("/{order_id}/status", response_model=OrderResponse)
+def update_order_status(
+    order_id: int,
+    status_update: dict,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """
+    Обновление статуса заказа
+    """
+    try:
+        # Создаем объект для обновления с полем status
+        if "status" not in status_update:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Поле 'status' должно быть указано в запросе"
+            )
+        
+        order_update = OrderUpdate(status=status_update["status"])
+        
+        # Используем существующую функцию для обновления
+        return update_order_partial(order_id, order_update, db, request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении статуса заказа: {str(e)}")
+        stack_trace = traceback.format_exc()
+        logger.debug(f"Стек вызовов: {stack_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла ошибка при обновлении статуса заказа: {str(e)}"
+        )
+
+@router.patch("/{order_id}/courier", response_model=OrderResponse)
+def update_order_courier(
+    order_id: int,
+    courier_update: dict,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """
+    Обновление информации о курьере для заказа
+    """
+    try:
+        # Проверяем наличие необходимого поля
+        if "courier_name" not in courier_update:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Поле 'courier_name' должно быть указано в запросе"
+            )
+        
+        order_update = OrderUpdate(courier_name=courier_update["courier_name"])
+        
+        # Используем существующую функцию для обновления
+        return update_order_partial(order_id, order_update, db, request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении информации о курьере: {str(e)}")
+        stack_trace = traceback.format_exc()
+        logger.debug(f"Стек вызовов: {stack_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла ошибка при обновлении информации о курьере: {str(e)}"
+        )
+
+@router.patch("/{order_id}/delivery-address", response_model=OrderResponse)
+def update_delivery_address(
+    order_id: int,
+    address_update: dict,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """
+    Обновление адреса доставки заказа
+    """
+    try:
+        # Проверяем наличие необходимого поля
+        if "delivery_address" not in address_update:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Поле 'delivery_address' должно быть указано в запросе"
+            )
+        
+        order_update = OrderUpdate(delivery_address=address_update["delivery_address"])
+        
+        # Используем существующую функцию для обновления
+        return update_order_partial(order_id, order_update, db, request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении адреса доставки: {str(e)}")
+        stack_trace = traceback.format_exc()
+        logger.debug(f"Стек вызовов: {stack_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла ошибка при обновлении адреса доставки: {str(e)}"
         )
