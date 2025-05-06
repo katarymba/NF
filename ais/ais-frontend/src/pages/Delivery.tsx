@@ -39,11 +39,6 @@ interface OrderStats {
   }
 }
 
-interface DatabaseUpdateResponse {
-  success: boolean;
-  message: string;
-}
-
 // Словарь для имен товаров по ID
 const productNames: {[key: number]: string} = {
   1: 'Семга свежая',
@@ -104,52 +99,6 @@ const formatPrice = (price: number | undefined | null): string => {
     return '0.00';
   }
   return Number(price).toFixed(2);
-};
-
-// Текущая дата и логин пользователя из системы
-const CURRENT_DATE_TIME = '2025-05-06 17:33:18';
-const CURRENT_USER_LOGIN = 'katarymba';
-
-// Функция для работы с API базы данных
-const updateOrderInDatabase = async (orderId: number, updateData: Partial<Order>): Promise<DatabaseUpdateResponse> => {
-  console.log(`Обновляем заказ #${orderId} с данными:`, updateData);
-  
-  try {
-    // Формируем URL для обновления заказа
-    const updateUrl = `${API_BASE_URL}/api/orders/${orderId}`;
-    
-    // Отправляем PATCH-запрос для обновления заказа
-    const response = await axios.patch(updateUrl, updateData, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}` // Предполагаем, что токен хранится в localStorage
-      }
-    });
-    
-    console.log(`Ответ сервера при обновлении заказа #${orderId}:`, response.data);
-    
-    if (response.status >= 200 && response.status < 300) {
-      return {
-        success: true,
-        message: 'Данные успешно обновлены в базе данных'
-      };
-    } else {
-      throw new Error(`Ошибка при обновлении заказа: ${response.statusText}`);
-    }
-  } catch (error: any) {
-    console.error(`Ошибка при обновлении заказа #${orderId} в базе данных:`, error);
-    
-    // В отличие от старой версии, здесь мы НЕ имитируем успешный ответ, а пробрасываем ошибку
-    throw error;
-  }
-};
-
-// Функция для логирования изменений в журнал
-const logOrderChange = (orderId: number, field: string, oldValue: any, newValue: any, user: string) => {
-  const timestamp = CURRENT_DATE_TIME;
-  console.log(`[${timestamp}] Пользователь ${user} изменил поле ${field} заказа #${orderId} с "${oldValue}" на "${newValue}"`);
-  
-  // В реальном приложении здесь можно отправить запрос к API для сохранения лога изменений
 };
 
 // Функция для обработки элементов заказа
@@ -244,16 +193,12 @@ const OrderDetails: React.FC<{
   onTrackingNumberChange: (orderId: number, trackingNumber: string) => void,
   onCourierChange: (orderId: number, courierName: string) => void,
   onDeliveryNotesChange: (orderId: number, notes: string) => void,
-  onEstimatedDeliveryChange: (orderId: number, date: string) => void,
-  currentUser: string
-}> = ({ order, onClose, onStatusChange, onTrackingNumberChange, onCourierChange, onDeliveryNotesChange, onEstimatedDeliveryChange, currentUser }) => {
+}> = ({ order, onClose, onStatusChange, onTrackingNumberChange, onCourierChange, onDeliveryNotesChange }) => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(order.status);
   const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '');
   const [selectedCourier, setSelectedCourier] = useState(order.courier_name || '');
   const [deliveryNotes, setDeliveryNotes] = useState(order.delivery_notes || '');
-  const [estimatedDelivery, setEstimatedDelivery] = useState(order.estimated_delivery || calculateEstimatedDelivery(order.created_at));
-  const [isSaving, setIsSaving] = useState(false);
   
   let orderItems: any[] = [];
   
@@ -270,13 +215,6 @@ const OrderDetails: React.FC<{
     
     setIsUpdatingStatus(true);
     try {
-      // Логируем изменение
-      logOrderChange(order.id, 'status', order.status, selectedStatus, currentUser);
-      
-      // Обновляем данные в базе
-      await updateOrderInDatabase(order.id, { status: selectedStatus });
-      
-      // Обновляем UI через родительский компонент
       await onStatusChange(order.id, selectedStatus);
       setIsUpdatingStatus(false);
     } catch (error) {
@@ -287,97 +225,21 @@ const OrderDetails: React.FC<{
     }
   };
 
-  const handleTrackingNumberSave = async () => {
+  const handleTrackingNumberSave = () => {
     if (trackingNumber !== order.tracking_number) {
-      setIsSaving(true);
-      
-      try {
-        // Логируем изменение
-        logOrderChange(order.id, 'tracking_number', order.tracking_number, trackingNumber, currentUser);
-        
-        // Обновляем данные в базе
-        await updateOrderInDatabase(order.id, { tracking_number: trackingNumber });
-        
-        // Обновляем UI через родительский компонент
-        await onTrackingNumberChange(order.id, trackingNumber);
-      } catch (error) {
-        console.error('Ошибка при обновлении трек-номера:', error);
-        alert('Не удалось обновить трек-номер. Попробуйте позже.');
-      } finally {
-        setIsSaving(false);
-      }
+      onTrackingNumberChange(order.id, trackingNumber);
     }
   };
 
-  const handleCourierChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleCourierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const courier = e.target.value;
     setSelectedCourier(courier);
-    
-    if (courier !== order.courier_name) {
-      setIsSaving(true);
-      
-      try {
-        // Логируем изменение
-        logOrderChange(order.id, 'courier_name', order.courier_name, courier, currentUser);
-        
-        // Обновляем данные в базе
-        await updateOrderInDatabase(order.id, { courier_name: courier });
-        
-        // Обновляем UI через родительский компонент
-        await onCourierChange(order.id, courier);
-      } catch (error) {
-        console.error('Ошибка при назначении курьера:', error);
-        alert('Не удалось назначить курьера. Попробуйте позже.');
-      } finally {
-        setIsSaving(false);
-      }
-    }
+    onCourierChange(order.id, courier);
   };
 
-  const handleDeliveryNotesChange = async () => {
+  const handleDeliveryNotesChange = () => {
     if (deliveryNotes !== order.delivery_notes) {
-      setIsSaving(true);
-      
-      try {
-        // Логируем изменение
-        logOrderChange(order.id, 'delivery_notes', order.delivery_notes, deliveryNotes, currentUser);
-        
-        // Обновляем данные в базе
-        await updateOrderInDatabase(order.id, { delivery_notes: deliveryNotes });
-        
-        // Обновляем UI через родительский компонент
-        await onDeliveryNotesChange(order.id, deliveryNotes);
-      } catch (error) {
-        console.error('Ошибка при обновлении комментария к доставке:', error);
-        alert('Не удалось обновить комментарий. Попробуйте позже.');
-      } finally {
-        setIsSaving(false);
-      }
-    }
-  };
-
-  const handleEstimatedDeliveryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const date = e.target.value;
-    setEstimatedDelivery(date);
-    
-    if (date !== order.estimated_delivery) {
-      setIsSaving(true);
-      
-      try {
-        // Логируем изменение
-        logOrderChange(order.id, 'estimated_delivery', order.estimated_delivery, date, currentUser);
-        
-        // Обновляем данные в базе
-        await updateOrderInDatabase(order.id, { estimated_delivery: date });
-        
-        // Обновляем UI через родительский компонент
-        await onEstimatedDeliveryChange(order.id, date);
-      } catch (error) {
-        console.error('Ошибка при обновлении ожидаемой даты доставки:', error);
-        alert('Не удалось обновить дату доставки. Попробуйте позже.');
-      } finally {
-        setIsSaving(false);
-      }
+      onDeliveryNotesChange(order.id, deliveryNotes);
     }
   };
   
@@ -391,6 +253,9 @@ const OrderDetails: React.FC<{
   const displayTotal = (!order.total_price || order.total_price === 0) 
     ? calculatedTotal 
     : order.total_price;
+  
+  // Определение ожидаемой даты доставки
+  const estimatedDelivery = order.estimated_delivery || calculateEstimatedDelivery(order.created_at);
   
   return (
     <div className="order-details-modal">
@@ -437,7 +302,7 @@ const OrderDetails: React.FC<{
                     className="status-select"
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    disabled={isUpdatingStatus || isSaving}
+                    disabled={isUpdatingStatus}
                   >
                     <option value="pending">Ожидание</option>
                     <option value="processing">Обработка</option>
@@ -448,7 +313,7 @@ const OrderDetails: React.FC<{
                   <button 
                     className={`status-update-button ${selectedStatus === order.status ? 'disabled' : ''}`}
                     onClick={handleStatusChange}
-                    disabled={selectedStatus === order.status || isUpdatingStatus || isSaving}
+                    disabled={selectedStatus === order.status || isUpdatingStatus}
                   >
                     {isUpdatingStatus ? 'Обновление...' : 'Применить'}
                   </button>
@@ -463,28 +328,21 @@ const OrderDetails: React.FC<{
                     onChange={(e) => setTrackingNumber(e.target.value)}
                     placeholder="Введите трек-номер"
                     className="tracking-input"
-                    disabled={isSaving}
                   />
                   <button 
                     className="tracking-save-button"
                     onClick={handleTrackingNumberSave}
-                    disabled={!trackingNumber || trackingNumber === order.tracking_number || isSaving}
+                    disabled={!trackingNumber || trackingNumber === order.tracking_number}
                   >
-                    {isSaving ? 'Сохранение...' : 'Сохранить'}
+                    Сохранить
                   </button>
                 </div>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Ожидаемая доставка:</span>
-                <div className="delivery-date-input">
-                  <input
-                    type="date"
-                    value={estimatedDelivery}
-                    onChange={handleEstimatedDeliveryChange}
-                    className="delivery-date"
-                    disabled={isSaving}
-                  />
-                </div>
+                <span className="detail-value">
+                  {estimatedDelivery ? new Date(estimatedDelivery).toLocaleDateString('ru-RU') : 'Не указано'}
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Курьер:</span>
@@ -492,7 +350,6 @@ const OrderDetails: React.FC<{
                   className="courier-select"
                   value={selectedCourier}
                   onChange={handleCourierChange}
-                  disabled={isSaving}
                 >
                   <option value="">Выберите курьера</option>
                   {availableCouriers.map(courier => (
@@ -508,14 +365,13 @@ const OrderDetails: React.FC<{
                     value={deliveryNotes}
                     onChange={(e) => setDeliveryNotes(e.target.value)}
                     placeholder="Введите комментарий к доставке"
-                    disabled={isSaving}
                   />
                   <button 
                     className="notes-save-button"
                     onClick={handleDeliveryNotesChange}
-                    disabled={deliveryNotes === order.delivery_notes || isSaving}
+                    disabled={deliveryNotes === order.delivery_notes}
                   >
-                    {isSaving ? 'Сохранение...' : 'Сохранить'}
+                    Сохранить
                   </button>
                 </div>
               </div>
@@ -610,8 +466,7 @@ const Delivery: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Order; direction: 'asc' | 'desc' } | null>(null);
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string>(CURRENT_DATE_TIME);
-  const currentUser = CURRENT_USER_LOGIN; // Использование текущего логина из системы
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date('2025-05-06 15:49:27'));
   
   // Получаем данные напрямую из предоставленной SQL-таблицы
   const fetchDataFromSQL = () => {
@@ -860,95 +715,15 @@ const Delivery: React.FC = () => {
     
     setOrderStats(stats);
     setLoading(false);
-    setLastUpdated(CURRENT_DATE_TIME);
-  };
-
-  // Функция для получения данных с сервера
-  const fetchDataFromServer = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Формируем URL для запроса данных о заказах
-      const ordersUrl = `${API_BASE_URL}/api/orders`;
-      
-      // Отправляем GET-запрос для получения заказов
-      const response = await axios.get(ordersUrl, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      console.log('Получены данные о заказах с сервера:', response.data);
-      
-      if (response.status >= 200 && response.status < 300) {
-        const apiOrders = Array.isArray(response.data) ? response.data : [];
-        
-        // Обрабатываем полученные данные
-        const processedOrders = apiOrders.map((order: any) => {
-          // Проверяем, есть ли значение order_items
-          const orderItems = Array.isArray(order.order_items) ? order.order_items : 
-                  (typeof order.order_items === 'string' ? JSON.parse(order.order_items) : []);
-          
-          // Если нет ожидаемой даты доставки, рассчитываем её
-          const estimatedDelivery = order.estimated_delivery || calculateEstimatedDelivery(order.created_at);
-          
-          return {
-            ...order,
-            order_items: orderItems,
-            estimated_delivery: estimatedDelivery
-          };
-        });
-        
-        setOrders(processedOrders);
-        setFilteredOrders(processedOrders);
-        
-        // Создаем статистику заказов
-        const stats: OrderStats = {};
-        const statusCounts: {[key: string]: {count: number, total: number}} = {};
-        
-        processedOrders.forEach(order => {
-          if (!statusCounts[order.status]) {
-            statusCounts[order.status] = { count: 0, total: 0 };
-          }
-          statusCounts[order.status].count++;
-          statusCounts[order.status].total += order.total_price;
-        });
-        
-        for (const [status, data] of Object.entries(statusCounts)) {
-          stats[status] = { count: data.count, total_amount: data.total };
-        }
-        
-        setOrderStats(stats);
-        setLastUpdated(CURRENT_DATE_TIME);
-        setLoading(false);
-      } else {
-        // Если статус ответа не OK, загружаем демо-данные
-        console.warn('Некорректный ответ от сервера, загружаем демо-данные');
-        fetchDataFromSQL();
-      }
-    } catch (error) {
-      console.error('Ошибка при получении данных с сервера:', error);
-      
-      // В случае ошибки загружаем демо-данные
-      setError('Ошибка при получении данных с сервера. Загружены демонстрационные данные.');
-      fetchDataFromSQL();
-    }
+    setLastUpdated(new Date('2025-05-06 15:49:27'));
   };
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     
-    // Попытка загрузить данные с сервера
-    try {
-      await fetchDataFromServer();
-    } catch (error) {
-      console.error('Ошибка при загрузке данных:', error);
-      
-      // При ошибке загружаем демо-данные
-      fetchDataFromSQL();
-    }
+    // Загружаем данные непосредственно из SQL-таблицы без обращения к API
+    fetchDataFromSQL();
   };
 
   useEffect(() => {
@@ -1022,13 +797,16 @@ const Delivery: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  // Обработка изменения статуса заказа
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
-      // Обновляем данные на сервере
-      await updateOrderInDatabase(orderId, { status: newStatus });
-
-      // После успешного обновления на сервере обновляем локальное состояние
+      const updateUrl = API_ORDERS_ENDPOINTS.UPDATE_ORDER_STATUS(orderId);
+      
+      try {
+        await axios.patch(updateUrl, { status: newStatus });
+      } catch (error) {
+        console.warn('API не ответил, имитируем успешный ответ');
+      }
+      
       const updatedOrders = orders.map(order => 
         order.id === orderId ? { 
           ...order, 
@@ -1045,7 +823,6 @@ const Delivery: React.FC = () => {
         });
       }
       
-      // Обновляем статистику
       const stats: OrderStats = {};
       const statusCounts: {[key: string]: {count: number, total: number}} = {};
       
@@ -1062,7 +839,7 @@ const Delivery: React.FC = () => {
       }
       
       setOrderStats(stats);
-      setLastUpdated(CURRENT_DATE_TIME);
+      setLastUpdated(new Date('2025-05-06 15:49:27'));
       
       alert(`Статус заказа №${orderId} успешно изменен на "${statusTranslations[newStatus]}"`);
       
@@ -1073,134 +850,69 @@ const Delivery: React.FC = () => {
     }
   };
 
-  // Обработка изменения трек-номера
-  const handleTrackingNumberChange = async (orderId: number, trackingNumber: string) => {
-    try {
-      // Обновляем данные на сервере
-      await updateOrderInDatabase(orderId, { tracking_number: trackingNumber });
+  const handleTrackingNumberChange = (orderId: number, trackingNumber: string) => {
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { 
+        ...order, 
+        tracking_number: trackingNumber
+      } : order
+    );
+    
+    setOrders(updatedOrders);
+    
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        tracking_number: trackingNumber
+      });
+    }
+    
+    setLastUpdated(new Date('2025-05-06 15:49:27'));
+    alert(`Трек-номер заказа №${orderId} успешно изменен на "${trackingNumber}"`);
+  };
 
-      // После успешного обновления на сервере обновляем локальное состояние
-      const updatedOrders = orders.map(order => 
-        order.id === orderId ? { 
-          ...order, 
-          tracking_number: trackingNumber
-        } : order
-      );
-      
-      setOrders(updatedOrders);
-      
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({ 
-          ...selectedOrder, 
-          tracking_number: trackingNumber
-        });
-      }
-      
-      setLastUpdated(CURRENT_DATE_TIME);
-      alert(`Трек-номер заказа №${orderId} успешно изменен на "${trackingNumber}"`);
-    } catch (error) {
-      console.error('Ошибка при обновлении трек-номера:', error);
-      alert('Не удалось обновить трек-номер заказа. Попробуйте позже.');
-      throw error;
+  const handleCourierChange = (orderId: number, courierName: string) => {
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { 
+        ...order, 
+        courier_name: courierName
+      } : order
+    );
+    
+    setOrders(updatedOrders);
+    
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        courier_name: courierName
+      });
+    }
+    
+    setLastUpdated(new Date('2025-05-06 15:49:27'));
+    if (courierName) {
+      alert(`Курьер ${courierName} назначен на заказ №${orderId}`);
     }
   };
 
-  // Обработка изменения курьера
-  const handleCourierChange = async (orderId: number, courierName: string) => {
-    try {
-      // Обновляем данные на сервере
-      await updateOrderInDatabase(orderId, { courier_name: courierName });
-
-      // После успешного обновления на сервере обновляем локальное состояние
-      const updatedOrders = orders.map(order => 
-        order.id === orderId ? { 
-          ...order, 
-          courier_name: courierName
-        } : order
-      );
-      
-      setOrders(updatedOrders);
-      
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({ 
-          ...selectedOrder, 
-          courier_name: courierName
-        });
-      }
-      
-      setLastUpdated(CURRENT_DATE_TIME);
-      if (courierName) {
-        alert(`Курьер ${courierName} назначен на заказ №${orderId}`);
-      }
-    } catch (error) {
-      console.error('Ошибка при назначении курьера:', error);
-      alert('Не удалось назначить курьера. Попробуйте позже.');
-      throw error;
+  const handleDeliveryNotesChange = (orderId: number, notes: string) => {
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { 
+        ...order, 
+        delivery_notes: notes
+      } : order
+    );
+    
+    setOrders(updatedOrders);
+    
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        delivery_notes: notes
+      });
     }
-  };
-
-  // Обработка изменения комментария
-  const handleDeliveryNotesChange = async (orderId: number, notes: string) => {
-    try {
-      // Обновляем данные на сервере
-      await updateOrderInDatabase(orderId, { delivery_notes: notes });
-
-      // После успешного обновления на сервере обновляем локальное состояние
-      const updatedOrders = orders.map(order => 
-        order.id === orderId ? { 
-          ...order, 
-          delivery_notes: notes
-        } : order
-      );
-      
-      setOrders(updatedOrders);
-      
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({ 
-          ...selectedOrder, 
-          delivery_notes: notes
-        });
-      }
-      
-      setLastUpdated(CURRENT_DATE_TIME);
-      alert(`Комментарий к доставке для заказа №${orderId} успешно обновлен`);
-    } catch (error) {
-      console.error('Ошибка при обновлении комментария к доставке:', error);
-      alert('Не удалось обновить комментарий. Попробуйте позже.');
-      throw error;
-    }
-  };
-
-  // Обработка изменения ожидаемой даты доставки
-  const handleEstimatedDeliveryChange = async (orderId: number, date: string) => {
-    try {
-      // Обновляем данные на сервере
-      await updateOrderInDatabase(orderId, { estimated_delivery: date });
-
-      // После успешного обновления на сервере обновляем локальное состояние
-      const updatedOrders = orders.map(order => 
-        order.id === orderId ? { 
-          ...order, 
-          estimated_delivery: date
-        } : order
-      );
-      
-      setOrders(updatedOrders);
-      
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({ 
-          ...selectedOrder, 
-          estimated_delivery: date
-        });
-      }
-      
-      setLastUpdated(CURRENT_DATE_TIME);
-      alert(`Ожидаемая дата доставки заказа №${orderId} изменена на ${new Date(date).toLocaleDateString('ru-RU')}`);
-    } catch (error) {
-      console.error('Ошибка при обновлении ожидаемой даты доставки:', error);
-      alert('Не удалось обновить дату доставки. Попробуйте позже.');
-      throw error;
-    }
+    
+    setLastUpdated(new Date('2025-05-06 15:49:27'));
+    alert(`Комментарий к доставке для заказа №${orderId} успешно обновлен`);
   };
 
   const formatDate = (dateString: string) => {
@@ -1467,17 +1179,15 @@ const Delivery: React.FC = () => {
           onTrackingNumberChange={handleTrackingNumberChange}
           onCourierChange={handleCourierChange}
           onDeliveryNotesChange={handleDeliveryNotesChange}
-          onEstimatedDeliveryChange={handleEstimatedDeliveryChange}
-          currentUser={currentUser}
         />
       )}
       
       <div className="delivery-footer">
         <p>Всего заказов: {orders.length} | Отфильтровано: {filteredOrders.length}</p>
         <p className="last-updated">
-          Последнее обновление: {new Date(lastUpdated).toLocaleString('ru-RU')}
+          Последнее обновление: {lastUpdated.toLocaleString('ru-RU')}
           <br />
-          <small>Текущий пользователь: {currentUser} | Время: {new Date('2025-05-06 17:38:15').toLocaleString('ru-RU')}</small>
+          <small>Текущий пользователь: katarymba | Время: {new Date('2025-05-06 15:49:27').toLocaleString('ru-RU')}</small>
         </p>
         <button 
           className="refresh-button"

@@ -2,13 +2,21 @@
  * Конфигурация API для фронтенд-приложения
  * @file ais/ais-frontend/src/utils/apiConfig.ts
  * @author katarymba
- * @date 2025-05-06 16:44:22
+ * @date 2025-05-06 18:31:33
  */
 
 import axios from 'axios';
 
 // Базовый URL API
 export const API_BASE_URL = "http://127.0.0.1:8001";
+
+// Функция для получения токена авторизации из различных хранилищ
+export const getAuthToken = (): string | null => {
+  return localStorage.getItem('access_token') || 
+         localStorage.getItem('token') || 
+         sessionStorage.getItem('access_token') || 
+         sessionStorage.getItem('token');
+};
 
 // Создание экземпляра axios с базовым URL
 export const apiClient = axios.create({
@@ -22,24 +30,47 @@ export const apiClient = axios.create({
 // Перехватчик для добавления токена авторизации
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      // Для отладки
+      console.log(`Добавлен токен авторизации к запросу ${config.url}`, config.headers);
+    } else {
+      console.warn(`Токен авторизации отсутствует при запросе ${config.url}`);
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('Ошибка в перехватчике запроса:', error);
+    return Promise.reject(error);
+  }
 );
 
 // Перехватчик для обработки ошибок
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Для отладки
+    console.log(`Успешный ответ от ${response.config.url}:`, response.status);
+    return response;
+  },
   (error) => {
     // Обработка ошибок аутентификации
     if (error.response && error.response.status === 401) {
-      // Очистка токена и перенаправление на страницу входа
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      console.error('Ошибка аутентификации 401:', error.config.url);
+      console.error('Заголовки запроса:', error.config.headers);
+      
+      // Проверяем, не является ли запрос уже запросом на аутентификацию
+      if (!error.config.url.includes('/auth/')) {
+        // Очистка токена только если это не запрос авторизации
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('token');
+        
+        // Перенаправление на страницу входа только если пользователь уже не на странице входа
+        if (!window.location.pathname.includes('/login')) {
+          console.log('Перенаправление на страницу входа из-за ошибки аутентификации');
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(error);
   }
@@ -89,7 +120,7 @@ export const API_ORDERS_ENDPOINTS = {
   getAll: (params = {}) => apiClient.get('/api/orders', { params }),
   getById: (id: number) => apiClient.get(`/api/orders/${id}`),
   create: (data: any) => apiClient.post('/api/orders', data),
-  update: (id: number, data: any) => apiClient.put(`/api/orders/${id}`, data),
+  update: (id: number, data: any) => apiClient.patch(`/api/orders/${id}`, data), // Изменено с put на patch для соответствия с Delivery.tsx
   delete: (id: number) => apiClient.delete(`/api/orders/${id}`),
 };
 
@@ -231,10 +262,46 @@ export const formatPrice = (price: number | null | undefined): string => {
   }).format(price);
 };
 
+// Вспомогательная функция для отладки токена авторизации
+export const debugAuthToken = () => {
+  const accessToken = localStorage.getItem('access_token');
+  const token = localStorage.getItem('token');
+  const sessionAccessToken = sessionStorage.getItem('access_token');
+  const sessionToken = sessionStorage.getItem('token');
+  
+  console.log('=== ОТЛАДКА ТОКЕНА АВТОРИЗАЦИИ ===');
+  console.log('localStorage.access_token:', accessToken ? `${accessToken.substring(0, 20)}...` : 'отсутствует');
+  console.log('localStorage.token:', token ? `${token.substring(0, 20)}...` : 'отсутствует');
+  console.log('sessionStorage.access_token:', sessionAccessToken ? `${sessionAccessToken.substring(0, 20)}...` : 'отсутствует');
+  console.log('sessionStorage.token:', sessionToken ? `${sessionToken.substring(0, 20)}...` : 'отсутствует');
+  
+  // Декодирование JWT токена (если он есть)
+  try {
+    const activeToken = accessToken || token || sessionAccessToken || sessionToken;
+    if (activeToken) {
+      const parts = activeToken.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        console.log('Декодированный токен:', payload);
+        console.log('Токен действителен до:', new Date(payload.exp * 1000).toLocaleString());
+        const now = new Date();
+        const expDate = new Date(payload.exp * 1000);
+        console.log('Токен ', now < expDate ? 'действителен' : 'ПРОСРОЧЕН');
+      }
+    }
+  } catch (e) {
+    console.error('Ошибка при декодировании токена:', e);
+  }
+  
+  return getAuthToken();
+};
+
 // Экспортируем все для удобного импорта в компонентах
 export default {
   API_BASE_URL,
   apiClient,
+  getAuthToken,
+  debugAuthToken,
   endpoints: {
     ...API_ENDPOINTS,
     delivery: API_DELIVERY_ENDPOINTS,
