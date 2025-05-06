@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -62,6 +62,11 @@ class OrderStatus(str, Enum):
     PROCESSED = "processed"
     SHIPPED = "shipped"
     COMPLETED = "completed"
+    # Добавляем статусы соответствующие фронтенду
+    PENDING = "pending"
+    PROCESSING = "processing"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
 
 
 # ------------------------------
@@ -71,6 +76,11 @@ class PaymentMethod(str, Enum):
     CARD = "card"
     CASH = "cash"
     ONLINE_WALLET = "online_wallet"
+    ONLINE_CARD = "online_card"
+    SBP = "sbp"
+    CASH_ON_DELIVERY = "cash_on_delivery"
+    CREDIT_CARD = "credit_card"
+    BANK_TRANSFER = "bank_transfer"
 
 
 # ------------------------------
@@ -441,6 +451,7 @@ class OrderItemBase(BaseModel):
     product_id: int
     quantity: int = Field(..., gt=0)
     price: float = Field(..., ge=0)
+    product_name: Optional[str] = None  # Добавлено для названия товара
 
 
 class OrderItemCreate(OrderItemBase):
@@ -466,30 +477,44 @@ class OrderItemResponse(OrderItemInDB):
 # Схемы для модели Order
 # ------------------------------
 class OrderBase(BaseModel):
-    user_id: int
+    user_id: Optional[int] = None
+    client_name: Optional[str] = None
     total_price: float = Field(..., ge=0)
-    status: OrderStatus = OrderStatus.NEW  # По умолчанию "new"
+    status: str = "pending"  # По умолчанию "pending" для совместимости с фронтендом
+    delivery_address: Optional[str] = None
+    contact_phone: Optional[str] = None
+    payment_method: Optional[str] = None
 
 
-class OrderCreate(BaseModel):
-    user_id: int
+class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
 
 
+# Обновленная схема для обновления заказа с полями доставки
 class OrderUpdate(BaseModel):
-    status: Optional[OrderStatus] = None
+    status: Optional[str] = None
+    tracking_number: Optional[str] = None
+    courier_name: Optional[str] = None
+    delivery_notes: Optional[str] = None
+    estimated_delivery: Optional[date] = None
 
 
 class OrderInDB(OrderBase):
     id: int
     created_at: datetime
+    tracking_number: Optional[str] = None
+    courier_name: Optional[str] = None
+    delivery_notes: Optional[str] = None
+    estimated_delivery: Optional[date] = None
+    order_items: Optional[str] = None  # JSON строка для хранения элементов заказа
 
     model_config = ConfigDict(from_attributes=True, frozen=True)
 
 
 class OrderResponse(OrderInDB):
-    items: List[OrderItemResponse] = []
+    items: Optional[List[OrderItemResponse]] = None
     user: Optional[UserResponse] = None
+    order_items: Optional[List[Dict[str, Any]]] = None  # Обработанная версия JSON строки
 
 
 # ------------------------------
@@ -497,8 +522,8 @@ class OrderResponse(OrderInDB):
 # ------------------------------
 class PaymentBase(BaseModel):
     order_id: int
-    payment_method: PaymentMethod
-    payment_status: PaymentStatus = PaymentStatus.PENDING
+    payment_method: str  # Используем строковое поле вместо enum для совместимости
+    payment_status: str = "pending"  # По умолчанию "pending"
     transaction_id: Optional[str] = None
 
 
@@ -507,7 +532,7 @@ class PaymentCreate(PaymentBase):
 
 
 class PaymentUpdate(BaseModel):
-    payment_status: Optional[PaymentStatus] = None
+    payment_status: Optional[str] = None
     transaction_id: Optional[str] = None
 
 
@@ -531,16 +556,19 @@ class PaymentListResponse(PaymentInDB):
 # ------------------------------
 class OrderWithPayment(BaseModel):
     id: int
-    user_id: int
+    user_id: Optional[int] = None
     client_name: Optional[str] = None
     total_price: float
     created_at: datetime
     status: str
     delivery_address: Optional[str] = None
-    tracking_number: Optional[str] = None
     contact_phone: Optional[str] = None
-    delivery_notes: Optional[str] = None
     payment_method: Optional[str] = None
+    # Добавляем поля доставки
+    tracking_number: Optional[str] = None
+    courier_name: Optional[str] = None
+    delivery_notes: Optional[str] = None
+    estimated_delivery: Optional[date] = None
     payment_status: Optional[str] = None
     transaction_id: Optional[str] = None
     payment_created_at: Optional[datetime] = None

@@ -93,7 +93,7 @@ class Category(Base):
 
 
 # ------------------------------
-# 4. Заказы (orders) - Объединено из обоих файлов
+# 4. Заказы (orders) - Исправлены дублирующиеся поля
 # ------------------------------
 class Order(Base):
     """
@@ -108,10 +108,14 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String(50), default="pending")
     delivery_address = Column(Text, nullable=True)
-    tracking_number = Column(String(100), nullable=True)
     contact_phone = Column(String(50), nullable=True)
+    payment_method = Column(String(50), nullable=True)  
+    
+    # Поля для доставки
+    tracking_number = Column(String(50), nullable=True)
+    courier_name = Column(String(100), nullable=True)
     delivery_notes = Column(Text, nullable=True)
-    payment_method = Column(String(50), nullable=True)
+    estimated_delivery = Column(Date, nullable=True)
 
     # Отношение к элементам заказа - может быть JSONField
     order_items = Column(JSON, nullable=True)
