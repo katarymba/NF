@@ -634,6 +634,99 @@
   background-color: #f3f4f6;
   color: #1f2937;
 }
+/* Стили для выбора курьера */
+.courier-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  font-size: 14px;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.courier-select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* Стили для ввода трек-номера */
+.tracking-number-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.tracking-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.tracking-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.tracking-save-button,
+.notes-save-button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tracking-save-button:hover,
+.notes-save-button:hover {
+  background-color: #4338ca;
+}
+
+.tracking-save-button:disabled,
+.notes-save-button:disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Стили для комментария к доставке */
+.delivery-notes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.delivery-notes {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  font-size: 14px;
+  color: #4b5563;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.delivery-notes:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
 
 /* Адаптивные стили для мобильных устройств */
 @media (max-width: 768px) {

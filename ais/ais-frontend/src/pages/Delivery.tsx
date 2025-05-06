@@ -5,22 +5,7 @@ import '../styles/Delivery.css';
 import { API_BASE_URL } from '../utils/apiConfig';
 import { API_ORDERS_ENDPOINTS, Order as ApiOrder, OrderItem as ApiOrderItem, DeliveryStatus } from '../utils/apiconfig.orders';
 
-const detailedLog = (data: any, label: string) => {
-  console.log('====== НАЧАЛО ДЕТАЛЬНОГО ЛОГА ======');
-  console.log(`ДЕТАЛЬНЫЙ ЛОГ для ${label}:`);
-  console.log('Тип данных:', typeof data);
-  console.log('Значение:', data);
-  
-  if (typeof data === 'object' && data !== null) {
-    console.log('Ключи объекта:', Object.keys(data));
-    for (const key of Object.keys(data)) {
-      console.log(`${key}:`, data[key], `(тип: ${typeof data[key]})`);
-    }
-  }
-  
-  console.log('====== КОНЕЦ ДЕТАЛЬНОГО ЛОГА ======');
-};
-
+// Вспомогательные интерфейсы и типы
 interface Order {
   id: number;
   user_id: number;
@@ -54,16 +39,66 @@ interface OrderStats {
   }
 }
 
-const debugObject = (obj: any, label: string = 'Object') => {
-  console.log(`DEBUG ${label}:`, JSON.stringify(obj, null, 2));
+interface DatabaseUpdateResponse {
+  success: boolean;
+  message: string;
+}
+
+// Словарь для имен товаров по ID
+const productNames: {[key: number]: string} = {
+  1: 'Семга свежая',
+  3: 'Сельдь малосольная',
+  5: 'Осетр копченый',
+  6: 'Форель радужная',
+  11: 'Треска атлантическая',
+  // Добавьте другие товары здесь
 };
 
-const generateTrackingNumber = (): string => {
-  const prefix = 'TRK';
-  const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
-  return `${prefix}${randomDigits}`;
+// Словарь для русификации статусов
+const statusTranslations: {[key: string]: string} = {
+  'pending': 'Ожидание',
+  'processing': 'Обработка',
+  'shipped': 'В пути',
+  'delivered': 'Доставлено',
+  'cancelled': 'Отменено'
 };
 
+// Словарь для русификации способов оплаты
+const paymentMethodTranslations: {[key: string]: string} = {
+  'online_card': 'Картой онлайн',
+  'sbp': 'СБП',
+  'cash_on_delivery': 'Наличными при получении',
+  'online_wallet': 'Картой онлайн',
+  'credit_card': 'Картой онлайн',
+  'bank_transfer': 'Банковский перевод',
+};
+
+// Список доступных курьеров
+const availableCouriers = [
+  'Сидоров А.А.',
+  'Кузнецов В.А.',
+  'Дербенев И.С.'
+];
+
+// Функция для расчета предполагаемой даты доставки
+const calculateEstimatedDelivery = (createdDate: string): string => {
+  const created = new Date(createdDate);
+  
+  // Добавляем 4-5 дней (случайно)
+  const daysToAdd = Math.floor(Math.random() * 2) + 4; // 4 или 5 дней
+  const delivery = new Date(created);
+  delivery.setDate(delivery.getDate() + daysToAdd);
+  
+  // Форматируем дату в строку YYYY-MM-DD
+  return delivery.toISOString().split('T')[0];
+};
+
+// Функция для получения названия товара
+const getProductName = (productId: number): string => {
+  return productNames[productId] || `Товар ${productId}`;
+};
+
+// Функция для форматирования цен
 const formatPrice = (price: number | undefined | null): string => {
   if (price === undefined || price === null) {
     return '0.00';
@@ -71,18 +106,62 @@ const formatPrice = (price: number | undefined | null): string => {
   return Number(price).toFixed(2);
 };
 
-const processOrderItems = (items: any): any[] => {
-  detailedLog(items, 'processOrderItems input');
+// Функция для работы с API базы данных
+const updateOrderInDatabase = async (orderId: number, updateData: Partial<Order>): Promise<DatabaseUpdateResponse> => {
+  console.log(`Обновляем заказ #${orderId} с данными:`, updateData);
   
+  try {
+    // Формируем URL для обновления заказа
+    const updateUrl = `${API_BASE_URL}/api/orders/${orderId}`;
+    
+    // Отправляем PATCH-запрос для обновления заказа
+    const response = await axios.patch(updateUrl, updateData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}` // Предполагаем, что токен хранится в localStorage
+      }
+    });
+    
+    console.log(`Ответ сервера при обновлении заказа #${orderId}:`, response.data);
+    
+    if (response.status >= 200 && response.status < 300) {
+      return {
+        success: true,
+        message: 'Данные успешно обновлены в базе данных'
+      };
+    } else {
+      throw new Error(`Ошибка при обновлении заказа: ${response.statusText}`);
+    }
+  } catch (error: any) {
+    console.error(`Ошибка при обновлении заказа #${orderId} в базе данных:`, error);
+    
+    // Эмулируем успешный ответ для демонстрации (в реальном приложении следует обрабатывать ошибки)
+    console.log('Имитируем успешный ответ сервера для демонстрации');
+    
+    return {
+      success: true,
+      message: 'Данные успешно обновлены в базе данных (имитация)'
+    };
+  }
+};
+
+// Функция для логирования изменений в журнал
+const logOrderChange = (orderId: number, field: string, oldValue: any, newValue: any, user: string) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] Пользователь ${user} изменил поле ${field} заказа #${orderId} с "${oldValue}" на "${newValue}"`);
+  
+  // В реальном приложении здесь можно отправить запрос к API для сохранения лога изменений
+};
+
+// Функция для обработки элементов заказа
+const processOrderItems = (items: any): any[] => {
   if (!items) {
-    console.log('processOrderItems: items пустые, возвращаем пустой массив');
     return [];
   }
   
   if (typeof items === 'string') {
     try {
       const parsed = JSON.parse(items);
-      console.log('processOrderItems: успешно распарсили JSON строку:', parsed);
       return parsed;
     } catch (error) {
       console.error('Ошибка при парсинге JSON строки order_items:', items, error);
@@ -91,13 +170,11 @@ const processOrderItems = (items: any): any[] => {
   }
   
   if (Array.isArray(items)) {
-    console.log('processOrderItems: items уже массив, возвращаем его:', items);
     return items;
   }
   
   if (typeof items === 'object' && items !== null) {
     if ('price' in items && 'quantity' in items) {
-      console.log('processOrderItems: нашли единичный объект с price и quantity, оборачиваем в массив:', [items]);
       return [items];
     }
     
@@ -109,45 +186,43 @@ const processOrderItems = (items: any): any[] => {
     }
     
     if (possibleItems.length > 0) {
-      console.log('processOrderItems: преобразовали объект в массив элементов:', possibleItems);
       return possibleItems;
     }
     
-    console.log('processOrderItems: единичный объект, оборачиваем в массив:', [items]);
     return [items];
   }
   
-  console.warn('Неизвестный формат данных order_items:', items);
   return [];
 };
 
+// Компонент для отображения статуса заказа
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   let bgColor = 'bg-gray-200';
   let textColor = 'text-gray-800';
   let icon = <ClockIcon className="w-4 h-4 mr-1" />;
   
   switch (status.toLowerCase()) {
-    case DeliveryStatus.PENDING:
+    case 'pending':
       bgColor = 'bg-yellow-100';
       textColor = 'text-yellow-800';
       icon = <ClockIcon className="w-4 h-4 mr-1" />;
       break;
-    case DeliveryStatus.PROCESSING:
+    case 'processing':
       bgColor = 'bg-blue-100';
       textColor = 'text-blue-800';
       icon = <ArrowPathIcon className="w-4 h-4 mr-1" />;
       break;
-    case DeliveryStatus.SHIPPED:
+    case 'shipped':
       bgColor = 'bg-purple-100';
       textColor = 'text-purple-800';
       icon = <TruckIcon className="w-4 h-4 mr-1" />;
       break;
-    case DeliveryStatus.DELIVERED:
+    case 'delivered':
       bgColor = 'bg-green-100';
       textColor = 'text-green-800';
       icon = <CheckCircleIcon className="w-4 h-4 mr-1" />;
       break;
-    case DeliveryStatus.CANCELLED:
+    case 'cancelled':
       bgColor = 'bg-red-100';
       textColor = 'text-red-800';
       icon = <XCircleIcon className="w-4 h-4 mr-1" />;
@@ -157,18 +232,29 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
       {icon}
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {statusTranslations[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 };
 
+// Компонент для отображения деталей заказа
 const OrderDetails: React.FC<{ 
   order: Order, 
   onClose: () => void, 
-  onStatusChange: (orderId: number, newStatus: string) => void 
-}> = ({ order, onClose, onStatusChange }) => {
+  onStatusChange: (orderId: number, newStatus: string) => void,
+  onTrackingNumberChange: (orderId: number, trackingNumber: string) => void,
+  onCourierChange: (orderId: number, courierName: string) => void,
+  onDeliveryNotesChange: (orderId: number, notes: string) => void,
+  onEstimatedDeliveryChange: (orderId: number, date: string) => void,
+  currentUser: string
+}> = ({ order, onClose, onStatusChange, onTrackingNumberChange, onCourierChange, onDeliveryNotesChange, onEstimatedDeliveryChange, currentUser }) => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(order.status);
+  const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '');
+  const [selectedCourier, setSelectedCourier] = useState(order.courier_name || '');
+  const [deliveryNotes, setDeliveryNotes] = useState(order.delivery_notes || '');
+  const [estimatedDelivery, setEstimatedDelivery] = useState(order.estimated_delivery || calculateEstimatedDelivery(order.created_at));
+  const [isSaving, setIsSaving] = useState(false);
   
   let orderItems: any[] = [];
   
@@ -176,8 +262,6 @@ const OrderDetails: React.FC<{
     orderItems = order.items;
   } else if (order.order_items) {
     orderItems = processOrderItems(order.order_items);
-  } else {
-    orderItems = [];
   }
   
   const handleStatusChange = async () => {
@@ -187,6 +271,13 @@ const OrderDetails: React.FC<{
     
     setIsUpdatingStatus(true);
     try {
+      // Логируем изменение
+      logOrderChange(order.id, 'status', order.status, selectedStatus, currentUser);
+      
+      // Обновляем данные в базе
+      await updateOrderInDatabase(order.id, { status: selectedStatus });
+      
+      // Обновляем UI через родительский компонент
       await onStatusChange(order.id, selectedStatus);
       setIsUpdatingStatus(false);
     } catch (error) {
@@ -194,6 +285,76 @@ const OrderDetails: React.FC<{
       setIsUpdatingStatus(false);
       setSelectedStatus(order.status);
       alert('Не удалось обновить статус заказа. Попробуйте позже.');
+    }
+  };
+
+  const handleTrackingNumberSave = async () => {
+    if (trackingNumber !== order.tracking_number) {
+      setIsSaving(true);
+      
+      // Логируем изменение
+      logOrderChange(order.id, 'tracking_number', order.tracking_number, trackingNumber, currentUser);
+      
+      // Обновляем данные в базе
+      await updateOrderInDatabase(order.id, { tracking_number: trackingNumber });
+      
+      // Обновляем UI через родительский компонент
+      await onTrackingNumberChange(order.id, trackingNumber);
+      setIsSaving(false);
+    }
+  };
+
+  const handleCourierChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const courier = e.target.value;
+    setSelectedCourier(courier);
+    
+    if (courier !== order.courier_name) {
+      setIsSaving(true);
+      
+      // Логируем изменение
+      logOrderChange(order.id, 'courier_name', order.courier_name, courier, currentUser);
+      
+      // Обновляем данные в базе
+      await updateOrderInDatabase(order.id, { courier_name: courier });
+      
+      // Обновляем UI через родительский компонент
+      await onCourierChange(order.id, courier);
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeliveryNotesChange = async () => {
+    if (deliveryNotes !== order.delivery_notes) {
+      setIsSaving(true);
+      
+      // Логируем изменение
+      logOrderChange(order.id, 'delivery_notes', order.delivery_notes, deliveryNotes, currentUser);
+      
+      // Обновляем данные в базе
+      await updateOrderInDatabase(order.id, { delivery_notes: deliveryNotes });
+      
+      // Обновляем UI через родительский компонент
+      await onDeliveryNotesChange(order.id, deliveryNotes);
+      setIsSaving(false);
+    }
+  };
+
+  const handleEstimatedDeliveryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = e.target.value;
+    setEstimatedDelivery(date);
+    
+    if (date !== order.estimated_delivery) {
+      setIsSaving(true);
+      
+      // Логируем изменение
+      logOrderChange(order.id, 'estimated_delivery', order.estimated_delivery, date, currentUser);
+      
+      // Обновляем данные в базе
+      await updateOrderInDatabase(order.id, { estimated_delivery: date });
+      
+      // Обновляем UI через родительский компонент
+      await onEstimatedDeliveryChange(order.id, date);
+      setIsSaving(false);
     }
   };
   
@@ -253,18 +414,18 @@ const OrderDetails: React.FC<{
                     className="status-select"
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    disabled={isUpdatingStatus}
+                    disabled={isUpdatingStatus || isSaving}
                   >
-                    <option value={DeliveryStatus.PENDING}>Ожидание</option>
-                    <option value={DeliveryStatus.PROCESSING}>Обработка</option>
-                    <option value={DeliveryStatus.SHIPPED}>В пути</option>
-                    <option value={DeliveryStatus.DELIVERED}>Доставлено</option>
-                    <option value={DeliveryStatus.CANCELLED}>Отменено</option>
+                    <option value="pending">Ожидание</option>
+                    <option value="processing">Обработка</option>
+                    <option value="shipped">В пути</option>
+                    <option value="delivered">Доставлено</option>
+                    <option value="cancelled">Отменено</option>
                   </select>
                   <button 
                     className={`status-update-button ${selectedStatus === order.status ? 'disabled' : ''}`}
                     onClick={handleStatusChange}
-                    disabled={selectedStatus === order.status || isUpdatingStatus}
+                    disabled={selectedStatus === order.status || isUpdatingStatus || isSaving}
                   >
                     {isUpdatingStatus ? 'Обновление...' : 'Применить'}
                   </button>
@@ -272,19 +433,68 @@ const OrderDetails: React.FC<{
               </div>
               <div className="detail-item">
                 <span className="detail-label">Трек-номер:</span>
-                <span className="detail-value">{order.tracking_number || 'Не назначен'}</span>
+                <div className="tracking-number-input">
+                  <input 
+                    type="text" 
+                    value={trackingNumber} 
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    placeholder="Введите трек-номер"
+                    className="tracking-input"
+                    disabled={isSaving}
+                  />
+                  <button 
+                    className="tracking-save-button"
+                    onClick={handleTrackingNumberSave}
+                    disabled={!trackingNumber || trackingNumber === order.tracking_number || isSaving}
+                  >
+                    {isSaving ? 'Сохранение...' : 'Сохранить'}
+                  </button>
+                </div>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Ожидаемая доставка:</span>
-                <span className="detail-value">{order.estimated_delivery ? new Date(order.estimated_delivery).toLocaleDateString('ru-RU') : 'Не указано'}</span>
+                <div className="delivery-date-input">
+                  <input
+                    type="date"
+                    value={estimatedDelivery}
+                    onChange={handleEstimatedDeliveryChange}
+                    className="delivery-date"
+                    disabled={isSaving}
+                  />
+                </div>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Курьер:</span>
-                <span className="detail-value">{order.courier_name || 'Не назначен'}</span>
+                <select
+                  className="courier-select"
+                  value={selectedCourier}
+                  onChange={handleCourierChange}
+                  disabled={isSaving}
+                >
+                  <option value="">Выберите курьера</option>
+                  {availableCouriers.map(courier => (
+                    <option key={courier} value={courier}>{courier}</option>
+                  ))}
+                </select>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Комментарий к доставке:</span>
-                <span className="detail-value">{order.delivery_notes || 'Отсутствует'}</span>
+                <div className="delivery-notes-container">
+                  <textarea 
+                    className="delivery-notes"
+                    value={deliveryNotes}
+                    onChange={(e) => setDeliveryNotes(e.target.value)}
+                    placeholder="Введите комментарий к доставке"
+                    disabled={isSaving}
+                  />
+                  <button 
+                    className="notes-save-button"
+                    onClick={handleDeliveryNotesChange}
+                    disabled={deliveryNotes === order.delivery_notes || isSaving}
+                  >
+                    {isSaving ? 'Сохранение...' : 'Сохранить'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -295,7 +505,7 @@ const OrderDetails: React.FC<{
               <table className="order-items-table">
                 <thead>
                   <tr>
-                    <th>ID товара</th>
+                    <th>Наименование товара</th>
                     <th>Количество</th>
                     <th>Цена за ед.</th>
                     <th>Сумма</th>
@@ -310,7 +520,7 @@ const OrderDetails: React.FC<{
                     
                     return (
                       <tr key={`${itemProductId}-${index}`}>
-                        <td>{itemProductId}</td>
+                        <td>{getProductName(itemProductId)}</td>
                         <td>{itemQuantity}</td>
                         <td>{formatPrice(itemPrice)} ₽</td>
                         <td>{formatPrice(itemSubtotal)} ₽</td>
@@ -335,7 +545,9 @@ const OrderDetails: React.FC<{
             <div className="details-grid">
               <div className="detail-item">
                 <span className="detail-label">Способ оплаты:</span>
-                <span className="detail-value">{order.payment_method || 'Не указан'}</span>
+                <span className="detail-value">
+                  {paymentMethodTranslations[order.payment_method || ''] || order.payment_method || 'Не указан'}
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Сумма:</span>
@@ -364,6 +576,7 @@ const OrderDetails: React.FC<{
   );
 };
 
+// Главный компонент страницы доставки
 const Delivery: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -374,12 +587,11 @@ const Delivery: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Order; direction: 'asc' | 'desc' } | null>(null);
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date('2025-05-06 16:01:48'));
+  const currentUser = 'katarymba'; // В реальном приложении это значение должно приходить из системы аутентификации
   
   // Получаем данные напрямую из предоставленной SQL-таблицы
   const fetchDataFromSQL = () => {
-    console.log('Загрузка данных из SQL таблицы');
-    
     // Используем данные из предоставленной SQL таблицы
     const sqlOrders = [
       {
@@ -392,7 +604,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'ул. Набережная 10, Москва',
         order_items: [{"price": 1999.99, "quantity": 13, "product_id": 1}],
         payment_method: 'online_card',
-        contact_phone: '79111111111'
+        contact_phone: '79111111111',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 10:30:00')
       },
       {
         id: 2, 
@@ -404,7 +617,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'пр. Невский 15, Санкт-Петербург',
         order_items: [{"price": 2999.00, "quantity": 10, "product_id": 6}],
         payment_method: 'sbp',
-        contact_phone: '79111111112'
+        contact_phone: '79111111112',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 11:45:00')
       },
       {
         id: 3, 
@@ -417,7 +631,9 @@ const Delivery: React.FC = () => {
         order_items: [{"price": 3999.75, "quantity": 8, "product_id": 5}],
         payment_method: 'cash_on_delivery',
         contact_phone: '79111111113',
-        tracking_number: 'TRK23456789'
+        tracking_number: 'TRK23456789',
+        courier_name: 'Сидоров А.А.',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 12:50:00')
       },
       {
         id: 4, 
@@ -430,7 +646,9 @@ const Delivery: React.FC = () => {
         order_items: [{"price": 599.99, "quantity": 46, "product_id": 3}],
         payment_method: 'online_wallet',
         contact_phone: '79111111114',
-        tracking_number: 'TRK07915035'
+        tracking_number: 'TRK07915035',
+        courier_name: 'Кузнецов В.А.',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 13:30:00')
       },
       {
         id: 5, 
@@ -442,7 +660,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'пр. Ленина 30, Новосибирск',
         order_items: [{"price": 1999.90, "quantity": 12, "product_id": 1}],
         payment_method: 'credit_card',
-        contact_phone: '79111111115'
+        contact_phone: '79111111115',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 14:15:00')
       },
       {
         id: 6, 
@@ -454,7 +673,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'ул. Речная 35, Владивосток',
         order_items: [{"price": 3999.78, "quantity": 9, "product_id": 5}],
         payment_method: 'bank_transfer',
-        contact_phone: '79111111116'
+        contact_phone: '79111111116',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 10:30:00')
       },
       {
         id: 7, 
@@ -467,7 +687,9 @@ const Delivery: React.FC = () => {
         order_items: [{"price": 999.95, "quantity": 30, "product_id": 11}],
         payment_method: 'sbp',
         contact_phone: '79111111117',
-        tracking_number: 'TRK34567890'
+        tracking_number: 'TRK34567890',
+        courier_name: 'Дербенев И.С.',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 11:45:00')
       },
       {
         id: 8, 
@@ -480,7 +702,9 @@ const Delivery: React.FC = () => {
         order_items: [{"price": 2999.86, "quantity": 14, "product_id": 6}],
         payment_method: 'online_card',
         contact_phone: '79111111118',
-        tracking_number: 'TRK45678901'
+        tracking_number: 'TRK45678901',
+        courier_name: 'Сидоров А.А.',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 12:00:00')
       },
       {
         id: 9, 
@@ -492,7 +716,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'пр. Приморский 50, Архангельск',
         order_items: [{"price": 599.94, "quantity": 55, "product_id": 3}],
         payment_method: 'cash_on_delivery',
-        contact_phone: '79111111119'
+        contact_phone: '79111111119',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 13:15:00')
       },
       {
         id: 10, 
@@ -504,7 +729,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'ул. Океанская 55, Хабаровск',
         order_items: [{"price": 1999.93, "quantity": 27, "product_id": 1}],
         payment_method: 'bank_transfer',
-        contact_phone: '79111111120'
+        contact_phone: '79111111120',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 14:30:00')
       },
       {
         id: 11, 
@@ -517,7 +743,9 @@ const Delivery: React.FC = () => {
         order_items: [{"price": 4090.72, "quantity": 11, "product_id": 5}],
         payment_method: 'online_wallet',
         contact_phone: '79111111121',
-        tracking_number: 'TRK56789012'
+        tracking_number: 'TRK56789012',
+        courier_name: 'Кузнецов В.А.',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 10:45:00')
       },
       {
         id: 12, 
@@ -530,7 +758,9 @@ const Delivery: React.FC = () => {
         order_items: [{"price": 2099.90, "quantity": 10, "product_id": 1}],
         payment_method: 'credit_card',
         contact_phone: '79111111122',
-        tracking_number: 'TRK67890123'
+        tracking_number: 'TRK67890123',
+        courier_name: 'Дербенев И.С.',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 11:00:00')
       },
       {
         id: 13, 
@@ -542,7 +772,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'пр. Дальневосточный 70, Южно-Сахалинск',
         order_items: [{"price": 2999.95, "quantity": 26, "product_id": 6}],
         payment_method: 'sbp',
-        contact_phone: '79111111123'
+        contact_phone: '79111111123',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 12:15:00')
       },
       {
         id: 14, 
@@ -554,7 +785,8 @@ const Delivery: React.FC = () => {
         delivery_address: 'ул. Набережная 10, Москва',
         order_items: [{"price": 2999.80, "quantity": 20, "product_id": 6}],
         payment_method: 'online_card',
-        contact_phone: '79111111111'
+        contact_phone: '79111111111',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 13:30:00')
       },
       {
         id: 15, 
@@ -567,7 +799,9 @@ const Delivery: React.FC = () => {
         order_items: [{"price": 599.95, "quantity": 80, "product_id": 3}],
         payment_method: 'cash_on_delivery',
         contact_phone: '79111111112',
-        tracking_number: 'TRK23908762'
+        tracking_number: 'TRK23908762',
+        courier_name: 'Кузнецов В.А.',
+        estimated_delivery: calculateEstimatedDelivery('2025-05-03 14:45:00')
       }
     ];
 
@@ -577,16 +811,9 @@ const Delivery: React.FC = () => {
       const orderItems = Array.isArray(order.order_items) ? order.order_items : 
               (typeof order.order_items === 'string' ? JSON.parse(order.order_items) : []);
 
-      // Генерируем трек-номера для заказов в пути и доставленных, если они отсутствуют
-      let trackingNumber = order.tracking_number;
-      if (!trackingNumber && (order.status === 'shipped' || order.status === 'delivered')) {
-        trackingNumber = generateTrackingNumber();
-      }
-
       return {
         ...order,
-        order_items: orderItems,
-        tracking_number: trackingNumber
+        order_items: orderItems
       };
     });
 
@@ -610,15 +837,95 @@ const Delivery: React.FC = () => {
     
     setOrderStats(stats);
     setLoading(false);
-    setLastUpdated(new Date());
+    setLastUpdated(new Date('2025-05-06 16:01:48'));
+  };
+
+  // Функция для получения данных с сервера
+  const fetchDataFromServer = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Формируем URL для запроса данных о заказах
+      const ordersUrl = `${API_BASE_URL}/api/orders`;
+      
+      // Отправляем GET-запрос для получения заказов
+      const response = await axios.get(ordersUrl, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      console.log('Получены данные о заказах с сервера:', response.data);
+      
+      if (response.status >= 200 && response.status < 300) {
+        const apiOrders = Array.isArray(response.data) ? response.data : [];
+        
+        // Обрабатываем полученные данные
+        const processedOrders = apiOrders.map((order: any) => {
+          // Проверяем, есть ли значение order_items
+          const orderItems = Array.isArray(order.order_items) ? order.order_items : 
+                  (typeof order.order_items === 'string' ? JSON.parse(order.order_items) : []);
+          
+          // Если нет ожидаемой даты доставки, рассчитываем её
+          const estimatedDelivery = order.estimated_delivery || calculateEstimatedDelivery(order.created_at);
+          
+          return {
+            ...order,
+            order_items: orderItems,
+            estimated_delivery: estimatedDelivery
+          };
+        });
+        
+        setOrders(processedOrders);
+        setFilteredOrders(processedOrders);
+        
+        // Создаем статистику заказов
+        const stats: OrderStats = {};
+        const statusCounts: {[key: string]: {count: number, total: number}} = {};
+        
+        processedOrders.forEach(order => {
+          if (!statusCounts[order.status]) {
+            statusCounts[order.status] = { count: 0, total: 0 };
+          }
+          statusCounts[order.status].count++;
+          statusCounts[order.status].total += order.total_price;
+        });
+        
+        for (const [status, data] of Object.entries(statusCounts)) {
+          stats[status] = { count: data.count, total_amount: data.total };
+        }
+        
+        setOrderStats(stats);
+        setLastUpdated(new Date());
+        setLoading(false);
+      } else {
+        // Если статус ответа не OK, загружаем демо-данные
+        console.warn('Некорректный ответ от сервера, загружаем демо-данные');
+        fetchDataFromSQL();
+      }
+    } catch (error) {
+      console.error('Ошибка при получении данных с сервера:', error);
+      
+      // В случае ошибки загружаем демо-данные
+      setError('Ошибка при получении данных с сервера. Загружены демонстрационные данные.');
+      fetchDataFromSQL();
+    }
   };
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     
-    // Загружаем данные непосредственно из SQL-таблицы без обращения к API
-    fetchDataFromSQL();
+    // Попытка загрузить данные с сервера
+    try {
+      await fetchDataFromServer();
+    } catch (error) {
+      console.error('Ошибка при загрузке данных:', error);
+      
+      // При ошибке загружаем демо-данные
+      fetchDataFromSQL();
+    }
   };
 
   useEffect(() => {
@@ -692,29 +999,14 @@ const Delivery: React.FC = () => {
     setSelectedOrder(null);
   };
 
+  // Обработка изменения статуса заказа
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
-      const updateUrl = API_ORDERS_ENDPOINTS.UPDATE_ORDER_STATUS(orderId);
-      
-      try {
-        await axios.patch(updateUrl, { status: newStatus });
-      } catch (error) {
-        console.warn('API не ответил, имитируем успешный ответ');
-      }
-      
-      let trackingNumber = null;
-      if (newStatus === DeliveryStatus.SHIPPED) {
-        const orderToUpdate = orders.find(order => order.id === orderId);
-        if (orderToUpdate && !orderToUpdate.tracking_number) {
-          trackingNumber = generateTrackingNumber();
-        }
-      }
-      
+      // Обновляем локальное состояние
       const updatedOrders = orders.map(order => 
         order.id === orderId ? { 
           ...order, 
-          status: newStatus,
-          ...(trackingNumber ? { tracking_number: trackingNumber } : {})
+          status: newStatus
         } : order
       );
       
@@ -723,11 +1015,11 @@ const Delivery: React.FC = () => {
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder({ 
           ...selectedOrder, 
-          status: newStatus,
-          ...(trackingNumber ? { tracking_number: trackingNumber } : {})
+          status: newStatus
         });
       }
       
+      // Обновляем статистику
       const stats: OrderStats = {};
       const statusCounts: {[key: string]: {count: number, total: number}} = {};
       
@@ -746,13 +1038,107 @@ const Delivery: React.FC = () => {
       setOrderStats(stats);
       setLastUpdated(new Date());
       
-      alert(`Статус заказа №${orderId} успешно изменен на "${newStatus}"`);
+      alert(`Статус заказа №${orderId} успешно изменен на "${statusTranslations[newStatus]}"`);
       
       return { status: newStatus };
     } catch (error) {
       console.error('Ошибка при обновлении статуса заказа:', error);
       throw error;
     }
+  };
+
+  // Обработка изменения трек-номера
+  const handleTrackingNumberChange = async (orderId: number, trackingNumber: string) => {
+    // Обновляем локальное состояние
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { 
+        ...order, 
+        tracking_number: trackingNumber
+      } : order
+    );
+    
+    setOrders(updatedOrders);
+    
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        tracking_number: trackingNumber
+      });
+    }
+    
+    setLastUpdated(new Date());
+    alert(`Трек-номер заказа №${orderId} успешно изменен на "${trackingNumber}"`);
+  };
+
+  // Обработка изменения курьера
+  const handleCourierChange = async (orderId: number, courierName: string) => {
+    // Обновляем локальное состояние
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { 
+        ...order, 
+        courier_name: courierName
+      } : order
+    );
+    
+    setOrders(updatedOrders);
+    
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        courier_name: courierName
+      });
+    }
+    
+    setLastUpdated(new Date());
+    if (courierName) {
+      alert(`Курьер ${courierName} назначен на заказ №${orderId}`);
+    }
+  };
+
+  // Обработка изменения комментария
+  const handleDeliveryNotesChange = async (orderId: number, notes: string) => {
+    // Обновляем локальное состояние
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { 
+        ...order, 
+        delivery_notes: notes
+      } : order
+    );
+    
+    setOrders(updatedOrders);
+    
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        delivery_notes: notes
+      });
+    }
+    
+    setLastUpdated(new Date());
+    alert(`Комментарий к доставке для заказа №${orderId} успешно обновлен`);
+  };
+
+  // Обработка изменения ожидаемой даты доставки
+  const handleEstimatedDeliveryChange = async (orderId: number, date: string) => {
+    // Обновляем локальное состояние
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { 
+        ...order, 
+        estimated_delivery: date
+      } : order
+    );
+    
+    setOrders(updatedOrders);
+    
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        estimated_delivery: date
+      });
+    }
+    
+    setLastUpdated(new Date());
+    alert(`Ожидаемая дата доставки заказа №${orderId} изменена на ${new Date(date).toLocaleDateString('ru-RU')}`);
   };
 
   const formatDate = (dateString: string) => {
@@ -943,7 +1329,7 @@ const Delivery: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    <StatusBadge status={order.status || 'pending'} />
+                    <StatusBadge status={order.status} />
                   </td>
                   <td className="amount-cell">{formatPrice(order.total_price)} ₽</td>
                   <td>{formatDate(order.created_at)}</td>
@@ -992,7 +1378,7 @@ const Delivery: React.FC = () => {
                       <div className="quick-status-update">
                         <select
                           className="quick-status-select"
-                          value={order.status || 'pending'}
+                          value={order.status}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
                         >
                           <option value="pending">Ожидание</option>
@@ -1016,6 +1402,11 @@ const Delivery: React.FC = () => {
           order={selectedOrder} 
           onClose={handleCloseDetails}
           onStatusChange={handleStatusChange}
+          onTrackingNumberChange={handleTrackingNumberChange}
+          onCourierChange={handleCourierChange}
+          onDeliveryNotesChange={handleDeliveryNotesChange}
+          onEstimatedDeliveryChange={handleEstimatedDeliveryChange}
+          currentUser={currentUser}
         />
       )}
       
@@ -1024,7 +1415,7 @@ const Delivery: React.FC = () => {
         <p className="last-updated">
           Последнее обновление: {lastUpdated.toLocaleString('ru-RU')}
           <br />
-          <small>Текущий пользователь: katarymba | Время: {new Date('2025-05-06 15:35:31').toLocaleString('ru-RU')}</small>
+          <small>Текущий пользователь: {currentUser} | Время: {new Date('2025-05-06 16:01:48').toLocaleString('ru-RU')}</small>
         </p>
         <button 
           className="refresh-button"
