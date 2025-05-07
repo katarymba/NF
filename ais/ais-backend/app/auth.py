@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
 
-from .models import Administrator, User
+from .models import administrator, User
 from .database import get_db
 
 # Настройки JWT
