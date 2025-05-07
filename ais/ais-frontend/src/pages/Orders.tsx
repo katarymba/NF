@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Tag, Button, Card, Select, Input, DatePicker, Typography, Space, Spin, Tooltip, Modal, Drawer, Form, notification } from 'antd';
+import { Table, Tag, Button, Card, Select, Input, DatePicker, Typography, Space, Spin, Tooltip, Modal, Drawer, Form, notification, Alert } from 'antd';
 import { SearchOutlined, FilterOutlined, ReloadOutlined, EyeOutlined, EditOutlined, ExportOutlined, SyncOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -7,6 +7,7 @@ import { Order, DeliveryStatus, getStatusText, getStatusClass, formatPrice, form
 import { sendOrderToSeverRyba } from '../services/integration';
 import dayjs from 'dayjs';
 import '../styles/Orders.css';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -37,15 +38,16 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   const [editVisible, setEditVisible] = useState<boolean>(false);
   const [editForm] = Form.useForm();
   const [syncingOrder, setSyncingOrder] = useState<number | null>(null);
-
-  // Исправлено: используем корректный URL для API
-  const API_BASE_URL = 'http://localhost:8080';
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Получение данных заказов с платежами
   const fetchOrders = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      // Получаем данные из базы PostgreSQL через API
+      console.log('Fetching orders with token...');
+      
+      // Прямое использование axios с явной передачей токена в заголовке
       const response = await axios.get(`${API_BASE_URL}/api/orders`, {
         headers: {
           Authorization: `Bearer ${token}`
@@ -53,6 +55,8 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
       });
       
       if (response.data) {
+        console.log('Received orders data:', response.data);
+        
         // Правильная обработка данных из PostgreSQL
         const formattedOrders = response.data.map((order: any) => {
           // Обработка order_items если они представлены в виде строки JSON
@@ -71,8 +75,8 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
             order_items: orderItems,
             // Преобразование платежного метода в русский текст
             payment_method: order.payment_method === 'online_card' ? 'Онлайн картой' : 
-                            order.payment_method === 'sbp' ? 'СБП' : 
-                            order.payment_method === 'cash' ? 'Наличными' : order.payment_method,
+                          order.payment_method === 'sbp' ? 'СБП' : 
+                          order.payment_method === 'cash' ? 'Наличными' : order.payment_method,
             // Устанавливаем статус оплаты на основе наличия payment_method
             payment_status: order.payment_method ? 'completed' : 'pending',
             // Добавляем другие необходимые поля
@@ -87,11 +91,32 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
           description: 'Не удалось загрузить данные заказов из базы данных'
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка при получении заказов:', error);
+      
+      // Улучшенная обработка ошибок с более подробной информацией
+      let errorMsg = 'Проверьте соединение с сервером и базой данных';
+      
+      if (error.response) {
+        // Ошибка от сервера с HTTP-кодом
+        errorMsg = `Ошибка ${error.response.status}: ${error.response.statusText}`;
+        
+        if (error.response.status === 401) {
+          errorMsg = 'Ошибка аутентификации. Токен недействителен или истек. Попробуйте выйти и войти снова.';
+          console.error('Токен авторизации:', token ? token.substring(0, 20) + '...' : 'отсутствует');
+        }
+      } else if (error.request) {
+        // Запрос был сделан, но ответ не получен
+        errorMsg = 'Сервер не отвечает. Проверьте, запущен ли бэкенд';
+      } else {
+        // Другие ошибки
+        errorMsg = `Ошибка: ${error.message}`;
+      }
+      
+      setErrorMessage(errorMsg);
       notification.error({
         message: 'Ошибка при загрузке данных',
-        description: 'Проверьте соединение с сервером и базой данных PostgreSQL'
+        description: errorMsg
       });
     } finally {
       setLoading(false);
@@ -99,8 +124,17 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   };
 
   useEffect(() => {
+    // Проверка наличия токена перед запросом
     if (token) {
+      // Выводим для отладки текущий токен
+      console.log('Используемый токен (первые 20 символов):', token.substring(0, 20) + '...');
       fetchOrders();
+    } else {
+      setErrorMessage('Токен авторизации отсутствует. Пожалуйста, авторизуйтесь.');
+      notification.warning({
+        message: 'Требуется авторизация',
+        description: 'Для доступа к заказам необходимо авторизоваться'
+      });
     }
   }, [token]);
 
@@ -122,11 +156,11 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
         description: `Статус заказа №${id} изменен на "${getStatusText(status)}"`
       });
       fetchOrders(); // Обновляем список заказов
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка при обновлении статуса:', error);
       notification.error({
         message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить статус заказа'
+        description: error.response?.data?.message || 'Не удалось обновить статус заказа'
       });
     }
   };
@@ -135,7 +169,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   const syncOrderWithSeverRyba = async (orderId: number) => {
     setSyncingOrder(orderId);
     try {
-      // Здесь мы напрямую используем данные из PostgreSQL
+      // Находим заказ для синхронизации
       const orderToSync = orders.find(order => order.id === orderId);
       
       if (!orderToSync) {
@@ -162,11 +196,11 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
         message: 'Синхронизация выполнена',
         description: `Заказ №${orderId} успешно отправлен в Север-Рыбу`
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Ошибка при отправке заказа ${orderId} в Север-Рыбу:`, error);
       notification.error({
         message: 'Ошибка синхронизации',
-        description: 'Не удалось отправить заказ в Север-Рыбу'
+        description: error.message || 'Не удалось отправить заказ в Север-Рыбу'
       });
     } finally {
       setSyncingOrder(null);
@@ -213,11 +247,11 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
       });
       setEditVisible(false);
       fetchOrders(); // Обновляем список заказов
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка при обновлении заказа:', error);
       notification.error({
         message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить данные заказа'
+        description: error.response?.data?.message || 'Не удалось обновить данные заказа'
       });
     }
   };
@@ -251,11 +285,18 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
     });
 
     try {
-      window.open(`${API_BASE_URL}/api/orders/export?format=excel&token=${encodeURIComponent(token)}`, '_blank');
-    } catch (error) {
+      // Создаем URL с токеном для экспорта
+      const exportUrl = `${API_BASE_URL}/api/orders/export?format=excel&token=${encodeURIComponent(token)}`;
+      
+      // Открываем URL в новом окне
+      const downloadLink = document.createElement('a');
+      downloadLink.href = exportUrl;
+      downloadLink.target = '_blank';
+      downloadLink.click();
+    } catch (error: any) {
       notification.error({
         message: 'Ошибка при экспорте',
-        description: 'Не удалось экспортировать данные'
+        description: error.message || 'Не удалось экспортировать данные'
       });
     }
   };
@@ -286,7 +327,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
         <div>
           <div>{text || 'Клиент не указан'}</div>
           <Text type="secondary" style={{ fontSize: '12px' }}>
-            ID: {record.user_id}
+            ID: {record.user_id || 'Н/Д'}
           </Text>
         </div>
       ),
@@ -333,7 +374,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
              record.payment_status === 'pending' ? 'Ожидает' : 'Неизвестно'}
           </Tag>
           <div style={{ fontSize: '12px', marginTop: '4px' }}>
-            {method}
+            {method || 'Не указан'}
           </div>
         </div>
       ),
@@ -391,11 +432,25 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
               type="default" 
               icon={<ExportOutlined />} 
               onClick={exportToExcel}
+              disabled={orders.length === 0}
             >
               Экспорт в Excel
             </Button>
           </Space>
         </div>
+
+        {errorMessage && (
+          <div style={{ marginBottom: '20px' }}>
+            <Alert 
+              message="Ошибка" 
+              description={errorMessage} 
+              type="error" 
+              showIcon 
+              closable 
+              onClose={() => setErrorMessage(null)}
+            />
+          </div>
+        )}
 
         <div style={{ marginBottom: '20px' }}>
           <Space wrap>
@@ -442,6 +497,9 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
               showTotal: (total) => `Всего: ${total} заказов`,
               pageSizeOptions: ['10', '20', '50']
             }}
+            locale={{
+              emptyText: 'Нет данных о заказах'
+            }}
           />
         </Spin>
       </Card>
@@ -464,7 +522,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
           <div>
             <Card title="Основная информация" style={{ marginBottom: '16px' }}>
               <p><strong>Клиент:</strong> {orderDetails.client_name || 'Не указан'}</p>
-              <p><strong>ID пользователя:</strong> {orderDetails.user_id}</p>
+              <p><strong>ID пользователя:</strong> {orderDetails.user_id || 'Не указан'}</p>
               <p><strong>Дата создания:</strong> {formatDate(orderDetails.created_at || '')}</p>
               <p><strong>Статус:</strong> <Tag className={getStatusClass(orderDetails.status)}>{getStatusText(orderDetails.status)}</Tag></p>
               <p><strong>Сумма заказа:</strong> {formatPrice(orderDetails.total_price || 0)}</p>
@@ -482,9 +540,10 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
             </Card>
             
             <Card title="Информация о доставке" style={{ marginBottom: '16px' }}>
-              <p><strong>Адрес доставки:</strong> {orderDetails.delivery_address}</p>
+              <p><strong>Адрес доставки:</strong> {orderDetails.delivery_address || 'Не указан'}</p>
               <p><strong>Трек-номер:</strong> {orderDetails.tracking_number || 'Не присвоен'}</p>
               <p><strong>Примечание к доставке:</strong> {orderDetails.delivery_notes || 'Нет'}</p>
+              <p><strong>Контактный телефон:</strong> {orderDetails.contact_phone || 'Не указан'}</p>
             </Card>
             
             <Card title="Товары в заказе">
@@ -523,7 +582,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
                     title: 'Название',
                     dataIndex: 'name',
                     key: 'name',
-                    render: (text, record: any) => text || record.product_name || 'Товар',
+                    render: (text: string, record: any) => text || record.product_name || 'Товар',
                   },
                   {
                     title: 'Количество',
@@ -539,9 +598,12 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
                   {
                     title: 'Итого',
                     key: 'total',
-                    render: (text, record: any) => formatPrice(record.price * record.quantity),
+                    render: (text: string, record: any) => formatPrice((record.price || 0) * (record.quantity || 0)),
                   },
                 ]}
+                locale={{
+                  emptyText: 'Нет данных о товарах в заказе'
+                }}
               />
             </Card>
           </div>

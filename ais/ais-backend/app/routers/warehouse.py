@@ -75,12 +75,12 @@ def get_stocks(request: Request, db: Session = Depends(get_db)):
         stock_data = {
             "id": str(stock.id),
             "product_id": str(stock.product_id),
-            "product_name": stock.product.name,
+            "product_name": stock.product.name if stock.product else "Unknown Product",
             "warehouse_id": str(stock.warehouse_id),
-            "warehouse_name": stock.warehouse.name,
+            "warehouse_name": stock.warehouse.name if stock.warehouse else "Unknown Warehouse",
             "quantity": stock.quantity,
-            "minimum_quantity": 30,  # Default value, you might want to add this to your Stock model
-            "reorder_level": 50,  # Default value, you might want to add this to your Stock model
+            "minimum_quantity": 30,  # Default value
+            "reorder_level": 50,  # Default value
             "quantity_reserved": 0,
             "last_count_date": stock.updated_at.isoformat() if stock.updated_at else datetime.now().isoformat(),
             "last_counted_by": username,
@@ -99,11 +99,30 @@ def get_warehouses(request: Request, db: Session = Depends(get_db)):
     # Convert to the format expected by the frontend
     result = []
     for warehouse in warehouses:
+        # Конвертация типа Enum в строку, подходящую для фронтенда
+        # По умолчанию используем значение, соответствующее существующим frontend-значениям
+        warehouse_type = "general"
+
+        if warehouse.type:
+            # Если тип — это Enum объект (SQLAlchemy Enum)
+            if hasattr(warehouse.type, 'value'):
+                # Преобразуем WAREHOUSE -> general и STORE -> display
+                if warehouse.type.value == "WAREHOUSE":
+                    warehouse_type = "general"
+                elif warehouse.type.value == "STORE":
+                    warehouse_type = "display"
+            # Если тип — это строка (прямое значение из БД)
+            elif isinstance(warehouse.type, str):
+                if warehouse.type == "WAREHOUSE":
+                    warehouse_type = "general"
+                elif warehouse.type == "STORE":
+                    warehouse_type = "display"
+
         warehouse_data = {
             "id": str(warehouse.id),
             "name": warehouse.name,
             "address": warehouse.address or "",
-            "type": warehouse.type or "general",
+            "type": warehouse_type,
             "is_active": True
         }
         result.append(warehouse_data)
@@ -135,30 +154,43 @@ def get_categories(request: Request, db: Session = Depends(get_db)):
 @router.get("/shipments", response_model=List[Dict[str, Any]])
 def get_shipments(request: Request, db: Session = Depends(get_db)):
     """Get all shipments with their details"""
-    shipments = db.query(models.Shipment).all()
-
-    # Попытка получения имени пользователя из запроса
-    current_user = None
     try:
-        current_user = request.state.user
-    except:
+        shipments = db.query(models.Shipment).all()
+
+        # Попытка получения имени пользователя из запроса
         current_user = None
+        try:
+            current_user = request.state.user
+        except:
+            current_user = None
 
-    # Имя пользователя по умолчанию, если не удалось получить из request
-    username = getattr(current_user, 'username', 'katarymba')
+        # Имя пользователя по умолчанию, если не удалось получить из request
+        username = getattr(current_user, 'username', 'katarymba')
 
-    # Convert to the format expected by the frontend
-    result = []
-    for shipment in shipments:
-        # Create shipment items from order items
-        items = []
-        if shipment.order and shipment.order.items:
-            for order_item in shipment.order.items:
+        # Convert to the format expected by the frontend
+        result = []
+        for shipment in shipments:
+            # Create shipment items from order items
+            items = []
+
+            # Проверяем наличие связанного ордера без обращения к его полям
+            order_items = []
+            order_id = getattr(shipment, 'order_id', None)
+
+            if order_id:
+                # Получаем заказ без отношений, чтобы избежать ошибки с отсутствующими полями
+                order_items = db.query(models.OrderItem).filter(models.OrderItem.order_id == order_id).all()
+
+            for order_item in order_items:
+                # Получаем продукт напрямую, чтобы избежать потенциальных проблем с отношениями
+                product = db.query(models.Product).filter(models.Product.id == order_item.product_id).first()
+                product_name = product.name if product else "Unknown Product"
+
                 item = {
                     "id": f"SI-{order_item.id}",
                     "shipment_id": str(shipment.id),
                     "product_id": str(order_item.product_id),
-                    "product_name": order_item.product.name,
+                    "product_name": product_name,
                     "quantity_ordered": order_item.quantity,
                     "quantity_received": order_item.quantity if shipment.status == "delivered" else None,
                     "unit_price": order_item.price,
@@ -168,23 +200,29 @@ def get_shipments(request: Request, db: Session = Depends(get_db)):
                 }
                 items.append(item)
 
-        shipment_data = {
-            "id": f"SH-{shipment.id}",
-            "supplier": "Default Supplier",
-            "shipment_date": shipment.created_at.isoformat() if shipment.created_at else datetime.now().isoformat(),
-            "expected_arrival_date": shipment.estimated_delivery.isoformat() if shipment.estimated_delivery else None,
-            "actual_arrival_date": shipment.estimated_delivery.isoformat() if shipment.status == "delivered" and shipment.estimated_delivery else None,
-            "status": convert_shipment_status(shipment.status),
-            "reference_number": f"PO-2025-{shipment.id:03d}",
-            "created_by": username,
-            "created_at": shipment.created_at.isoformat() if shipment.created_at else datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-            "notes": "",
-            "items": items
-        }
-        result.append(shipment_data)
+            shipment_data = {
+                "id": f"SH-{shipment.id}",
+                "supplier": "Default Supplier",  # Используем значение по умолчанию вместо client_name
+                "shipment_date": shipment.created_at.isoformat() if shipment.created_at else datetime.now().isoformat(),
+                "expected_arrival_date": shipment.estimated_delivery.isoformat() if shipment.estimated_delivery else None,
+                "actual_arrival_date": shipment.estimated_delivery.isoformat() if shipment.status == "delivered" and shipment.estimated_delivery else None,
+                "status": convert_shipment_status(shipment.status),
+                "reference_number": f"PO-2025-{shipment.id:03d}",
+                "created_by": username,
+                "created_at": shipment.created_at.isoformat() if shipment.created_at else datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+                "notes": "",
+                "items": items
+            }
+            result.append(shipment_data)
 
-    return result
+        return result
+
+    except Exception as e:
+        # Добавляем логирование для отслеживания ошибок
+        print(f"Error in get_shipments: {str(e)}")
+        # Возвращаем пустой список в случае ошибки, чтобы frontend не падал
+        return []
 
 
 @router.get("/stock-movements", response_model=List[Dict[str, Any]])
@@ -205,6 +243,19 @@ def get_stock_movements(request: Request, db: Session = Depends(get_db)):
     # Convert to the format expected by the frontend
     result = []
     for movement in movements:
+        # Проверка типа movement_type (может быть Enum после обновления)
+        movement_type_value = movement.movement_type
+        if hasattr(movement.movement_type, 'value'):
+            # Если это Enum, получаем значение
+            movement_type_value = movement.movement_type.value
+            # Маппинг из новых значений ENUM в старые, если необходимо
+            if movement_type_value == "INCOMING":
+                movement_type_value = "receipt"
+            elif movement_type_value == "OUTGOING":
+                movement_type_value = "issue"
+            elif movement_type_value == "TRANSFER":
+                movement_type_value = "transfer"
+
         # Get product and warehouse names
         product_name = movement.product.name if movement.product else "Unknown Product"
         warehouse_name = movement.warehouse.name if movement.warehouse else "Unknown Warehouse"
@@ -217,7 +268,7 @@ def get_stock_movements(request: Request, db: Session = Depends(get_db)):
             "warehouse_name": warehouse_name,
             "quantity": movement.quantity,
             "previous_quantity": 0,  # You might want to add this to your StockMovement model
-            "movement_type": movement.movement_type,
+            "movement_type": movement_type_value,
             "reference_id": str(movement.source_warehouse_id) if movement.source_warehouse_id else None,
             "reference_type": "transfer" if movement.source_warehouse_id else None,
             "performed_by": username,
@@ -403,12 +454,27 @@ def create_stock_movement(request: Request, movement_data: Dict[str, Any], db: S
 
         current_time = datetime.now()
 
+        # Если movement_type теперь Enum, преобразуем старые значения в новые
+        enum_movement_type = movement_type
+
+        # Проверяем, используется ли Enum в модели StockMovement
+        if hasattr(models.StockMovement, '__table__'):
+            column_type = models.StockMovement.__table__.c.movement_type.type
+            if hasattr(column_type, 'enums'):
+                # Это Enum
+                if movement_type == "receipt":
+                    enum_movement_type = "INCOMING"
+                elif movement_type in ["issue", "adjustment"]:
+                    enum_movement_type = "OUTGOING"
+                elif movement_type == "transfer":
+                    enum_movement_type = "TRANSFER"
+
         # Create new stock movement
         new_movement = models.StockMovement(
             product_id=product_id,
             warehouse_id=warehouse_id,
             quantity=quantity,
-            movement_type=movement_type,
+            movement_type=enum_movement_type,
             created_at=current_time,
             created_by_id=user_id,
             note=notes
@@ -457,6 +523,18 @@ def create_stock_movement(request: Request, movement_data: Dict[str, Any], db: S
         db.commit()
         db.refresh(new_movement)
 
+        # Получаем значение movement_type для ответа
+        movement_type_value = new_movement.movement_type
+        if hasattr(new_movement.movement_type, 'value'):
+            # Если это Enum, преобразуем обратно для фронтенда
+            movement_type_value = new_movement.movement_type.value
+            if movement_type_value == "INCOMING":
+                movement_type_value = "receipt"
+            elif movement_type_value == "OUTGOING":
+                movement_type_value = "issue" if movement_type == "issue" else "adjustment"
+            elif movement_type_value == "TRANSFER":
+                movement_type_value = "transfer"
+
         # Return formatted movement data
         result = {
             "id": f"SM-{new_movement.id}",
@@ -466,7 +544,7 @@ def create_stock_movement(request: Request, movement_data: Dict[str, Any], db: S
             "warehouse_name": warehouse.name,
             "quantity": quantity,
             "previous_quantity": previous_quantity,
-            "movement_type": movement_type,
+            "movement_type": movement_type_value,
             "reference_id": movement_data.get("reference_id"),
             "reference_type": movement_data.get("reference_type"),
             "performed_by": username,
@@ -502,14 +580,24 @@ def create_shipment(request: Request, shipment_data: Dict[str, Any], db: Session
         reference_number = shipment_data.get("reference_number", "")
         current_time = datetime.now()
 
+        # Проверим структуру таблицы Order, чтобы не использовать несуществующие поля
+        # Создадим словарь с параметрами для Order, исключая client_name, если он не существует
+        order_params = {
+            # Используем только поля, которые точно существуют в модели
+            "total_price": 0,
+            "status": "pending",
+            "created_at": current_time,
+            "delivery_address": shipping_address
+        }
+
+        # Проверяем наличие поля customer_name вместо client_name
+        if hasattr(models.Order, 'customer_name'):
+            order_params["customer_name"] = supplier
+        elif hasattr(models.Order, 'client_name'):
+            order_params["client_name"] = supplier
+
         # Create a mock order for the shipment
-        new_order = models.Order(
-            client_name=supplier,
-            total_price=0,
-            status="pending",
-            created_at=current_time,
-            delivery_address=shipping_address
-        )
+        new_order = models.Order(**order_params)
         db.add(new_order)
         db.flush()
 
@@ -590,8 +678,9 @@ def create_shipment(request: Request, shipment_data: Dict[str, Any], db: Session
 
     except Exception as e:
         db.rollback()
+        # Логируем ошибку для дебага
+        print(f"Error in create_shipment: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to create shipment: {str(e)}")
-
 
 # PUT and PATCH endpoints
 @router.put("/products/{product_id}", response_model=Dict[str, Any])
@@ -753,28 +842,36 @@ def patch_shipment(shipment_id: str, shipment_data: Dict[str, Any], request: Req
 
         current_time = datetime.now()
 
+        # Получаем items без доступа к полю client_name
+        order_items = []
+        if shipment.order_id:
+            order_items = db.query(models.OrderItem).filter(models.OrderItem.order_id == shipment.order_id).all()
+
         # Format response
         # Get shipment items
         items = []
-        if shipment.order and shipment.order.items:
-            for order_item in shipment.order.items:
-                item = {
-                    "id": f"SI-{order_item.id}",
-                    "shipment_id": f"SH-{shipment.id}",
-                    "product_id": str(order_item.product_id),
-                    "product_name": order_item.product.name,
-                    "quantity_ordered": order_item.quantity,
-                    "quantity_received": order_item.quantity if shipment.status == "delivered" else None,
-                    "unit_price": order_item.price,
-                    "warehouse_id": "1",  # Default warehouse ID
-                    "is_received": shipment.status == "delivered",
-                    "received_date": shipment.estimated_delivery.isoformat() if shipment.status == "delivered" and shipment.estimated_delivery else None
-                }
-                items.append(item)
+        for order_item in order_items:
+            # Получаем продукт напрямую
+            product = db.query(models.Product).filter(models.Product.id == order_item.product_id).first()
+            product_name = product.name if product else "Unknown Product"
+
+            item = {
+                "id": f"SI-{order_item.id}",
+                "shipment_id": f"SH-{shipment.id}",
+                "product_id": str(order_item.product_id),
+                "product_name": product_name,
+                "quantity_ordered": order_item.quantity,
+                "quantity_received": order_item.quantity if shipment.status == "delivered" else None,
+                "unit_price": order_item.price,
+                "warehouse_id": "1",  # Default warehouse ID
+                "is_received": shipment.status == "delivered",
+                "received_date": shipment.estimated_delivery.isoformat() if shipment.status == "delivered" and shipment.estimated_delivery else None
+            }
+            items.append(item)
 
         result = {
             "id": f"SH-{shipment.id}",
-            "supplier": shipment.order.client_name if shipment.order else "Default Supplier",
+            "supplier": "Default Supplier",  # Значение по умолчанию вместо обращения к client_name
             "shipment_date": shipment.created_at.isoformat() if shipment.created_at else datetime.now().isoformat(),
             "expected_arrival_date": shipment.estimated_delivery.isoformat() if shipment.estimated_delivery else None,
             "actual_arrival_date": shipment.estimated_delivery.isoformat() if shipment.status == "delivered" and shipment.estimated_delivery else None,
@@ -791,8 +888,9 @@ def patch_shipment(shipment_id: str, shipment_data: Dict[str, Any], request: Req
 
     except Exception as e:
         db.rollback()
+        # Логируем ошибку для дебага
+        print(f"Error in patch_shipment: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to update shipment: {str(e)}")
-
 
 @router.patch("/shipment-items/{item_id}", response_model=Dict[str, Any])
 def patch_shipment_item(item_id: str, item_data: Dict[str, Any], request: Request, db: Session = Depends(get_db)):
@@ -826,6 +924,14 @@ def patch_shipment_item(item_id: str, item_data: Dict[str, Any], request: Reques
 
         current_time = datetime.now()
 
+        # Если движение товаров теперь использует Enum тип, нужно использовать соответствующее значение
+        movement_type_value = "receipt"
+        if hasattr(models.StockMovement, '__table__'):
+            column_type = models.StockMovement.__table__.c.movement_type.type
+            if hasattr(column_type, 'enums'):
+                # Это Enum
+                movement_type_value = "INCOMING"  # Для receipt используем INCOMING в Enum
+
         # If item is received, update the product's stock
         if "is_received" in item_data and item_data["is_received"]:
             warehouse_id = int(item_data.get("warehouse_id", 1))
@@ -854,7 +960,7 @@ def patch_shipment_item(item_id: str, item_data: Dict[str, Any], request: Reques
                 product_id=order_item.product_id,
                 warehouse_id=warehouse_id,
                 quantity=order_item.quantity,
-                movement_type="receipt",
+                movement_type=movement_type_value,
                 created_at=current_time,
                 created_by_id=user_id,
                 note=f"Receipt from shipment order #{order_item.order_id}"
