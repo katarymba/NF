@@ -98,3 +98,5 @@ class WarehouseType(str, Enum):
     FREEZER = "freezer"
     DISPLAY = "display"
     EXTERNAL = "external"
+    WAREHOUSE = "WAREHOUSE"
+    STORE = "STORE"

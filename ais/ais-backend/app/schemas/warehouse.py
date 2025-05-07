@@ -6,7 +6,7 @@ from app.schemas.enums import WarehouseType
 class WarehouseBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     address: Optional[str] = None
-    type: Optional[WarehouseType] = WarehouseType.GENERAL
+    type: Optional[WarehouseType] = WarehouseType.WAREHOUSE
     capacity: Optional[int] = None
     manager_name: Optional[str] = None
     phone: Optional[str] = None

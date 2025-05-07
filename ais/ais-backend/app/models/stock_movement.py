@@ -13,7 +13,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import enum
 from app.database import Base
+
+
+class MovementTypeEnum(str, enum.Enum):
+    INCOMING = "INCOMING"
+    OUTGOING = "OUTGOING"
+    TRANSFER = "TRANSFER"
 
 
 # ------------------------------
@@ -26,7 +33,9 @@ class StockMovement(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
-    movement_type = Column(String(50), nullable=False)  # receipt, shipment, transfer, adjustment
+    movement_type = Column(Enum(MovementTypeEnum, name="movementtype",
+                                create_constraint=False, native_enum=True),
+                           nullable=False)
     source_warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=True)
     target_warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

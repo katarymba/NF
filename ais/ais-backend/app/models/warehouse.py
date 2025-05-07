@@ -13,7 +13,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import enum
 from app.database import Base
+
+# Определение ENUM типа для PostgreSQL
+class WarehouseTypeEnum(str, enum.Enum):
+    WAREHOUSE = "WAREHOUSE"
+    STORE = "STORE"
 
 
 # ------------------------------
@@ -25,7 +31,9 @@ class Warehouse(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     address = Column(String(255), nullable=True)
-    type = Column(String(50), nullable=True)
+    type = Column(Enum(WarehouseTypeEnum, name="warehousetype",
+                       create_constraint=False, native_enum=True),
+                  nullable=True)
     capacity = Column(Integer, nullable=True)
     manager_name = Column(String(100), nullable=True)
     phone = Column(String(20), nullable=True)
