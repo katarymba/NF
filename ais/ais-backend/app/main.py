@@ -1,9 +1,3 @@
-"""
-Main FastAPI application for the AIS delivery management system.
-Created by: katarymba
-Date: 2025-05-06 16:31:44
-"""
-
 import os
 import logging
 from datetime import datetime
@@ -14,7 +8,7 @@ from sqlalchemy import text
 
 from app.database import engine, Base, get_db, SessionLocal
 from app.api.orders_api import router as orders_router
-from app.routers import users, administrators, products, categories, orders, payments, shipments, auth, integration, warehouse, delivery
+from app.routers import users, administrators, products, categories, orders, payments, shipments, auth, integration, warehouse, , delivery
 from app.admin import create_default_admin
 from app.services.message_handlers import register_message_handlers
 
@@ -90,11 +84,11 @@ app.include_router(categories.router, prefix="/api/categories", tags=["Categorie
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
 app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
 app.include_router(warehouse.router, prefix="/api/warehouse", tags=["warehouse"])
+app.include_router(warehouse.router, prefix="/warehouse", tags=["warehouse"])
 app.include_router(orders_router, tags=["orders"])
 app.include_router(orders_router, prefix="/orders", tags=["orders"])
 app.include_router(shipments.router, prefix="/shipments", tags=["Shipments"])
 app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
-# Подключаем новый роутер для управления доставками
 app.include_router(delivery.router, prefix="/api/delivery", tags=["Delivery"])
 
 
@@ -134,7 +128,6 @@ async def startup_event():
     # Регистрация обработчиков сообщений
     register_message_handlers()
     logger.info("АИС Backend успешно запущен!")
-    logger.info("✅ Модуль управления доставками подключен!")
 
 
 @app.on_event("shutdown")

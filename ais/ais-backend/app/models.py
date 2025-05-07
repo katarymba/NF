@@ -31,6 +31,7 @@ class User(Base):
     phone = Column(String, nullable=True)
     full_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    birthday = Column(DateTime, nullable=True)
 
     # Связи
     orders = relationship("Order", back_populates="user")
@@ -92,7 +93,7 @@ class Category(Base):
 
 
 # ------------------------------
-# 4. Заказы (orders) - Исправлены дублирующиеся поля
+# 4. Заказы (orders) - Объединено из обоих файлов
 # ------------------------------
 class Order(Base):
     """
