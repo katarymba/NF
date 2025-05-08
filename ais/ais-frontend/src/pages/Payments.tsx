@@ -17,9 +17,10 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 // Константы
-const CURRENT_DATE = '2025-05-08 14:38:06';
+const CURRENT_DATE = '2025-05-08 16:28:08';
 const CURRENT_USER = 'katarymba';
 const DB_API_URL = 'http://localhost:8001/db';
+const API_BASE_URL = 'http://localhost:8001'; // Использовать основной API для прямого доступа к данным
 
 // Типы на основе схемы базы данных
 enum DeliveryStatus {
@@ -154,7 +155,7 @@ const Payments: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dbStatus, setDbStatus] = useState<'connected' | 'error' | 'loading'>('loading');
 
-  // Проверка соединения с базой данных
+  // Проверка соединения с базой данных и загрузка данных напрямую через API
   useEffect(() => {
     checkDatabaseConnection();
   }, []);
@@ -162,48 +163,32 @@ const Payments: React.FC = () => {
   const checkDatabaseConnection = async () => {
     try {
       setDbStatus('loading');
-      const response = await axios.post(`${DB_API_URL}/execute`, {
-        query: 'SELECT 1 as result',
-        params: []
-      });
       
-      if (response.data && response.data.success) {
+      // Проверка подключения через ping API или запрос к API платежей
+      const response = await axios.get(`${API_BASE_URL}/api/payments`);
+      
+      // Если запрос выполнен успешно, считаем, что соединение с базой установлено
+      if (response.status === 200) {
         setDbStatus('connected');
+        // Сразу загружаем данные, так как соединение установлено
+        fetchOrders();
+        fetchPayments();
       } else {
-        throw new Error('Не удалось выполнить тестовый запрос к базе данных');
+        throw new Error('Не удалось выполнить тестовый запрос к API');
       }
     } catch (err) {
-      console.error('Ошибка подключения к базе данных:', err);
+      console.error('Ошибка подключения к API:', err);
       setDbStatus('error');
-      setError('Не удалось подключиться к базе данных PostgreSQL. Проверьте настройки подключения.');
+      setError('Не удалось подключиться к API. Проверьте, что сервер запущен и доступен.');
     }
   };
 
-  // Выполнение SQL-запроса в базе данных через API
-  const executeSql = async (query: string, params: any[] = []) => {
-    try {
-      const response = await axios.post(`${DB_API_URL}/execute`, {
-        query,
-        params
-      });
-      
-      if (response.data && response.data.success) {
-        return response.data.results;
-      } else {
-        throw new Error(response.data.error || 'Ошибка выполнения SQL-запроса');
-      }
-    } catch (error) {
-      console.error('Ошибка при выполнении SQL-запроса:', error);
-      throw error;
-    }
-  };
-
-  // Загрузка заказов напрямую из базы данных
+  // Загрузка заказов через API
   const fetchOrders = useCallback(async () => {
     if (dbStatus === 'error') {
       notification.error({
-        message: 'Ошибка базы данных',
-        description: 'Нет подключения к PostgreSQL. Данные не могут быть загружены.'
+        message: 'Ошибка соединения',
+        description: 'Отсутствует подключение к API. Данные заказов не могут быть загружены.'
       });
       return;
     }
@@ -212,36 +197,29 @@ const Payments: React.FC = () => {
     setError(null);
     
     try {
-      // Запрос к базе данных для получения заказов
-      const query = `
-        SELECT 
-          id, user_id, total_price, created_at, status, 
-          client_name, delivery_address, order_items,
-          payment_method, tracking_number, courier_name,
-          delivery_notes, estimated_delivery, actual_delivery,
-          delivery_status
-        FROM orders
-        ORDER BY id DESC
-      `;
+      // Получаем заказы через API
+      const response = await axios.get(`${API_BASE_URL}/api/orders`);
       
-      const results = await executeSql(query);
-      
-      // Преобразуем JSONB данные
-      const formattedOrders = results.map((row: any) => ({
-        ...row,
-        order_items: typeof row.order_items === 'string' ? JSON.parse(row.order_items) : row.order_items
-      }));
-      
-      setOrders(formattedOrders);
+      if (response.data) {
+        // Преобразуем JSONB данные, если они представлены как строки
+        const formattedOrders = response.data.map((order: any) => ({
+          ...order,
+          order_items: typeof order.order_items === 'string' 
+            ? JSON.parse(order.order_items) 
+            : order.order_items
+        }));
+        
+        setOrders(formattedOrders);
+      }
     } catch (error) {
-      console.error('Ошибка при получении заказов из базы данных:', error);
-      setError('Не удалось получить данные заказов из PostgreSQL. Ошибка на стороне сервера.');
+      console.error('Ошибка при получении заказов через API:', error);
+      setError('Не удалось получить данные заказов. Ошибка на стороне сервера.');
     } finally {
       setLoading(false);
     }
   }, [dbStatus]);
 
-  // Загрузка платежей напрямую из базы данных
+  // Загрузка платежей через API
   const fetchPayments = useCallback(async () => {
     if (dbStatus === 'error') {
       return;
@@ -251,98 +229,63 @@ const Payments: React.FC = () => {
     setError(null);
     
     try {
-      // Запрос к базе данных для получения платежей
-      const query = `
-        SELECT 
-          id, order_id, payment_method, payment_status,
-          transaction_id, created_at
-        FROM payments
-        ORDER BY id DESC
-      `;
+      // Получаем платежи через API
+      const response = await axios.get(`${API_BASE_URL}/api/payments`);
       
-      const results = await executeSql(query);
-      setPayments(results);
+      if (response.data) {
+        setPayments(response.data);
+      }
     } catch (error) {
-      console.error('Ошибка при получении платежей из базы данных:', error);
-      setError('Не удалось получить данные платежей из PostgreSQL. Ошибка на стороне сервера.');
+      console.error('Ошибка при получении платежей через API:', error);
+      setError('Не удалось получить данные платежей. Ошибка на стороне сервера.');
     } finally {
       setPaymentsLoading(false);
     }
   }, [dbStatus]);
 
-  // Загрузка данных при монтировании компонента
-  useEffect(() => {
-    if (dbStatus === 'connected') {
-      fetchOrders();
-      fetchPayments();
-    }
-  }, [fetchOrders, fetchPayments, dbStatus]);
-
-  // Обновление статуса заказа - прямой SQL-запрос
+  // Обновление статуса заказа через API
   const updateOrderStatus = async (id: number, status: string) => {
     try {
-      const query = 'UPDATE orders SET status = $1 WHERE id = $2';
-      await executeSql(query, [status, id]);
+      await axios.put(`${API_BASE_URL}/api/orders/${id}`, { status });
       
       notification.success({
         message: 'Статус обновлен',
-        description: `Статус заказа №${id} изменен на "${getStatusText(status)}" в базе данных`
+        description: `Статус заказа №${id} изменен на "${getStatusText(status)}"`
       });
       
-      fetchOrders(); // Обновляем список заказов из базы
+      fetchOrders(); // Обновляем список заказов
     } catch (error) {
-      console.error('Ошибка при обновлении статуса в базе данных:', error);
+      console.error('Ошибка при обновлении статуса через API:', error);
       notification.error({
         message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить статус заказа в PostgreSQL'
+        description: 'Не удалось обновить статус заказа'
       });
     }
   };
 
-  // Синхронизация с Север-Рыбой через запись в отдельную таблицу БД
+  // Синхронизация с Север-Рыбой через API
   const syncOrderWithSeverRyba = async (orderId: number) => {
     setSyncingOrder(orderId);
     try {
       const order = orders.find(o => o.id === orderId);
       if (!order) {
-        throw new Error('Заказ не найден в базе данных');
+        throw new Error('Заказ не найден');
       }
       
-      // Проверяем существование таблицы для очереди синхронизации
-      await executeSql(`
-        CREATE TABLE IF NOT EXISTS severryba_sync_queue (
-          id SERIAL PRIMARY KEY,
-          order_id INTEGER NOT NULL REFERENCES orders(id),
-          sync_data JSONB NOT NULL,
-          created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          status VARCHAR(50) DEFAULT 'pending'
-        )
-      `);
-      
-      // Добавляем заказ в очередь синхронизации
-      const syncData = {
-        id: order.id,
-        user_id: order.user_id,
-        total_price: order.total_price,
-        created_at: order.created_at,
-        status: order.status,
-        client_name: order.client_name,
-        delivery_address: order.delivery_address,
-        order_items: order.order_items
-      };
-      
-      const insertQuery = 'INSERT INTO severryba_sync_queue (order_id, sync_data, created_at) VALUES ($1, $2, $3)';
-      await executeSql(insertQuery, [orderId, JSON.stringify(syncData), CURRENT_DATE]);
+      // Отправляем запрос на синхронизацию через специальный API эндпоинт
+      await axios.post(`${API_BASE_URL}/api/integration/sync-order`, { 
+        order_id: orderId 
+      });
       
       notification.success({
-        message: 'Синхронизация с базой данных',
-        description: `Заказ №${orderId} успешно добавлен в очередь синхронизации с Север-Рыбой в БД`
+        message: 'Синхронизация',
+        description: `Заказ №${orderId} успешно отправлен на синхронизацию с Север-Рыбой`
       });
     } catch (error) {
-      console.error(`Ошибка при отправке заказа ${orderId} в очередь синхронизации:`, error);
+      console.error(`Ошибка при отправке заказа ${orderId} на синхронизацию:`, error);
       notification.error({
         message: 'Ошибка синхронизации',
-        description: 'Не удалось добавить заказ в очередь синхронизации в базе данных'
+        description: 'Не удалось отправить заказ на синхронизацию'
       });
     } finally {
       setSyncingOrder(null);
@@ -369,142 +312,109 @@ const Payments: React.FC = () => {
     setEditVisible(true);
   };
 
-  // Сохранение изменений заказа - прямой SQL-запрос UPDATE
+  // Сохранение изменений заказа через API
   const handleSaveChanges = async (values: any) => {
     if (!orderDetails?.id) return;
     
     try {
-      const updateFields = [];
-      const updateValues = [];
-      let paramIndex = 1;
-      
-      // Формируем SET часть запроса динамически
-      for (const [key, value] of Object.entries(values)) {
-        if (value !== undefined) {
-          updateFields.push(`${key} = $${paramIndex}`);
-          updateValues.push(value);
-          paramIndex++;
-        }
-      }
-      
-      if (updateFields.length === 0) return;
-      
-      updateValues.push(orderDetails.id);
-      
-      const query = `UPDATE orders SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`;
-      await executeSql(query, updateValues);
+      await axios.put(`${API_BASE_URL}/api/orders/${orderDetails.id}`, values);
       
       notification.success({
         message: 'Заказ обновлен',
-        description: `Заказ №${orderDetails.id} успешно обновлен в базе данных PostgreSQL`
+        description: `Заказ №${orderDetails.id} успешно обновлен`
       });
       
       setEditVisible(false);
-      fetchOrders(); // Обновляем данные из базы
+      fetchOrders(); // Обновляем данные
       
       const updatedOrder = {...orderDetails, ...values};
       setOrderDetails(updatedOrder);
     } catch (error) {
-      console.error('Ошибка при обновлении заказа в базе данных:', error);
+      console.error('Ошибка при обновлении заказа через API:', error);
       notification.error({
         message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить данные заказа в PostgreSQL'
+        description: 'Не удалось обновить данные заказа'
       });
     }
   };
 
-  // Создание нового платежа - прямой SQL-запрос INSERT
+  // Создание нового платежа через API
   const handleCreatePayment = async (values: any) => {
     try {
-      const transactionId = values.transaction_id || `TXN${new Date().toISOString().replace(/[-:T.]/g, '')}`;
+      const paymentData = {
+        order_id: values.order_id,
+        payment_method: values.payment_method,
+        payment_status: 'completed',
+        transaction_id: values.transaction_id || `TXN${new Date().toISOString().replace(/[-:T.]/g, '')}`
+      };
       
-      const query = `
-        INSERT INTO payments (order_id, payment_method, payment_status, transaction_id, created_at) 
-        VALUES ($1, $2, $3, $4, $5) 
-        RETURNING id
-      `;
-      
-      const results = await executeSql(query, [
-        values.order_id, 
-        values.payment_method, 
-        'completed', 
-        transactionId, 
-        CURRENT_DATE
-      ]);
-      
-      const newPaymentId = results[0].id;
+      const response = await axios.post(`${API_BASE_URL}/api/payments`, paymentData);
       
       notification.success({
         message: 'Платеж добавлен',
-        description: `Новый платеж №${newPaymentId} успешно создан в базе данных PostgreSQL`
+        description: `Новый платеж №${response.data.id} успешно создан`
       });
       
       paymentForm.resetFields();
       setPaymentModalVisible(false);
       
-      // Обновляем списки данных из базы
+      // Обновляем списки данных
       fetchPayments();
       fetchOrders();
     } catch (error) {
-      console.error('Ошибка при создании платежа в базе данных:', error);
+      console.error('Ошибка при создании платежа через API:', error);
       notification.error({
         message: 'Ошибка создания платежа',
-        description: 'Не удалось создать новый платеж в PostgreSQL'
+        description: 'Не удалось создать новый платеж'
       });
     }
   };
 
-  // Редактирование платежа - прямой SQL-запрос UPDATE
+  // Редактирование платежа через API
   const handleEditPayment = async (values: any) => {
     if (!currentPayment?.id) return;
     
     try {
-      const query = `
-        UPDATE payments 
-        SET payment_method = $1, payment_status = $2, transaction_id = $3 
-        WHERE id = $4
-      `;
+      const paymentData = {
+        payment_method: values.payment_method,
+        payment_status: values.status || 'completed',
+        transaction_id: values.transaction_id
+      };
       
-      await executeSql(query, [
-        values.payment_method, 
-        values.status || 'completed', 
-        values.transaction_id, 
-        currentPayment.id
-      ]);
+      await axios.put(`${API_BASE_URL}/api/payments/${currentPayment.id}`, paymentData);
       
       notification.success({
         message: 'Платеж обновлен',
-        description: `Платеж №${currentPayment.id} успешно обновлен в базе данных PostgreSQL`
+        description: `Платеж №${currentPayment.id} успешно обновлен`
       });
       
       setPaymentEditVisible(false);
-      fetchPayments(); // Обновляем данные из базы
+      fetchPayments(); // Обновляем данные
     } catch (error) {
-      console.error('Ошибка при обновлении платежа в базе данных:', error);
+      console.error('Ошибка при обновлении платежа через API:', error);
       notification.error({
         message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить данные платежа в PostgreSQL'
+        description: 'Не удалось обновить данные платежа'
       });
     }
   };
 
-  // Удаление платежа - прямой SQL-запрос DELETE
+  // Удаление платежа через API
   const handleDeletePayment = async (paymentId: number) => {
     try {
-      const query = 'DELETE FROM payments WHERE id = $1';
-      await executeSql(query, [paymentId]);
+      await axios.delete(`${API_BASE_URL}/api/payments/${paymentId}`);
       
       notification.success({
         message: 'Платеж удален',
-        description: `Платеж №${paymentId} успешно удален из базы данных PostgreSQL`
+        description: `Платеж №${paymentId} успешно удален`
       });
       
-      fetchPayments(); // Обновляем данные из базы
+      fetchPayments(); // Обновляем данные
     } catch (error) {
-      console.error('Ошибка при удалении платежа из базы данных:', error);
+      console.error('Ошибка при удалении платежа через API:', error);
       notification.error({
         message: 'Ошибка удаления',
-        description: 'Не удалось удалить платеж из PostgreSQL'
+        description: 'Не удалось удалить платеж'
       });
     }
   };
@@ -524,31 +434,24 @@ const Payments: React.FC = () => {
   const printOrderDetails = async (orderId: number) => {
     setPrintLoading(true);
     try {
-      // Получаем все детали о заказе непосредственно из базы данных
-      const orderQuery = 'SELECT * FROM orders WHERE id = $1';
-      const orderResults = await executeSql(orderQuery, [orderId]);
-      
-      if (orderResults.length === 0) {
-        throw new Error('Заказ не найден в базе данных');
+      // Получаем все детали о заказе через API
+      const orderResponse = await axios.get(`${API_BASE_URL}/api/orders/${orderId}`);
+      if (!orderResponse.data) {
+        throw new Error('Заказ не найден');
       }
       
-      const order = {
-        ...orderResults[0],
-        order_items: typeof orderResults[0].order_items === 'string' 
-          ? JSON.parse(orderResults[0].order_items) 
-          : orderResults[0].order_items
-      };
+      const order = orderResponse.data;
       
       // Получаем все платежи для этого заказа
-      const paymentsQuery = 'SELECT * FROM payments WHERE order_id = $1 ORDER BY created_at DESC';
-      const orderPayments = await executeSql(paymentsQuery, [orderId]);
+      const paymentsResponse = await axios.get(`${API_BASE_URL}/api/payments?order_id=${orderId}`);
+      const orderPayments = paymentsResponse.data || [];
       
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         throw new Error('Не удалось открыть окно печати');
       }
       
-      // Генерация содержимого для печати на основе данных из базы
+      // Генерация содержимого для печати на основе данных
       const printContent = `
         <html>
         <head>
@@ -567,7 +470,7 @@ const Payments: React.FC = () => {
         <body>
           <h1>Заказ №${order.id}</h1>
           <div class="section">
-            <h2>Информация о заказе из базы данных</h2>
+            <h2>Информация о заказе</h2>
             <p><strong>Дата создания:</strong> ${formatDate(order.created_at)}</p>
             <p><strong>Статус:</strong> ${getStatusText(order.status)}</p>
             <p><strong>Клиент:</strong> ${order.client_name || 'Не указан'}</p>
@@ -602,7 +505,7 @@ const Payments: React.FC = () => {
           </div>
           
           <div class="section">
-            <h2>Платежи из базы данных</h2>
+            <h2>Платежи</h2>
             <table>
               <thead>
                 <tr>
@@ -645,32 +548,33 @@ const Payments: React.FC = () => {
       console.error('Ошибка при печати заказа:', error);
       notification.error({
         message: 'Ошибка печати',
-        description: error instanceof Error ? error.message : 'Не удалось распечатать информацию о заказе из базы данных'
+        description: error instanceof Error ? error.message : 'Не удалось распечатать информацию о заказе'
       });
     } finally {
       setPrintLoading(false);
     }
   };
 
-  // Экспорт в Excel - прямой SQL-запрос
+  // Экспорт в Excel через API
   const exportToExcel = async () => {
     notification.info({
       message: 'Экспорт данных',
-      description: 'Подготовка данных из PostgreSQL для экспорта в Excel...'
+      description: 'Подготовка данных для экспорта в Excel...'
     });
 
     try {
-      // Получаем все платежи из базы данных с инфо о заказах
-      const query = `
-        SELECT p.*, o.client_name, o.total_price
-        FROM payments p
-        LEFT JOIN orders o ON p.order_id = o.id
-        ORDER BY p.id DESC
-      `;
+      // Получаем все платежи с дополнительной информацией о заказах через API
+      const response = await axios.get(`${API_BASE_URL}/api/payments/export`);
+      const allPayments = response.data || payments.map((payment) => {
+        const order = orders.find(o => o.id === payment.order_id);
+        return {
+          ...payment,
+          client_name: order?.client_name || '',
+          total_price: order?.total_price || 0
+        };
+      });
       
-      const allPayments = await executeSql(query);
-      
-      // Создаем CSV-файл с данными из БД
+      // Создаем CSV-файл с данными
       let csvContent = "data:text/csv;charset=utf-8,";
       csvContent += "ID;ID заказа;Клиент;Сумма заказа;Способ оплаты;Статус;ID транзакции;Дата\n";
       
@@ -695,13 +599,13 @@ const Payments: React.FC = () => {
       
       notification.success({
         message: 'Экспорт выполнен',
-        description: 'Данные платежей из PostgreSQL успешно экспортированы'
+        description: 'Данные платежей успешно экспортированы'
       });
     } catch (error) {
-      console.error('Ошибка при экспорте данных из базы:', error);
+      console.error('Ошибка при экспорте данных:', error);
       notification.error({
         message: 'Ошибка при экспорте',
-        description: 'Не удалось экспортировать данные из PostgreSQL'
+        description: 'Не удалось экспортировать данные'
       });
     }
   };
@@ -1033,7 +937,7 @@ const Payments: React.FC = () => {
             <div style={{ marginBottom: '16px' }}>
               <Card type="inner" style={{ backgroundColor: '#FFF1F0', borderColor: '#FFA39E' }}>
                 <Space>
-                  <Text type="danger">Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу.</Text>
+                  <Text type="danger">Отсутствует подключение к API. Проверьте, что сервер запущен и доступен.</Text>
                 </Space>
               </Card>
             </div>
@@ -1041,7 +945,7 @@ const Payments: React.FC = () => {
 
           {(paymentsLoading || dbStatus === 'loading') && payments.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', margin: '50px 0' }}>
-              <Spin size="large" tip="Загрузка платежей из базы данных PostgreSQL..." />
+              <Spin size="large" tip="Загрузка платежей..." />
             </div>
           ) : (
             <Table 
@@ -1052,11 +956,11 @@ const Payments: React.FC = () => {
               pagination={{ 
                 pageSize: 10,
                 showSizeChanger: true, 
-                showTotal: (total) => `Всего: ${total} платежей в базе данных`,
+                showTotal: (total) => `Всего: ${total} платежей`,
                 pageSizeOptions: ['10', '20', '50']
               }}
               locale={{
-                emptyText: dbStatus === 'error' ? 'Нет подключения к базе данных' : 'Нет данных в базе'
+                emptyText: dbStatus === 'error' ? 'Нет подключения к API' : 'Нет данных'
               }}
             />
           )}
@@ -1116,7 +1020,7 @@ const Payments: React.FC = () => {
             <div style={{ marginBottom: '16px' }}>
               <Card type="inner" style={{ backgroundColor: '#FFF1F0', borderColor: '#FFA39E' }}>
                 <Space>
-                  <Text type="danger">Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу.</Text>
+                  <Text type="danger">Отсутствует подключение к API. Проверьте, что сервер запущен и доступен.</Text>
                 </Space>
               </Card>
             </div>
@@ -1124,7 +1028,7 @@ const Payments: React.FC = () => {
 
           {(loading || dbStatus === 'loading') && orders.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', margin: '50px 0' }}>
-              <Spin size="large" tip="Загрузка заказов из базы данных PostgreSQL..." />
+              <Spin size="large" tip="Загрузка заказов..." />
             </div>
           ) : (
             <Table 
@@ -1135,11 +1039,11 @@ const Payments: React.FC = () => {
               pagination={{ 
                 pageSize: 10,
                 showSizeChanger: true, 
-                showTotal: (total) => `Всего: ${total} заказов в базе данных`,
+                showTotal: (total) => `Всего: ${total} заказов`,
                 pageSizeOptions: ['10', '20', '50']
               }}
               locale={{
-                emptyText: dbStatus === 'error' ? 'Нет подключения к базе данных' : 'Нет данных в базе'
+                emptyText: dbStatus === 'error' ? 'Нет подключения к API' : 'Нет данных'
               }}
             />
           )}
@@ -1152,7 +1056,8 @@ const Payments: React.FC = () => {
     <div className="payments-page">
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <Title level={3}>Управление платежами (Прямое подключение к PostgreSQL)</Title>
+          <Title level={3}>Управление платежами</Title>
+          
           <Space>
             <Button 
               type="primary" 
@@ -1166,7 +1071,7 @@ const Payments: React.FC = () => {
               }}
               loading={loading || paymentsLoading || dbStatus === 'loading'}
             >
-              Подключиться к БД
+              Обновить данные
             </Button>
             <Button 
               type="default" 
@@ -1185,7 +1090,7 @@ const Payments: React.FC = () => {
               onClick={exportToExcel}
               disabled={dbStatus !== 'connected' || payments.length === 0}
             >
-              Экспорт из БД
+              Экспорт
             </Button>
           </Space>
         </div>
@@ -1194,7 +1099,7 @@ const Payments: React.FC = () => {
           <div style={{ marginBottom: '16px' }}>
             <Card type="inner" style={{ backgroundColor: '#F6FFED', borderColor: '#B7EB8F' }}>
               <Space>
-                <Text type="success">Подключение к базе данных PostgreSQL установлено. Данные загружаются напрямую из БД.</Text>
+                <Text type="success">Подключение к API установлено. Данные загружены успешно.</Text>
               </Space>
             </Card>
           </div>
@@ -1211,7 +1116,7 @@ const Payments: React.FC = () => {
 
       {/* Drawer с деталями заказа */}
       <Drawer
-        title={`Детали заказа №${orderDetails?.id} из базы данных`}
+        title={`Детали заказа №${orderDetails?.id}`}
         width={700}
         onClose={() => setDetailsVisible(false)}
         open={detailsVisible}
@@ -1266,11 +1171,11 @@ const Payments: React.FC = () => {
               }</p>
             </Card>
             
-            <Card title="Оплата из базы данных" style={{ marginBottom: '16px' }}>
+            <Card title="Оплата" style={{ marginBottom: '16px' }}>
               <p><strong>Способ оплаты:</strong> {getPaymentMethodText(orderDetails.payment_method || '')}</p>
               
               {/* Отображение связанных платежей */}
-              <h4>Связанные платежи из базы данных:</h4>
+              <h4>Связанные платежи:</h4>
               <Table 
                 dataSource={payments.filter(p => p.order_id === orderDetails.id)}
                 columns={[
@@ -1299,7 +1204,7 @@ const Payments: React.FC = () => {
               </Button>
             </Card>
             
-            <Card title="Товары в заказе из базы данных">
+            <Card title="Товары в заказе">
               <OrderItemsTable 
                 items={orderDetails.order_items.map(item => ({
                   product_id: item.product_id,
@@ -1316,7 +1221,7 @@ const Payments: React.FC = () => {
 
       {/* Форма редактирования заказа */}
       <Modal
-        title={`Редактирование заказа №${orderDetails?.id} в базе данных`}
+        title={`Редактирование заказа №${orderDetails?.id}`}
         open={editVisible}
         onCancel={() => setEditVisible(false)}
         footer={null}
@@ -1388,7 +1293,7 @@ const Payments: React.FC = () => {
                 Отмена
               </Button>
               <Button type="primary" htmlType="submit">
-                Сохранить в БД
+                Сохранить
               </Button>
             </Space>
           </Form.Item>
@@ -1397,7 +1302,7 @@ const Payments: React.FC = () => {
 
       {/* Модальное окно для создания/редактирования платежа */}
       <Modal
-        title={paymentEditVisible ? "Редактирование платежа в базе данных" : "Создание нового платежа в базе данных"}
+        title={paymentEditVisible ? "Редактирование платежа" : "Создание нового платежа"}
         open={paymentModalVisible || paymentEditVisible}
         onCancel={() => {
           setPaymentModalVisible(false);
@@ -1477,7 +1382,7 @@ const Payments: React.FC = () => {
                 Отмена
               </Button>
               <Button type="primary" htmlType="submit" icon={<CheckCircleOutlined />}>
-                {paymentEditVisible ? 'Обновить в БД' : 'Создать в БД'}
+                {paymentEditVisible ? 'Обновить' : 'Создать'}
               </Button>
             </Space>
           </Form.Item>
