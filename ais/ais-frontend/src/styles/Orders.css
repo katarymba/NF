@@ -1,99 +1,303 @@
-/* Стили для страницы заказов */
-
+/* Основные стили страницы заказов */
 .orders-page {
-    padding: 20px;
+  padding: 24px;
+  background-color: #f9f9f9;
+  min-height: calc(100vh - 64px);
+}
+
+/* Стили для заголовка страницы */
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #333;
+}
+
+.page-header .ant-typography {
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+/* Стили для карточек статистики */
+.stats-row {
+  margin-bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.stat-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: #fff;
+  transition: all 0.3s;
+  height: 100%;
+  padding: 16px;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card-all {
+  border-left: 4px solid #1890ff;
+}
+
+.stat-card-pending {
+  border-left: 4px solid #faad14;
+}
+
+.stat-card-processing {
+  border-left: 4px solid #722ed1;
+}
+
+.stat-card-shipped {
+  border-left: 4px solid #1890ff;
+}
+
+.stat-card-delivered {
+  border-left: 4px solid #52c41a;
+}
+
+.stat-card-payment {
+  border-left: 4px solid #fa541c;
+}
+
+/* Стили для компонента статистики */
+.statistic-container {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.statistic-title {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-bottom: 8px;
+}
+
+.statistic-value {
+  font-size: 28px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  color: #333;
+}
+
+.statistic-prefix {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  color: #8c8c8c;
+}
+
+/* Стили для панели фильтров */
+.filters-card {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.filters-card .ant-card-body {
+  padding: 16px 20px;
+}
+
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.button-group .ant-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+}
+
+/* Стили для таблицы заказов */
+.orders-table-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.orders-table-card .ant-table {
+  background: white;
+}
+
+.orders-table-card .ant-card-body {
+  padding: 0;
+}
+
+.orders-table-card .ant-table-thead > tr > th {
+  background-color: #fafafa;
+  font-weight: 600;
+  color: #333;
+}
+
+.orders-table-card .ant-table-tbody > tr:hover > td {
+  background-color: #f5f8ff;
+}
+
+/* Стили для тегов статусов */
+.ant-tag {
+  font-size: 12px;
+  padding: 0 8px;
+  height: 22px;
+  line-height: 20px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0;
+}
+
+/* Стили для детального просмотра заказа */
+.order-details {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-section {
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 20px;
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.section-header {
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.notes-box {
+  background-color: #fafafa;
+  padding: 12px 16px;
+  border-radius: 6px;
+  min-height: 60px;
+  border: 1px solid #f0f0f0;
+}
+
+/* Стили для кнопок действий */
+.ant-btn-text {
+  color: #595959;
+}
+
+.ant-btn-text:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #1890ff;
+}
+
+/* Улучшенные стили для Drawer */
+.ant-drawer-header {
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ant-drawer-title {
+  color: #333;
+  font-weight: 600;
+}
+
+.ant-drawer-body {
+  padding: 24px;
+}
+
+.ant-drawer-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+/* Улучшенные стили для форм */
+.ant-form-item-label > label {
+  font-weight: 500;
+  color: #333;
+}
+
+.ant-form-item {
+  margin-bottom: 20px;
+}
+
+/* Стили для номеров заказов */
+.order-id {
+  font-weight: 600;
+  color: #1890ff;
+}
+
+/* Адаптивные стили */
+@media (max-width: 1200px) {
+  .stats-row {
+    flex-wrap: wrap;
   }
   
-  .status-pending {
-    color: #fa8c16;
-    background-color: #fff7e6;
-    border-color: #ffd591;
-  }
-  
-  .status-processing {
-    color: #1890ff;
-    background-color: #e6f7ff;
-    border-color: #91d5ff;
-  }
-  
-  .status-shipped {
-    color: #52c41a;
-    background-color: #f6ffed;
-    border-color: #b7eb8f;
-  }
-  
-  .status-delivered {
-    color: #52c41a;
-    background-color: #f6ffed;
-    border-color: #b7eb8f;
-  }
-  
-  .status-cancelled {
-    color: #f5222d;
-    background-color: #fff1f0;
-    border-color: #ffa39e;
-  }
-  
-  .order-details-card {
+  .stat-card {
     margin-bottom: 16px;
-    border-radius: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .orders-page {
+    padding: 16px;
   }
   
-  .order-details-card .ant-card-head {
-    background-color: #fafafa;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+  .page-header h2 {
+    font-size: 24px;
   }
   
-  .order-item-row {
-    transition: all 0.3s;
+  .statistic-value {
+    font-size: 22px;
   }
   
-  .order-item-row:hover {
-    background-color: #f5f5f5;
+  .button-group {
+    flex-wrap: wrap;
   }
   
-  /* Анимация для загрузки */
-  .loading-spinner {
-    animation: spin 1.2s infinite linear;
+  .button-group .ant-btn {
+    flex: 1;
+  }
+}
+
+@media (max-width: 576px) {
+  .orders-page {
+    padding: 12px;
   }
   
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
+  .page-header h2 {
+    font-size: 20px;
   }
   
-  /* Стили для фильтров */
-  .filters-container {
-    margin-bottom: 20px;
+  .stat-card {
+    padding: 12px;
   }
   
-  /* Стиль для кнопок действий */
-  .action-buttons .ant-btn {
-    margin-right: 8px;
+  .statistic-value {
+    font-size: 20px;
   }
   
-  /* Стили для мобильной версии */
-  @media (max-width: 768px) {
-    .filters-container {
-      flex-direction: column;
-    }
-    
-    .filters-container > * {
-      margin-bottom: 10px;
-      width: 100%;
-    }
-    
-    .page-header {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    
-    .page-header .ant-btn-group {
-      margin-top: 10px;
-    }
+  .button-group {
+    flex-direction: column;
   }
+  
+  .button-group .ant-btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}
