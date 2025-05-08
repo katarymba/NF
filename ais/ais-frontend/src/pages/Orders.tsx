@@ -136,26 +136,44 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   ]);
   
   // API URL и инициализация навигации
-  const API_BASE_URL = 'http://localhost:8001';
+  const API_BASE_URL = 'http://localhost:8080/ais'; // Обновлен URL на основе api.ts
   const navigate = useNavigate();
+  
+  // Настройка axios с токеном авторизации
+  const axiosInstance = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
   
   // Получение данных о курьерах
   const fetchCouriers = useCallback(async () => {
+    if (!token) {
+      console.error('Отсутствует токен авторизации');
+      return;
+    }
+    
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/delivery/couriers`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axiosInstance.get('/api/delivery/couriers');
       
       if (response.data && Array.isArray(response.data)) {
         setAvailableCouriers(response.data);
       }
     } catch (error) {
       console.error('Ошибка при получении списка курьеров:', error);
+      // Если куда-то доставляем, используем захардкоженный список курьеров
     }
-  }, [token]);
+  }, [token, axiosInstance]);
 
   // Получение заказов из базы данных
   const fetchOrders = useCallback(async () => {
+    if (!token) {
+      console.error('Отсутствует токен авторизации');
+      return;
+    }
+    
     setLoading(true);
     try {
       // Параметры фильтрации
@@ -170,15 +188,10 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
       }
       
       // Запрос заказов
-      const ordersResponse = await axios.get(`${API_BASE_URL}/api/orders`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params
-      });
+      const ordersResponse = await axiosInstance.get('/api/orders', { params });
       
       // Запрос платежей
-      const paymentsResponse = await axios.get(`${API_BASE_URL}/api/payments`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const paymentsResponse = await axiosInstance.get('/api/payments');
       
       const ordersData = ordersResponse.data;
       const paymentsData = paymentsResponse.data;
@@ -246,7 +259,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
     } finally {
       setLoading(false);
     }
-  }, [token, searchText, statusFilter, paymentStatusFilter, dateRange]);
+  }, [token, searchText, statusFilter, paymentStatusFilter, dateRange, axiosInstance]);
   
   // Автоматическое обновление статусов заказов
   const autoUpdateOrderStatuses = async (ordersList: Order[]) => {
@@ -273,6 +286,11 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
     if (token) {
       fetchOrders();
       fetchCouriers();
+    } else {
+      notification.error({
+        message: 'Ошибка авторизации',
+        description: 'Отсутствует токен авторизации'
+      });
     }
     
     // Периодическое обновление данных
@@ -286,13 +304,9 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   // Обновление статуса заказа
   const updateOrderStatus = async (id: number, status: string) => {
     try {
-      await axios.patch(
-        `${API_BASE_URL}/api/orders/${id}/status`,
-        { status },
-        { headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json' 
-        }}
+      await axiosInstance.patch(
+        `/api/orders/${id}/status`,
+        { status }
       );
       
       // Обновляем локальное состояние
@@ -319,13 +333,9 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
   const confirmOrderPayment = async (id: number) => {
     setConfirmingPayment(id);
     try {
-      await axios.patch(
-        `${API_BASE_URL}/api/orders/${id}/payment`,
-        { payment_status: 'completed' },
-        { headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json' 
-        }}
+      await axiosInstance.patch(
+        `/api/orders/${id}/payment`,
+        { payment_status: 'completed' }
       );
       
       // Обновляем локальное состояние
@@ -371,8 +381,7 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
         params.end_date = dateRange[1].format('YYYY-MM-DD');
       }
       
-      const response = await axios.get(`${API_BASE_URL}/api/orders/export`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await axiosInstance.get('/api/orders/export', {
         params,
         responseType: 'blob'
       });
@@ -406,13 +415,9 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
     if (!orderDetails) return;
     
     try {
-      await axios.patch(
-        `${API_BASE_URL}/api/orders/${orderDetails.id}`,
-        values,
-        { headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json' 
-        }}
+      await axiosInstance.patch(
+        `/api/orders/${orderDetails.id}`,
+        values
       );
       
       // Обновляем локальное состояние
