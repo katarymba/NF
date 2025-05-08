@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from sqlalchemy import text 
 
 from app.database import engine, Base, get_db, SessionLocal
-from app.api.orders_api import router as orders_router
 from app.routers import users, administrators, products, categories, orders, payments, shipments, auth, integration, warehouse, delivery
 from app.admin import create_default_admin
 from app.services.message_handlers import register_message_handlers
@@ -85,8 +84,6 @@ app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
 app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
 app.include_router(warehouse.router, prefix="/api/warehouse", tags=["warehouse"])
 app.include_router(warehouse.router, prefix="/warehouse", tags=["warehouse"])
-app.include_router(orders_router, tags=["orders"])
-app.include_router(orders_router, prefix="/orders", tags=["orders"])
 app.include_router(shipments.router, prefix="/shipments", tags=["Shipments"])
 app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
 app.include_router(delivery.router, prefix="/api/delivery", tags=["Delivery"])

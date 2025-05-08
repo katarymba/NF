@@ -198,7 +198,7 @@ const Payments: React.FC = () => {
     
     try {
       // Получаем заказы через API
-      const response = await axios.get(`${API_BASE_URL}/api/orders`);
+      const response = await axios.get(`${API_BASE_URL}/orders`);
       
       if (response.data) {
         // Преобразуем JSONB данные, если они представлены как строки
@@ -213,7 +213,25 @@ const Payments: React.FC = () => {
       }
     } catch (error) {
       console.error('Ошибка при получении заказов через API:', error);
-      setError('Не удалось получить данные заказов. Ошибка на стороне сервера.');
+      
+      // Пробуем альтернативный URL для заказов
+      try {
+        const altResponse = await axios.get(`${API_BASE_URL}/api/orders`);
+        if (altResponse.data) {
+          const formattedOrders = altResponse.data.map((order: any) => ({
+            ...order,
+            order_items: typeof order.order_items === 'string' 
+              ? JSON.parse(order.order_items) 
+              : order.order_items
+          }));
+          
+          setOrders(formattedOrders);
+          console.log('Заказы успешно получены через альтернативный URL');
+        }
+      } catch (altError) {
+        console.error('Ошибка при получении заказов через альтернативный API:', altError);
+        setError('Не удалось получить данные заказов. Ошибка на стороне сервера.');
+      }
     } finally {
       setLoading(false);
     }
@@ -246,7 +264,7 @@ const Payments: React.FC = () => {
   // Обновление статуса заказа через API
   const updateOrderStatus = async (id: number, status: string) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/orders/${id}`, { status });
+      await axios.patch(`${API_BASE_URL}/orders/${id}/status`, { status });
       
       notification.success({
         message: 'Статус обновлен',
@@ -256,10 +274,23 @@ const Payments: React.FC = () => {
       fetchOrders(); // Обновляем список заказов
     } catch (error) {
       console.error('Ошибка при обновлении статуса через API:', error);
-      notification.error({
-        message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить статус заказа'
-      });
+      
+      // Пробуем альтернативный URL
+      try {
+        await axios.patch(`${API_BASE_URL}/api/orders/${id}/status`, { status });
+        
+        notification.success({
+          message: 'Статус обновлен',
+          description: `Статус заказа №${id} изменен на "${getStatusText(status)}"`
+        });
+        
+        fetchOrders();
+      } catch (altError) {
+        notification.error({
+          message: 'Ошибка при обновлении',
+          description: 'Не удалось обновить статус заказа'
+        });
+      }
     }
   };
 
@@ -317,7 +348,7 @@ const Payments: React.FC = () => {
     if (!orderDetails?.id) return;
     
     try {
-      await axios.put(`${API_BASE_URL}/api/orders/${orderDetails.id}`, values);
+      await axios.patch(`${API_BASE_URL}/orders/${orderDetails.id}`, values);
       
       notification.success({
         message: 'Заказ обновлен',
@@ -331,10 +362,27 @@ const Payments: React.FC = () => {
       setOrderDetails(updatedOrder);
     } catch (error) {
       console.error('Ошибка при обновлении заказа через API:', error);
-      notification.error({
-        message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить данные заказа'
-      });
+      
+      // Пробуем альтернативный URL
+      try {
+        await axios.patch(`${API_BASE_URL}/api/orders/${orderDetails.id}`, values);
+        
+        notification.success({
+          message: 'Заказ обновлен',
+          description: `Заказ №${orderDetails.id} успешно обновлен`
+        });
+        
+        setEditVisible(false);
+        fetchOrders();
+        
+        const updatedOrder = {...orderDetails, ...values};
+        setOrderDetails(updatedOrder);
+      } catch (altError) {
+        notification.error({
+          message: 'Ошибка при обновлении',
+          description: 'Не удалось обновить данные заказа'
+        });
+      }
     }
   };
 
@@ -435,12 +483,21 @@ const Payments: React.FC = () => {
     setPrintLoading(true);
     try {
       // Получаем все детали о заказе через API
-      const orderResponse = await axios.get(`${API_BASE_URL}/api/orders/${orderId}`);
-      if (!orderResponse.data) {
-        throw new Error('Заказ не найден');
+      let order;
+      try {
+        const orderResponse = await axios.get(`${API_BASE_URL}/orders/detail/${orderId}`);
+        if (!orderResponse.data) {
+          throw new Error('Попробуем альтернативный URL');
+        }
+        order = orderResponse.data;
+      } catch (error) {
+        // Пробуем альтернативный URL
+        const altOrderResponse = await axios.get(`${API_BASE_URL}/orders/${orderId}`);
+        if (!altOrderResponse.data) {
+          throw new Error('Заказ не найден');
+        }
+        order = altOrderResponse.data;
       }
-      
-      const order = orderResponse.data;
       
       // Получаем все платежи для этого заказа
       const paymentsResponse = await axios.get(`${API_BASE_URL}/api/payments?order_id=${orderId}`);
@@ -945,7 +1002,7 @@ const Payments: React.FC = () => {
 
           {(paymentsLoading || dbStatus === 'loading') && payments.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', margin: '50px 0' }}>
-              <Spin size="large" tip="Загрузка платежей..." />
+              <Spin size="large" />
             </div>
           ) : (
             <Table 
@@ -1028,7 +1085,7 @@ const Payments: React.FC = () => {
 
           {(loading || dbStatus === 'loading') && orders.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', margin: '50px 0' }}>
-              <Spin size="large" tip="Загрузка заказов..." />
+              <Spin size="large" />
             </div>
           ) : (
             <Table 
