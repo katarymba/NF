@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -22,14 +23,14 @@ router = APIRouter(tags=["auth"])
 
 # Настройка для bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         return pwd_context.verify(plain_password, hashed_password)
     except Exception as e:
-        print(f"❌ Ошибка при проверке пароля: {e}")
+        print(f" Ошибка при проверке пароля: {e}")
         return False
 
 
@@ -43,6 +44,78 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+# Зависимость для получения текущего пользователя
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Не удалось проверить учетные данные",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        if token is None:
+            raise credentials_exception
+        
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    # Сначала проверяем среди администраторов
+    user = db.query(Administrator).filter(Administrator.email == username).first()
+    if user is None:
+        # Если нет в администраторах, проверяем среди обычных пользователей
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user is None:
+            raise credentials_exception
+    return user
+
+
+# Функция для получения текущего пользователя (опциональная аутентификация)
+def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """
+    Возвращает пользователя, если токен предоставлен и действителен.
+    В противном случае возвращает None, что позволяет использовать API без аутентификации.
+    """
+    if token is None:
+        # Если токен не предоставлен, возвращаем фиктивного пользователя для тестирования API
+        return {"id": 0, "username": "anonymous", "role": "guest"}
+    
+    try:
+        # Пытаемся получить пользователя
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return {"id": 0, "username": "anonymous", "role": "guest"}
+        
+        # Сначала проверяем среди администраторов
+        user = db.query(Administrator).filter(Administrator.email == username).first()
+        if user is None:
+            # Если нет в администраторах, проверяем среди обычных пользователей
+            user = db.query(models.User).filter(models.User.username == username).first()
+            if user is None:
+                return {"id": 0, "username": "anonymous", "role": "guest"}
+        return user
+        
+    except JWTError:
+        # В случае ошибки токена возвращаем анонимного пользователя
+        return {"id": 0, "username": "anonymous", "role": "guest"}
+    except Exception:
+        # При любой другой ошибке также возвращаем анонимного пользователя
+        return {"id": 0, "username": "anonymous", "role": "guest"}
+
+
+# Зависимость для проверки роли администратора
+def require_admin(user = Depends(get_current_user)):
+    if not hasattr(user, 'role') or user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для доступа"
+        )
+    return user
 
 
 @router.post("/token")
@@ -73,7 +146,7 @@ def login_for_access_token(
         is_password_correct = verify_password(form_data.password, user.password_hash)
 
         if not is_password_correct:
-            print("❌ Неверный пароль")
+            print("Неверный пароль")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Неверный пароль",
@@ -110,41 +183,6 @@ def debug_list_administrators(db: Session = Depends(get_db)):
             "hash_length": len(admin.password_hash) if admin.password_hash else 0
         } for admin in admins
     ]
-
-
-# Зависимость для получения текущего пользователя
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Не удалось проверить учетные данные",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    # Сначала проверяем среди администраторов
-    user = db.query(Administrator).filter(Administrator.email == username).first()
-    if user is None:
-        # Если нет в администраторах, проверяем среди обычных пользователей
-        user = db.query(models.User).filter(models.User.username == username).first()
-        if user is None:
-            raise credentials_exception
-    return user
-
-
-# Зависимость для проверки роли администратора
-def require_admin(user = Depends(get_current_user)):
-    if not hasattr(user, 'role') or user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Недостаточно прав для доступа"
-        )
-    return user
 
 
 @router.post("/register", response_model=schemas.UserResponse)
