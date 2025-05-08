@@ -31,4 +31,5 @@ class PaymentResponse(PaymentInDB):
 
 
 class PaymentListResponse(PaymentInDB):
-    pass
+    class Config:
+        orm_mode = True
