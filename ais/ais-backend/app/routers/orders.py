@@ -111,6 +111,9 @@ def get_orders(db: Session = Depends(get_db), current_user = Depends(get_current
     try:
         logger.info("Запрос на получение всех заказов")
         
+        # Сначала пробуем сделать rollback на случай, если предыдущая транзакция была прервана
+        db.rollback()
+        
         query = text("""
         SELECT id, user_id, total_price, created_at, status, 
                client_name, delivery_address, tracking_number, 
@@ -219,10 +222,12 @@ def get_orders(db: Session = Depends(get_db), current_user = Depends(get_current
         return orders
     
     except Exception as e:
+        # Делаем rollback в случае ошибки
+        db.rollback()
         stack_trace = traceback.format_exc()
         logger.error(f"Ошибка при получении заказов: {str(e)}\n{stack_trace}")
         raise HTTPException(status_code=500, detail=f"Ошибка при получении заказов: {str(e)}")
-
+        
 # Получить все заказы пользователя
 @router.get("/user/{user_id}", response_model=List[OrderResponse])
 def get_user_orders(user_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user_optional)):

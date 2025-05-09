@@ -1,7 +1,6 @@
-// ais/ais-frontend/src/pages/Dashboard.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import '../styles/Dashboard.css';
 
 interface DashboardProps {
     token: string;
@@ -124,15 +123,15 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     const getStatusClass = (status: string): string => {
         switch (status) {
             case 'new':
-                return 'bg-blue-100 text-blue-800';
+                return 'status-new';
             case 'processing':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'status-processing';
             case 'completed':
-                return 'bg-green-100 text-green-800';
+                return 'status-completed';
             case 'cancelled':
-                return 'bg-red-100 text-red-800';
+                return 'status-cancelled';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return '';
         }
     };
 
@@ -150,177 +149,166 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-48">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="loading-container">
+                <div className="loading-spinner"></div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 p-4 rounded">
-                <p>{error}</p>
-                <p className="mt-2 text-sm">Это тестовая версия приложения с демонстрационными данными.</p>
+            <div className="error-message">
+                <p className="error-message-content">{error}</p>
+                <p className="error-message-content">Это тестовая версия приложения с демонстрационными данными.</p>
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto p-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Панель управления</h1>
+        <div className="dashboard-container">
+            <h1 className="dashboard-title">Панель управления</h1>
             
-            {/* Верхние карточки со статистикой */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {/* Карточки со статистикой */}
+            <div className="summary-cards">
                 {/* Карточка заказов */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <div className="flex justify-between items-start">
+                <div className="summary-card">
+                    <div className="summary-card-header">
                         <div>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">Всего заказов</p>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{orderSummary.total}</h2>
+                            <p className="summary-card-title">Всего заказов</p>
+                            <p className="summary-card-value">{orderSummary.total}</p>
                         </div>
-                        <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-900">
-                            <svg className="w-6 h-6 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        <div className="summary-card-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 11V7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7V11M5 9H19L20 21H4L5 9Z" 
+                                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                         </div>
                     </div>
-                    <div className="mt-4 flex justify-between text-sm">
+                    <div className="summary-card-footer">
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Новых:</span>
-                            <span className="ml-2 font-medium text-blue-600 dark:text-blue-400">{orderSummary.new}</span>
+                            <span className="summary-card-label">Новых:</span>
+                            <span className="summary-card-data summary-card-data-accent"> {orderSummary.new}</span>
                         </div>
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Обработка:</span>
-                            <span className="ml-2 font-medium text-yellow-600 dark:text-yellow-400">{orderSummary.processing}</span>
+                            <span className="summary-card-label">Обработка:</span>
+                            <span className="summary-card-data summary-card-data-warning"> {orderSummary.processing}</span>
                         </div>
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Выполнено:</span>
-                            <span className="ml-2 font-medium text-green-600 dark:text-green-400">{orderSummary.completed}</span>
+                            <span className="summary-card-label">Выполнено:</span>
+                            <span className="summary-card-data summary-card-data-success"> {orderSummary.completed}</span>
                         </div>
                     </div>
                 </div>
                 
                 {/* Карточка общего дохода */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <div className="flex justify-between items-start">
+                <div className="summary-card">
+                    <div className="summary-card-header">
                         <div>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">Общий доход</p>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatPrice(salesSummary.totalRevenue)}</h2>
+                            <p className="summary-card-title">Общий доход</p>
+                            <p className="summary-card-value">{formatPrice(salesSummary.totalRevenue)}</p>
                         </div>
-                        <div className="p-3 rounded-full bg-green-50 dark:bg-green-900">
-                            <svg className="w-6 h-6 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <div className="summary-card-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 8C10.3431 8 9 9.34315 9 11C9 12.6569 10.3431 14 12 14C13.6569 14 15 12.6569 15 11C15 9.34315 13.6569 8 12 8Z" 
+                                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M12 8V7M12 8V16M12 16V17M12 16C10.3431 16 9 14.6569 9 13M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+                                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                         </div>
                     </div>
-                    <div className="mt-4 flex justify-between text-sm">
+                    <div className="summary-card-footer">
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Сегодня:</span>
-                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{formatPrice(salesSummary.todayRevenue)}</span>
+                            <span className="summary-card-label">Сегодня:</span>
+                            <span className="summary-card-data"> {formatPrice(salesSummary.todayRevenue)}</span>
                         </div>
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">За месяц:</span>
-                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{formatPrice(salesSummary.monthRevenue)}</span>
+                            <span className="summary-card-label">За месяц:</span>
+                            <span className="summary-card-data"> {formatPrice(salesSummary.monthRevenue)}</span>
                         </div>
                     </div>
                 </div>
                 
-                {/* Заглушки для других карточек */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <div className="flex justify-between items-start">
+                {/* Карточка товаров */}
+                <div className="summary-card">
+                    <div className="summary-card-header">
                         <div>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">Товары на складе</p>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">278</h2>
+                            <p className="summary-card-title">Товары на складе</p>
+                            <p className="summary-card-value">278</p>
                         </div>
-                        <div className="p-3 rounded-full bg-purple-50 dark:bg-purple-900">
-                            <svg className="w-6 h-6 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        <div className="summary-card-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 8H19M5 8C3.89543 8 3 7.10457 3 6C3 4.89543 3.89543 4 5 4H19C20.1046 4 21 4.89543 21 6C21 7.10457 20.1046 8 19 8M5 8V18C5 19.1046 5.89543 20 7 20H17C18.1046 20 19 19.1046 19 18V8M12 12H16" 
+                                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                         </div>
                     </div>
-                    <div className="mt-4 flex justify-between text-sm">
+                    <div className="summary-card-footer">
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Категорий:</span>
-                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">12</span>
+                            <span className="summary-card-label">Категорий:</span>
+                            <span className="summary-card-data"> 12</span>
                         </div>
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Низкий запас:</span>
-                            <span className="ml-2 font-medium text-red-600 dark:text-red-400">15</span>
+                            <span className="summary-card-label">Низкий запас:</span>
+                            <span className="summary-card-data summary-card-data-danger"> 15</span>
                         </div>
                     </div>
                 </div>
                 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <div className="flex justify-between items-start">
+                {/* Карточка клиентов */}
+                <div className="summary-card">
+                    <div className="summary-card-header">
                         <div>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">Клиенты</p>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">450</h2>
+                            <p className="summary-card-title">Клиенты</p>
+                            <p className="summary-card-value">450</p>
                         </div>
-                        <div className="p-3 rounded-full bg-indigo-50 dark:bg-indigo-900">
-                            <svg className="w-6 h-6 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        <div className="summary-card-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 4.35418C12.7329 3.52375 13.8053 3 15 3C17.2091 3 19 4.79086 19 7C19 9.20914 17.2091 11 15 11C13.8053 11 12.7329 10.4762 12 9.64582M15 21H3V20C3 16.6863 5.68629 14 9 14C12.3137 14 15 16.6863 15 20V21ZM15 21H21V20C21 16.6863 18.3137 14 15 14C13.9071 14 12.8825 14.2922 12 14.8027M13 7C13 9.20914 11.2091 11 9 11C6.79086 11 5 9.20914 5 7C5 4.79086 6.79086 3 9 3C11.2091 3 13 4.79086 13 7Z" 
+                                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                         </div>
                     </div>
-                    <div className="mt-4 flex justify-between text-sm">
+                    <div className="summary-card-footer">
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Новых:</span>
-                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">12 за неделю</span>
+                            <span className="summary-card-label">Новых:</span>
+                            <span className="summary-card-data"> 12 за неделю</span>
                         </div>
                         <div>
-                            <span className="text-gray-500 dark:text-gray-400">Активных:</span>
-                            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">85%</span>
+                            <span className="summary-card-label">Активных:</span>
+                            <span className="summary-card-data"> 85%</span>
                         </div>
                     </div>
                 </div>
             </div>
             
             {/* Последние заказы */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Последние заказы</h2>
-                    <Link to="/orders" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+            <div className="orders-section">
+                <div className="orders-header">
+                    <h2 className="orders-title">Последние заказы</h2>
+                    <Link to="/orders" className="orders-link">
                         Все заказы
                     </Link>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
+                <div className="orders-table-container">
+                    <table className="orders-table">
+                        <thead>
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    ID заказа
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Клиент
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Дата
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Сумма
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Статус
-                                </th>
+                                <th>ID заказа</th>
+                                <th>Клиент</th>
+                                <th>Дата</th>
+                                <th>Сумма</th>
+                                <th>Статус</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody>
                             {recentOrders.map((order) => (
-                                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                        #{order.id}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {order.customer_name}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {formatDate(order.created_at)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {formatPrice(order.total_price)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(order.status)}`}>
+                                <tr key={order.id}>
+                                    <td>#{order.id}</td>
+                                    <td>{order.customer_name}</td>
+                                    <td>{formatDate(order.created_at)}</td>
+                                    <td>{formatPrice(order.total_price)}</td>
+                                    <td>
+                                        <span className={`order-status ${getStatusClass(order.status)}`}>
                                             {getStatusLabel(order.status)}
                                         </span>
                                     </td>
@@ -329,15 +317,6 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                         </tbody>
                     </table>
                 </div>
-            </div>
-            
-            {/* Блок с информацией для разработчиков */}
-            <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 text-yellow-700 dark:text-yellow-200 p-4 rounded">
-                <h3 className="font-medium mb-2">Для разработчиков</h3>
-                <p className="text-sm">
-                    Это тестовая версия приложения с демонстрационными данными. API-сервер может быть недоступен,
-                    поэтому используются заглушки. В реальном приложении здесь будут отображаться актуальные данные.
-                </p>
             </div>
         </div>
     );

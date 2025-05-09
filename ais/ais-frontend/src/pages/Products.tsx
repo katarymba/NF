@@ -1,9 +1,10 @@
-// ais/ais-frontend/src/pages/Products.tsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL, getProducts, getCategories } from '../services/api';
 import { runFullSync } from '../services/integration';
+import { useLoading } from '../context/LoadingContext';
+import '../styles/Products.css';
 
 interface Product {
   id: number;
@@ -30,7 +31,7 @@ interface ProductsProps {
 const Products: React.FC<ProductsProps> = ({ token }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -50,11 +51,17 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Используем контекст загрузки
+  const { startLoading, stopLoading } = useLoading();
+
   // Загрузка товаров и категорий при монтировании
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
       try {
+        // Запускаем анимацию загрузки без сообщения
+        startLoading();
+        setLoading(true);
+        
         const [productsData, categoriesData] = await Promise.all([
           getProducts(),
           getCategories()
@@ -68,6 +75,8 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
         setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
       } finally {
         setLoading(false);
+        // Останавливаем анимацию загрузки
+        stopLoading();
       }
     };
 
@@ -77,7 +86,9 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
   // Функция для перезагрузки списка товаров
   const fetchProducts = async () => {
     try {
+      startLoading();
       setLoading(true);
+      
       const productsData = await getProducts(filter || undefined);
       setProducts(productsData);
       setError(null);
@@ -86,6 +97,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
       setError('Не удалось загрузить товары. Пожалуйста, попробуйте позже.');
     } finally {
       setLoading(false);
+      stopLoading();
     }
   };
 
@@ -118,15 +130,18 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
     }
     
     try {
+      startLoading();
+      
       await axios.delete(`${API_BASE_URL}/api/products/${productId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       // Обновляем список товаров после удаления
-      fetchProducts();
+      await fetchProducts();
     } catch (err) {
       console.error('Ошибка при удалении товара:', err);
       setError('Не удалось удалить товар. Пожалуйста, попробуйте позже.');
+      stopLoading();
     }
   };
 
@@ -135,6 +150,8 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
     e.preventDefault();
     
     try {
+      startLoading();
+      
       if (editingProduct) {
         // Редактирование существующего товара
         await axios.put(
@@ -170,10 +187,12 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
         stock_quantity: 0,
         image_url: ''
       });
-      fetchProducts();
+      
+      await fetchProducts();
     } catch (err) {
       console.error('Ошибка при сохранении товара:', err);
       setError('Не удалось сохранить товар. Пожалуйста, проверьте введенные данные.');
+      stopLoading();
     }
   };
 
@@ -189,6 +208,27 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
       image_url: product.image_url || ''
     });
     setShowAddModal(true);
+  };
+
+  // Функция для синхронизации с Север-Рыба
+  const handleSyncWithSeverRyba = async () => {
+    try {
+      setIsSyncing(true);
+      startLoading();
+      
+      await runFullSync();
+      
+      // После успешной синхронизации обновляем список товаров
+      await fetchProducts();
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error('Ошибка синхронизации:', error);
+      setErrorMessage('Не удалось синхронизировать данные с Север-Рыба');
+    } finally {
+      setIsSyncing(false);
+      stopLoading();
+    }
   };
 
   // Фильтрация товаров по поисковому запросу и категории
@@ -224,29 +264,15 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
     });
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="products-container">
       {/* Заголовок и кнопки */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Управление товарами</h1>
+        <h1 className="products-title">Управление товарами</h1>
         
-        <div className="flex space-x-2">
+        <div className="products-actions">
           <button 
-            onClick={async () => {
-              try {
-                setIsSyncing(true);
-                await runFullSync();
-                // После успешной синхронизации обновляем список товаров
-                fetchProducts();
-                setShowSuccessMessage(true);
-                setTimeout(() => setShowSuccessMessage(false), 3000);
-              } catch (error) {
-                console.error('Ошибка синхронизации:', error);
-                setErrorMessage('Не удалось синхронизировать данные с Север-Рыба');
-              } finally {
-                setIsSyncing(false);
-              }
-            }}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 mr-2"
+            onClick={handleSyncWithSeverRyba}
+            className="btn btn-secondary"
             disabled={isSyncing}
           >
             {isSyncing ? 'Синхронизация...' : 'Синхронизировать с Север-Рыба'}
@@ -265,7 +291,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
               });
               setShowAddModal(true);
             }}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="btn btn-success"
           >
             Добавить товар
           </button>
@@ -273,9 +299,9 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
       </div>
       
       {/* Фильтры и поиск */}
-      <div className="flex flex-wrap mb-4 gap-4">
-        <div className="flex-1 min-w-[300px]">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <div className="filters-container">
+        <div className="filter-group">
+          <label className="filter-label">
             Поиск по названию или описанию
           </label>
           <input
@@ -283,18 +309,18 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Введите текст для поиска..."
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
+            className="filter-input"
           />
         </div>
         
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <div className="filter-group">
+          <label className="filter-label">
             Фильтр по категории
           </label>
           <select
             value={filter === null ? '' : filter}
             onChange={(e) => handleFilterChange(e.target.value ? Number(e.target.value) : null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
+            className="filter-select"
           >
             <option value="">Все категории</option>
             {categories.map((category) => (
@@ -305,15 +331,16 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
           </select>
         </div>
         
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <div className="filter-group">
+          <label className="filter-label">
             Сортировка
           </label>
           <div className="flex">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
+              className="filter-select"
+              style={{ borderRadius: '6px 0 0 6px' }}
             >
               <option value="name">По названию</option>
               <option value="price">По цене</option>
@@ -321,7 +348,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
             </select>
             <button
               onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-r-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+              className="sort-direction-btn"
             >
               {sortDirection === 'asc' ? '↑' : '↓'}
             </button>
@@ -331,17 +358,17 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
       
       {/* Уведомления */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded mb-4">
+        <div className="notification notification-error">
           <p>{error}</p>
         </div>
       )}
       
       {errorMessage && (
-        <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded mb-4">
+        <div className="notification notification-error">
           <p>{errorMessage}</p>
           <button 
             onClick={() => setErrorMessage(null)} 
-            className="ml-2 text-red-500 hover:text-red-700"
+            className="notification-close"
           >
             ×
           </button>
@@ -349,104 +376,80 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
       )}
       
       {showSuccessMessage && (
-        <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50">
+        <div className="fixed-notification notification-success">
           <p>Данные успешно синхронизированы с Север-Рыба</p>
         </div>
       )}
       
-      {/* Таблица товаров */}
+      {/* Таблица продуктов */}
       {loading && products.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="empty-state">
+          <div className="loading-spinner"></div>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 dark:text-gray-400">Нет товаров для отображения</p>
+        <div className="empty-state">
+          <p className="empty-state-message">Нет товаров для отображения</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <div className="products-table-container">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
+            <table className="products-table">
+              <thead>
                 <tr>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('name')}
-                  >
+                  <th onClick={() => handleSort('name')}>
                     Название {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Категория
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('price')}
-                  >
+                  <th>Категория</th>
+                  <th onClick={() => handleSort('price')}>
                     Цена {sortBy === 'price' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('stock')}
-                  >
+                  <th onClick={() => handleSort('stock')}>
                     На складе {sortBy === 'stock' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Действия
-                  </th>
+                  <th>Действия</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody>
                 {filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
+                  <tr key={product.id}>
+                    <td>
+                      <div className="product-cell">
                         {product.image_url && (
                           <img 
-                            className="h-10 w-10 rounded-full mr-3 object-cover" 
+                            className="product-image" 
                             src={product.image_url} 
                             alt={product.name} 
                           />
                         )}
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {product.name}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[300px]">
-                            {product.description}
-                          </div>
+                        <div className="product-info">
+                          <div className="product-name">{product.name}</div>
+                          <div className="product-description">{product.description}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {getCategoryName(product.category_id)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {product.price.toLocaleString('ru-RU')} ₽
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <td>{getCategoryName(product.category_id)}</td>
+                    <td>{product.price.toLocaleString('ru-RU')} ₽</td>
+                    <td>
+                      <span className={`stock-indicator ${
                         product.stock_quantity > 10 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                          ? 'stock-high' 
                           : product.stock_quantity > 0 
-                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
-                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            ? 'stock-medium' 
+                            : 'stock-low'
                       }`}>
                         {product.stock_quantity} шт.
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td>
                       <button
                         onClick={() => openEditModal(product)}
-                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3"
+                        className="table-action-btn"
                       >
                         Редактировать
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                        className="table-action-btn delete"
                       >
                         Удалить
                       </button>
@@ -461,127 +464,121 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
       
       {/* Модальное окно добавления/редактирования товара */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h3 className="modal-title">
                 {editingProduct ? 'Редактирование товара' : 'Добавление нового товара'}
               </h3>
-              
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-4">
-                  {/* Название */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Название *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
-                    />
-                  </div>
-                  
-                  {/* Описание */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Описание
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={newProduct.description}
-                      onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
-                    />
-                  </div>
-                  
-                  {/* Категория */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Категория *
-                    </label>
-                    <select
-                      required
-                      value={newProduct.category_id}
-                      onChange={(e) => setNewProduct({...newProduct, category_id: Number(e.target.value)})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
-                    >
-                      <option value="">Выберите категорию</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Цена */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Цена (₽) *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      required
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
-                    />
-                  </div>
-                  
-                  {/* Количество на складе */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Количество на складе *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      required
-                      value={newProduct.stock_quantity}
-                      onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value)})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
-                    />
-                  </div>
-                  
-                  {/* URL изображения */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      URL изображения
-                    </label>
-                    <input
-                      type="text"
-                      value={newProduct.image_url}
-                      onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white"
-                    />
-                  </div>
+            </div>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label form-label-required">
+                    Название
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newProduct.name}
+                    onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                    className="form-control"
+                  />
                 </div>
                 
-                <div className="mt-6 flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setEditingProduct(null);
-                    }}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    Отмена
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    {editingProduct ? 'Сохранить изменения' : 'Добавить товар'}
-                  </button>
+                <div className="form-group">
+                  <label className="form-label">
+                    Описание
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={newProduct.description}
+                    onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                    className="form-control"
+                  />
                 </div>
-              </form>
-            </div>
+                
+                <div className="form-group">
+                  <label className="form-label form-label-required">
+                    Категория
+                  </label>
+                  <select
+                    required
+                    value={newProduct.category_id}
+                    onChange={(e) => setNewProduct({...newProduct, category_id: Number(e.target.value)})}
+                    className="form-control"
+                  >
+                    <option value="">Выберите категорию</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label form-label-required">
+                    Цена (₽)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
+                    className="form-control"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label form-label-required">
+                    Количество на складе
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={newProduct.stock_quantity}
+                    onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value)})}
+                    className="form-control"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">
+                    URL изображения
+                  </label>
+                  <input
+                    type="text"
+                    value={newProduct.image_url}
+                    onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})}
+                    className="form-control"
+                  />
+                </div>
+              </div>
+              
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setEditingProduct(null);
+                  }}
+                  className="btn btn-outline"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                >
+                  {editingProduct ? 'Сохранить изменения' : 'Добавить товар'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

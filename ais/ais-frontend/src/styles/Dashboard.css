@@ -1,0 +1,290 @@
+/* Dashboard.css */
+/* Использует переменные из корпоративной палитры */
+
+/* Основные стили контейнера дашборда */
+.dashboard-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+  background-color: var(--background-color);
+  color: var(--text-primary);
+}
+
+/* Заголовок дашборда */
+.dashboard-title {
+  font-size: var(--font-size-2xl);
+  font-weight: bold;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-primary);
+}
+
+/* Сетка карточек статистики */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+@media (min-width: 768px) {
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .summary-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Стили для карточек статистики */
+.summary-card {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  box-shadow: var(--card-shadow);
+  transition: var(--transition-default);
+}
+
+.summary-card:hover {
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.summary-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+.summary-card-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.summary-card-value {
+  font-size: var(--font-size-2xl);
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.summary-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--highlight-color);
+  color: var(--primary-color);
+}
+
+.summary-card-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+}
+
+.summary-card-label {
+  color: var(--text-secondary);
+}
+
+.summary-card-data {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.summary-card-data-accent {
+  color: var(--primary-color);
+}
+
+.summary-card-data-warning {
+  color: var(--secondary-color);
+}
+
+.summary-card-data-success {
+  color: var(--success-color);
+}
+
+.summary-card-data-danger {
+  color: var(--danger-color);
+}
+
+/* Секция заказов */
+.orders-section {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  box-shadow: var(--card-shadow);
+  margin-bottom: var(--spacing-xl);
+}
+
+.orders-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.orders-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.orders-link {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: var(--transition-default);
+}
+
+.orders-link:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
+/* Таблица заказов */
+.orders-table-container {
+  overflow-x: auto;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.orders-table th {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--ice-gray);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.orders-table th:first-child {
+  border-top-left-radius: var(--border-radius);
+}
+
+.orders-table th:last-child {
+  border-top-right-radius: var(--border-radius);
+}
+
+.orders-table td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.orders-table tr:last-child td {
+  border-bottom: none;
+}
+
+.orders-table tr:hover {
+  background-color: var(--highlight-color);
+}
+
+/* Стили для статусов заказов */
+.order-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.status-new {
+  background-color: rgba(0, 91, 143, 0.1);
+  color: var(--primary-color);
+}
+
+.status-processing {
+  background-color: rgba(74, 106, 125, 0.1);
+  color: var(--secondary-color);
+}
+
+.status-completed {
+  background-color: rgba(0, 179, 164, 0.1);
+  color: var(--success-color);
+}
+
+.status-cancelled {
+  background-color: rgba(214, 69, 69, 0.1);
+  color: var(--danger-color);
+}
+
+/* Индикатор загрузки */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(0, 91, 143, 0.1);
+  border-radius: 50%;
+  border-top: 3px solid var(--primary-color);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Сообщение об ошибке */
+.error-message {
+  background-color: rgba(214, 69, 69, 0.1);
+  border: 1px solid var(--danger-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  color: var(--danger-color);
+}
+
+.error-message-content {
+  margin-bottom: var(--spacing-sm);
+}
+
+.error-message-content:last-child {
+  margin-bottom: 0;
+  font-size: var(--font-size-sm);
+}
+
+/* Стили для темной темы через переменные CSS */
+@media (prefers-color-scheme: dark) {
+  .summary-card-icon {
+    background-color: rgba(185, 221, 242, 0.1);
+  }
+  
+  .orders-table th {
+    background-color: var(--dark-graphite);
+  }
+  
+  .status-new {
+    background-color: rgba(0, 91, 143, 0.2);
+  }
+  
+  .status-processing {
+    background-color: rgba(74, 106, 125, 0.2);
+  }
+  
+  .status-completed {
+    background-color: rgba(0, 179, 164, 0.2);
+  }
+  
+  .status-cancelled {
+    background-color: rgba(214, 69, 69, 0.2);
+  }
+}

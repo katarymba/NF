@@ -15,6 +15,7 @@
     "antd": "^5.24.9",
     "axios": "^1.7.9",
     "js-cookie": "^3.0.5",
+    "lottie-react": "^2.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.2.0",

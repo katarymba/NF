@@ -73,7 +73,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                     <label htmlFor="username" className="block text-gray-700 dark:text-gray-300 font-bold mb-2">
-                        Username
+                        Имя пользователя
                     </label>
                     <input
                         id="username"
@@ -86,7 +86,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                 </div>
                 <div className="mb-4">
                     <label htmlFor="password" className="block text-gray-700 dark:text-gray-300 font-bold mb-2">
-                        Password
+                        Пароль
                     </label>
                     <input
                         id="password"
@@ -101,7 +101,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                     type="submit"
                     className="w-full py-2 px-4 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
                 >
-                    Login
+                    Вход
                 </button>
             </form>
             {error && (

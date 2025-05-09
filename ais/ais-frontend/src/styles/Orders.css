@@ -1,303 +1,497 @@
-/* Основные стили страницы заказов */
-.orders-page {
-  padding: 24px;
-  background-color: #f9f9f9;
-  min-height: calc(100vh - 64px);
-}
+/* 
+ * Orders Page Styles
+ * Строгие и лаконичные стили для страницы заказов на основе корпоративной палитры
+ */
 
-/* Стили для заголовка страницы */
-.page-header {
-  margin-bottom: 24px;
-}
+ @import './variables.css';
 
-.page-header h2 {
-  margin: 0 0 8px;
-  font-size: 28px;
-  font-weight: 600;
-  color: #333;
-}
-
-.page-header .ant-typography {
-  color: #8c8c8c;
-  font-size: 14px;
-}
-
-/* Стили для карточек статистики */
-.stats-row {
-  margin-bottom: 24px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.stat-card {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  background: #fff;
-  transition: all 0.3s;
-  height: 100%;
-  padding: 16px;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.stat-card-all {
-  border-left: 4px solid #1890ff;
-}
-
-.stat-card-pending {
-  border-left: 4px solid #faad14;
-}
-
-.stat-card-processing {
-  border-left: 4px solid #722ed1;
-}
-
-.stat-card-shipped {
-  border-left: 4px solid #1890ff;
-}
-
-.stat-card-delivered {
-  border-left: 4px solid #52c41a;
-}
-
-.stat-card-payment {
-  border-left: 4px solid #fa541c;
-}
-
-/* Стили для компонента статистики */
-.statistic-container {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-}
-
-.statistic-title {
-  font-size: 14px;
-  color: #8c8c8c;
-  margin-bottom: 8px;
-}
-
-.statistic-value {
-  font-size: 28px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  color: #333;
-}
-
-.statistic-prefix {
-  margin-right: 8px;
-  display: flex;
-  align-items: center;
-  color: #8c8c8c;
-}
-
-/* Стили для панели фильтров */
-.filters-card {
-  margin-bottom: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.filters-card .ant-card-body {
-  padding: 16px 20px;
-}
-
-.button-group {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.button-group .ant-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-}
-
-/* Стили для таблицы заказов */
-.orders-table-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.orders-table-card .ant-table {
-  background: white;
-}
-
-.orders-table-card .ant-card-body {
-  padding: 0;
-}
-
-.orders-table-card .ant-table-thead > tr > th {
-  background-color: #fafafa;
-  font-weight: 600;
-  color: #333;
-}
-
-.orders-table-card .ant-table-tbody > tr:hover > td {
-  background-color: #f5f8ff;
-}
-
-/* Стили для тегов статусов */
-.ant-tag {
-  font-size: 12px;
-  padding: 0 8px;
-  height: 22px;
-  line-height: 20px;
-  border-radius: 4px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  margin-right: 0;
-}
-
-/* Стили для детального просмотра заказа */
-.order-details {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.detail-section {
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 20px;
-}
-
-.detail-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.section-header {
-  margin-bottom: 16px;
-}
-
-.section-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0;
-  color: #333;
-}
-
-.notes-box {
-  background-color: #fafafa;
-  padding: 12px 16px;
-  border-radius: 6px;
-  min-height: 60px;
-  border: 1px solid #f0f0f0;
-}
-
-/* Стили для кнопок действий */
-.ant-btn-text {
-  color: #595959;
-}
-
-.ant-btn-text:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #1890ff;
-}
-
-/* Улучшенные стили для Drawer */
-.ant-drawer-header {
-  padding: 16px 24px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.ant-drawer-title {
-  color: #333;
-  font-weight: 600;
-}
-
-.ant-drawer-body {
-  padding: 24px;
-}
-
-.ant-drawer-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #f0f0f0;
-  background: #fafafa;
-}
-
-/* Улучшенные стили для форм */
-.ant-form-item-label > label {
-  font-weight: 500;
-  color: #333;
-}
-
-.ant-form-item {
-  margin-bottom: 20px;
-}
-
-/* Стили для номеров заказов */
-.order-id {
-  font-weight: 600;
-  color: #1890ff;
-}
-
-/* Адаптивные стили */
-@media (max-width: 1200px) {
-  .stats-row {
-    flex-wrap: wrap;
-  }
-  
-  .stat-card {
-    margin-bottom: 16px;
-  }
-}
-
-@media (max-width: 768px) {
-  .orders-page {
-    padding: 16px;
-  }
-  
-  .page-header h2 {
-    font-size: 24px;
-  }
-  
-  .statistic-value {
-    font-size: 22px;
-  }
-  
-  .button-group {
-    flex-wrap: wrap;
-  }
-  
-  .button-group .ant-btn {
-    flex: 1;
-  }
-}
-
-@media (max-width: 576px) {
-  .orders-page {
-    padding: 12px;
-  }
-  
-  .page-header h2 {
-    font-size: 20px;
-  }
-  
-  .stat-card {
-    padding: 12px;
-  }
-  
-  .statistic-value {
-    font-size: 20px;
-  }
-  
-  .button-group {
-    flex-direction: column;
-  }
-  
-  .button-group .ant-btn {
-    width: 100%;
-    margin-bottom: 8px;
-  }
-}
+ /* Основные стили страницы */
+ .orders-page {
+   background-color: var(--snow-white);
+   padding: var(--spacing-lg);
+   width: 100%;
+   max-width: 1440px;
+   margin: 0 auto;
+ }
+ 
+ /* Заголовок страницы */
+ .page-header {
+   margin-bottom: var(--spacing-lg);
+ }
+ 
+ .page-header h2 {
+   color: var(--coal-gray);
+   font-size: var(--font-size-2xl);
+   font-weight: 600;
+   margin-bottom: var(--spacing-xs);
+ }
+ 
+ /* Строка со статистикой */
+ .stats-row {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+   gap: var(--spacing-md);
+   margin-bottom: var(--spacing-lg);
+ }
+ 
+ .stat-card {
+   background-color: white;
+   border-radius: var(--border-radius);
+   box-shadow: 0 2px 8px var(--shadow-color);
+   overflow: hidden;
+   transition: transform 0.2s ease;
+   border-top: 3px solid transparent;
+ }
+ 
+ .stat-card:hover {
+   transform: translateY(-2px);
+ }
+ 
+ .stat-card-all {
+   border-top-color: var(--northern-blue);
+ }
+ 
+ .stat-card-pending {
+   border-top-color: #FF8F00; /* Оранжевый для ожидающих */
+ }
+ 
+ .stat-card-processing {
+   border-top-color: var(--steel-blue);
+ }
+ 
+ .stat-card-shipped {
+   border-top-color: #2196F3; /* Синий для отправленных */
+ }
+ 
+ .stat-card-delivered {
+   border-top-color: var(--aquamarine);
+ }
+ 
+ .stat-card-payment {
+   border-top-color: var(--cold-red);
+ }
+ 
+ .statistic-container {
+   padding: var(--spacing-md);
+ }
+ 
+ .statistic-title {
+   font-size: var(--font-size-sm);
+   color: var(--steel-blue);
+   margin-bottom: var(--spacing-xs);
+ }
+ 
+ .statistic-value {
+   font-size: var(--font-size-xl);
+   color: var(--coal-gray);
+   font-weight: 600;
+   display: flex;
+   align-items: center;
+ }
+ 
+ .statistic-prefix {
+   margin-right: var(--spacing-sm);
+   color: var(--northern-blue);
+   display: flex;
+   align-items: center;
+ }
+ 
+ /* Карточка с фильтрами */
+ .filters-card {
+   background-color: white;
+   border-radius: var(--border-radius);
+   box-shadow: 0 2px 8px var(--shadow-color);
+   margin-bottom: var(--spacing-lg);
+ }
+ 
+ .filters-card .ant-card-body {
+   padding: var(--spacing-md);
+ }
+ 
+ .button-group {
+   display: flex;
+   gap: var(--spacing-sm);
+   justify-content: flex-end;
+ }
+ 
+ /* Карточка с таблицей */
+ .orders-table-card {
+   background-color: white;
+   border-radius: var(--border-radius);
+   box-shadow: 0 2px 8px var(--shadow-color);
+   margin-bottom: var(--spacing-lg);
+ }
+ 
+ .orders-table-card .ant-card-body {
+   padding: var(--spacing-md);
+ }
+ 
+ /* Стилизация таблицы заказов */
+ .orders-table-card .ant-table-thead > tr > th {
+   background-color: var(--ice-gray);
+   color: var(--steel-blue);
+   font-weight: 600;
+   font-size: var(--font-size-xs);
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+ }
+ 
+ .orders-table-card .ant-table-tbody > tr > td {
+   padding: 12px 16px;
+   font-size: var(--font-size-sm);
+ }
+ 
+ .orders-table-card .ant-table-tbody > tr:hover > td {
+   background-color: var(--light-azure);
+ }
+ 
+ .orders-table-card .ant-pagination {
+   margin: 16px 0;
+ }
+ 
+ /* Стилизация ID заказа */
+ .order-id {
+   font-weight: 600;
+   color: var(--northern-blue);
+ }
+ 
+ /* Стили для тегов статусов */
+ .ant-tag {
+   border-radius: 12px;
+   padding: 2px 8px;
+   font-size: var(--font-size-xs);
+   border: none;
+   font-weight: 500;
+ }
+ 
+ /* Настраиваем цвета тегов с соответствии с палитрой */
+ .ant-tag-orange {
+   background-color: rgba(255, 143, 0, 0.15);
+   color: #FF8F00;
+ }
+ 
+ .ant-tag-purple {
+   background-color: rgba(74, 106, 125, 0.15);
+   color: var(--steel-blue);
+ }
+ 
+ .ant-tag-blue {
+   background-color: rgba(0, 91, 143, 0.15);
+   color: var(--northern-blue);
+ }
+ 
+ .ant-tag-green {
+   background-color: rgba(0, 179, 164, 0.15);
+   color: var(--aquamarine);
+ }
+ 
+ .ant-tag-red {
+   background-color: rgba(214, 69, 69, 0.15);
+   color: var(--cold-red);
+ }
+ 
+ /* Стили для информации о транзакции */
+ .transaction-id {
+   font-size: var(--font-size-xs);
+   color: var(--steel-blue);
+   word-break: break-all;
+ }
+ 
+ /* Стили для номера отслеживания */
+ .tracking-number {
+   font-size: var(--font-size-xs);
+   color: var(--northern-blue);
+   font-family: monospace;
+ }
+ 
+ /* Стили для кнопок действий */
+ .action-buttons {
+   display: flex;
+   justify-content: flex-end;
+ }
+ 
+ .action-button {
+   padding: 0;
+   width: 32px;
+   height: 32px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   color: var(--steel-blue);
+   transition: all 0.2s ease;
+ }
+ 
+ .action-button:hover {
+   color: var(--northern-blue);
+   background-color: var(--light-azure);
+ }
+ 
+ /* Стили для Drawer (боковой панели) */
+ .ant-drawer-header {
+   background-color: var(--ice-gray);
+   border-bottom: 1px solid var(--fog-gray);
+ }
+ 
+ .ant-drawer-title {
+   color: var(--coal-gray);
+   font-weight: 600;
+ }
+ 
+ .ant-drawer-content {
+   background-color: white;
+ }
+ 
+ .ant-drawer-footer {
+   border-top: 1px solid var(--fog-gray);
+   padding: var(--spacing-md);
+   display: flex;
+   justify-content: flex-end;
+ }
+ 
+ /* Стили для разделов деталей заказа */
+ .order-details {
+   padding: var(--spacing-sm) 0;
+ }
+ 
+ .detail-section {
+   margin-bottom: var(--spacing-lg);
+   padding-bottom: var(--spacing-md);
+   border-bottom: 1px solid var(--fog-gray);
+ }
+ 
+ .detail-section:last-child {
+   border-bottom: none;
+   margin-bottom: 0;
+ }
+ 
+ .section-header {
+   margin-bottom: var(--spacing-md);
+ }
+ 
+ .section-header h3 {
+   color: var(--coal-gray);
+   font-size: var(--font-size-lg);
+   font-weight: 600;
+   margin: 0;
+ }
+ 
+ /* Стили для блока примечаний */
+ .notes-box {
+   background-color: var(--snow-white);
+   border: 1px solid var(--fog-gray);
+   border-radius: var(--border-radius);
+   padding: var(--spacing-md);
+   min-height: 60px;
+   margin-top: var(--spacing-xs);
+ }
+ 
+ /* Стили для таблицы товаров в деталях заказа */
+ .order-details .ant-table-small {
+   margin: var(--spacing-sm) 0;
+ }
+ 
+ .order-details .ant-table-small .ant-table-thead > tr > th {
+   background-color: var(--ice-gray);
+   color: var(--steel-blue);
+   font-weight: 600;
+   font-size: var(--font-size-xs);
+ }
+ 
+ .order-details .ant-table-small .ant-table-tbody > tr > td {
+   font-size: var(--font-size-sm);
+ }
+ 
+ .order-details .ant-table-small .ant-table-tbody > tr:hover > td {
+   background-color: var(--light-azure);
+ }
+ 
+ .order-details .ant-table-summary {
+   background-color: var(--snow-white);
+ }
+ 
+ /* Стили элементов формы */
+ .ant-form-item-label > label {
+   color: var(--coal-gray);
+   font-weight: 500;
+ }
+ 
+ .ant-input, 
+ .ant-select-selector,
+ .ant-picker {
+   border-color: var(--fog-gray);
+   border-radius: var(--border-radius);
+ }
+ 
+ .ant-input:focus, 
+ .ant-input-focused,
+ .ant-select-focused .ant-select-selector,
+ .ant-picker-focused {
+   border-color: var(--northern-blue);
+   box-shadow: 0 0 0 2px rgba(0, 91, 143, 0.1);
+ }
+ 
+ .ant-btn {
+   border-radius: var(--border-radius);
+   font-weight: 500;
+   height: 36px;
+ }
+ 
+ .ant-btn-primary {
+   background-color: var(--northern-blue);
+   border-color: var(--northern-blue);
+ }
+ 
+ .ant-btn-primary:hover {
+   background-color: #004a75; /* Темнее вариант северного синего */
+   border-color: #004a75;
+ }
+ 
+ /* Настройка Select (выпадающих списков) */
+ .ant-select-dropdown {
+   border-radius: var(--border-radius);
+   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+ }
+ 
+ .ant-select-item-option-selected {
+   background-color: var(--light-azure);
+   color: var(--northern-blue);
+   font-weight: 500;
+ }
+ 
+ .ant-select-item-option-active {
+   background-color: rgba(185, 221, 242, 0.5);
+ }
+ 
+ /* Настройка DatePicker */
+ .ant-picker-dropdown {
+   border-radius: var(--border-radius);
+   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+ }
+ 
+ .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+   background-color: var(--northern-blue);
+ }
+ 
+ .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+   border-color: var(--northern-blue);
+ }
+ 
+ /* Стили уведомлений */
+ .ant-notification-notice {
+   border-radius: var(--border-radius);
+   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+ }
+ 
+ .ant-notification-notice-message {
+   color: var(--coal-gray);
+   font-weight: 600;
+ }
+ 
+ .ant-notification-notice-description {
+   color: var(--steel-blue);
+ }
+ 
+ /* Стили для модальных окон подтверждения */
+ .ant-popconfirm {
+   max-width: 300px;
+ }
+ 
+ .ant-popconfirm-message-title {
+   color: var(--coal-gray);
+   font-weight: 500;
+ }
+ 
+ .ant-popconfirm-description {
+   color: var(--steel-blue);
+ }
+ 
+ .ant-popconfirm-buttons .ant-btn-primary {
+   background-color: var(--northern-blue);
+   border-color: var(--northern-blue);
+ }
+ 
+ .ant-popconfirm-buttons .ant-btn-primary:hover {
+   background-color: #004a75;
+   border-color: #004a75;
+ }
+ 
+ /* Адаптивные стили */
+ @media (max-width: 992px) {
+   .orders-page {
+     padding: var(--spacing-md);
+   }
+   
+   .stats-row {
+     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+     gap: var(--spacing-sm);
+   }
+   
+   .statistic-value {
+     font-size: var(--font-size-lg);
+   }
+ }
+ 
+ @media (max-width: 576px) {
+   .orders-page {
+     padding: var(--spacing-sm);
+   }
+   
+   .stats-row {
+     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+     gap: var(--spacing-xs);
+   }
+   
+   .button-group {
+     flex-direction: column;
+     width: 100%;
+   }
+   
+   .button-group .ant-btn {
+     width: 100%;
+   }
+   
+   .action-buttons {
+     flex-wrap: wrap;
+     gap: var(--spacing-xs);
+   }
+   
+   .order-details .ant-row {
+     margin-bottom: var(--spacing-xs);
+   }
+   
+   .ant-drawer {
+     width: 100% !important;
+   }
+ }
+ 
+ /* Стили для печати */
+ @media print {
+   body {
+     background-color: white;
+   }
+   
+   .orders-page,
+   .page-header,
+   .filters-card,
+   .stats-row,
+   .action-buttons,
+   .ant-pagination,
+   .ant-table-thead > tr > th:last-child,
+   .ant-table-tbody > tr > td:last-child {
+     display: none;
+   }
+   
+   .orders-table-card {
+     box-shadow: none;
+     margin: 0;
+     padding: 0;
+   }
+   
+   .ant-table {
+     font-size: 12px;
+   }
+   
+   .ant-table-tbody > tr > td {
+     padding: 8px;
+   }
+ }

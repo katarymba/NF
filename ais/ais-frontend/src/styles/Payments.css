@@ -1,459 +1,510 @@
-/* Современные стили для страницы Payments */
-
-/* Основные цвета и переменные */
-:root {
-  --primary-color: #1890ff;
-  --secondary-color: #52c41a;
-  --danger-color: #f5222d;
-  --warning-color: #faad14;
-  --background-color: #f0f2f5;
-  --card-background: #ffffff;
-  --text-color: #333333;
-  --text-secondary: #8c8c8c;
-  --border-radius: 8px;
-  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --transition: all 0.3s ease;
-}
-
-/* Общие стили страницы */
-.payments-page {
-  padding: 24px;
-  background: var(--background-color);
-  min-height: calc(100vh - 64px);
-}
-
-.payments-page h2.ant-typography {
-  margin-bottom: 24px;
-  font-weight: 500;
-  color: var(--text-color);
-  position: relative;
-  padding-bottom: 12px;
-}
-
-.payments-page h2.ant-typography::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 60px;
-  height: 3px;
-  background: var(--primary-color);
-  border-radius: 3px;
-}
-
-/* Стили для карточек */
-.payments-page .ant-card {
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  margin-bottom: 24px;
-  border: none;
-  overflow: hidden;
-  transition: var(--transition);
-}
-
-.payments-page .ant-card:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-}
-
-.payments-page .filter-card {
-  background: var(--card-background);
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.payments-page .filter-card .ant-form-item {
-  margin-bottom: 0;
-}
-
-/* Стили для таблиц */
-.payments-page .ant-table {
-  background: var(--card-background);
-  border-radius: var(--border-radius);
-}
-
-.payments-page .ant-table-thead > tr > th {
-  background: #f9fafc;
-  font-weight: 500;
-  color: var(--text-color);
-}
-
-.payments-page .ant-table-tbody > tr:hover > td {
-  background: rgba(24, 144, 255, 0.05);
-}
-
-.payments-page .ant-table-container {
-  border-radius: var(--border-radius);
-  overflow: hidden;
-}
-
-/* Улучшенная строка состояния и загрузки */
-.payments-page .ant-table-pagination {
-  margin: 16px 0;
-}
-
-.payments-page .ant-spin-container {
-  transition: var(--transition);
-}
-
-/* Стилизация кнопок */
-.payments-page .ant-btn {
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition);
-}
-
-.payments-page .ant-btn-primary {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.045);
-}
-
-.payments-page .ant-btn-primary:hover, 
-.payments-page .ant-btn-primary:focus {
-  background: #40a9ff;
-  border-color: #40a9ff;
-  box-shadow: 0 4px 8px rgba(24, 144, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.payments-page .ant-btn-danger {
-  background: var(--danger-color);
-  border-color: var(--danger-color);
-  color: white;
-}
-
-.payments-page .ant-btn-danger:hover, 
-.payments-page .ant-btn-danger:focus {
-  background: #ff4d4f;
-  border-color: #ff4d4f;
-  box-shadow: 0 4px 8px rgba(245, 34, 45, 0.3);
-  transform: translateY(-1px);
-}
-
-/* Статусы товаров */
-.order-status-badge {
-  border-radius: 12px;
-  padding: 2px 10px;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.order-status-pending {
-  background: #e6f7ff;
-  color: #1890ff;
-  border: 1px solid #91d5ff;
-}
-
-.order-status-processing {
-  background: #f0f5ff;
-  color: #2f54eb;
-  border: 1px solid #adc6ff;
-}
-
-.order-status-shipped {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #b7eb8f;
-}
-
-.order-status-delivered {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #b7eb8f;
-}
-
-.order-status-cancelled {
-  background: #fff1f0;
-  color: #f5222d;
-  border: 1px solid #ffa39e;
-}
-
-/* Стилизация меток (тегов) */
-.payments-page .ant-tag {
-  border-radius: 12px;
-  padding: 2px 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 8px;
-}
-
-/* Статусы платежей */
-.payment-status-success {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #b7eb8f;
-}
-
-.payment-status-pending {
-  background: #fffbe6;
-  color: #faad14;
-  border: 1px solid #ffe58f;
-}
-
-.payment-status-processing {
-  background: #e6f7ff;
-  color: #1890ff;
-  border: 1px solid #91d5ff;
-}
-
-.payment-status-refunded {
-  background: #f0f5ff;
-  color: #2f54eb;
-  border: 1px solid #adc6ff;
-}
-
-.payment-status-failed,
-.payment-status-cancelled {
-  background: #fff1f0;
-  color: #f5222d;
-  border: 1px solid #ffa39e;
-}
-
-/* Стили для модальных окон и выдвижных панелей */
-.payments-page .ant-drawer-content {
-  border-radius: 0 var(--border-radius) var(--border-radius) 0;
-}
-
-.payments-page .ant-drawer-header {
-  background: #f9fafc;
-  border-bottom: 1px solid #f0f0f0;
-  padding: 16px 24px;
-}
-
-.payments-page .ant-drawer-title {
-  color: var(--text-color);
-  font-weight: 500;
-}
-
-.payments-page .ant-drawer-body {
-  padding: 24px;
-}
-
-/* Стили для вкладок */
-.payments-page .ant-tabs-tab {
-  padding: 12px 16px;
-  transition: var(--transition);
-}
-
-.payments-page .ant-tabs-tab:hover {
-  color: var(--primary-color);
-}
-
-.payments-page .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: var(--primary-color);
-  font-weight: 500;
-}
-
-.payments-page .ant-tabs-ink-bar {
-  background: var(--primary-color);
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-}
-
-/* Стили для форм */
-.payments-page .ant-form-item-label > label {
-  color: var(--text-color);
-  font-weight: 500;
-}
-
-.payments-page .ant-input,
-.payments-page .ant-input-number,
-.payments-page .ant-picker,
-.payments-page .ant-select-selector {
-  border-radius: 6px;
-  border: 1px solid #d9d9d9;
-  transition: var(--transition);
-}
-
-.payments-page .ant-input:hover,
-.payments-page .ant-input-number:hover,
-.payments-page .ant-picker:hover,
-.payments-page .ant-select-selector:hover {
-  border-color: #40a9ff;
-}
-
-.payments-page .ant-input:focus,
-.payments-page .ant-input-number-focused,
-.payments-page .ant-picker-focused,
-.payments-page .ant-select-focused .ant-select-selector {
-  border-color: #40a9ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-/* Анимация при обновлении данных */
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
-}
-
-.payments-page .update-animation {
-  animation: pulse 1.5s ease-in-out;
-}
-
-/* Стилизация элементов детальной информации */
-.payments-page .detail-item {
-  margin-bottom: 12px;
-  display: flex;
-}
-
-.payments-page .detail-label {
-  font-weight: 500;
-  color: var(--text-color);
-  margin-right: 8px;
-  min-width: 150px;
-}
-
-.payments-page .detail-value {
-  color: var(--text-secondary);
-}
-
-/* Улучшенные поля форм */
-.payments-page .ant-form-item-has-success .ant-input,
-.payments-page .ant-form-item-has-success .ant-input-number,
-.payments-page .ant-form-item-has-success .ant-select-selector {
-  border-color: var(--secondary-color);
-}
-
-.payments-page .ant-form-item-has-error .ant-input,
-.payments-page .ant-form-item-has-error .ant-input-number,
-.payments-page .ant-form-item-has-error .ant-select-selector {
-  border-color: var(--danger-color);
-}
-
-/* Стили для сообщений об ошибке */
-.payments-page .error-message {
-  margin-bottom: 24px;
-}
-
-.payments-page .error-message .ant-alert {
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-}
-
-/* Стили для таблицы товаров в заказе */
-.order-items-table .ant-table-thead > tr > th {
-  background: #f9fafc;
-  font-size: 13px;
-}
-
-.order-items-table .ant-table-tbody > tr > td {
-  font-size: 13px;
-  padding: 8px 16px;
-}
-
-/* Адаптивный дизайн */
-@media (max-width: 992px) {
-  .payments-page {
-    padding: 16px;
-  }
-  
-  .payments-page .filter-card .ant-row {
-    flex-direction: column;
-  }
-  
-  .payments-page .filter-card .ant-col {
-    width: 100%;
-    margin-bottom: 12px;
-  }
-  
-  .payments-page .ant-space {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-}
-
-@media (max-width: 576px) {
-  .payments-page .ant-drawer {
-    width: 100% !important;
-  }
-}
-
-/* Стилизация скроллбара */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 6px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 6px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* Дополнительные декоративные элементы */
-.dashboard-summary {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.summary-card {
-  flex: 1;
-  background: var(--card-background);
-  border-radius: var(--border-radius);
-  padding: 16px;
-  box-shadow: var(--box-shadow);
-  position: relative;
-  overflow: hidden;
-  transition: var(--transition);
-}
-
-.summary-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-.summary-card .icon {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  font-size: 28px;
-  opacity: 0.2;
-}
-
-.summary-card .title {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.summary-card .value {
-  font-size: 24px;
-  font-weight: 500;
-  color: var(--text-color);
-}
-
-.summary-card .footer {
-  margin-top: 16px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.summary-card.primary {
-  border-top: 3px solid var(--primary-color);
-}
-
-.summary-card.success {
-  border-top: 3px solid var(--secondary-color);
-}
-
-.summary-card.warning {
-  border-top: 3px solid var(--warning-color);
-}
-
-.summary-card.danger {
-  border-top: 3px solid var(--danger-color);
-}
+/* 
+ * Payments Page Styles
+ * Строгие и лаконичные стили для страницы платежей на основе корпоративной палитры
+ */
+
+ @import './variables.css';
+
+ /* Основные стили страницы */
+ .payments-page {
+   background-color: var(--snow-white);
+   padding: var(--spacing-lg);
+   width: 100%;
+   max-width: 1440px;
+   margin: 0 auto;
+ }
+ 
+ .payments-page h2 {
+   color: var(--coal-gray);
+   font-size: var(--font-size-2xl);
+   font-weight: 600;
+   margin-bottom: var(--spacing-md);
+ }
+ 
+ /* Стили для карточек */
+ .payments-page .ant-card {
+   border-radius: var(--border-radius);
+   box-shadow: 0 2px 8px var(--shadow-color);
+   margin-bottom: var(--spacing-lg);
+   border: none;
+ }
+ 
+ .payments-page .ant-card-head {
+   border-bottom: 1px solid var(--fog-gray);
+ }
+ 
+ .payments-page .ant-card-head-title {
+   color: var(--coal-gray);
+   font-weight: 600;
+ }
+ 
+ /* Стили для фильтров */
+ .filter-card {
+   margin-bottom: var(--spacing-md);
+ }
+ 
+ .filter-card .ant-card-body {
+   padding: var(--spacing-md);
+ }
+ 
+ /* Настройка полей ввода и выпадающих списков */
+ .payments-page .ant-input,
+ .payments-page .ant-select-selector,
+ .payments-page .ant-picker {
+   border-color: var(--fog-gray);
+   border-radius: var(--border-radius);
+   transition: all 0.2s ease;
+ }
+ 
+ .payments-page .ant-input:hover,
+ .payments-page .ant-select-selector:hover,
+ .payments-page .ant-picker:hover {
+   border-color: var(--northern-blue);
+ }
+ 
+ .payments-page .ant-input:focus,
+ .payments-page .ant-input-focused,
+ .payments-page .ant-select-focused .ant-select-selector,
+ .payments-page .ant-picker-focused {
+   border-color: var(--northern-blue);
+   box-shadow: 0 0 0 2px rgba(0, 91, 143, 0.1);
+ }
+ 
+ /* Настройка кнопок */
+ .payments-page .ant-btn {
+   border-radius: var(--border-radius);
+   font-weight: 500;
+   transition: all 0.2s ease;
+ }
+ 
+ .payments-page .ant-btn-primary {
+   background-color: var(--northern-blue);
+   border-color: var(--northern-blue);
+ }
+ 
+ .payments-page .ant-btn-primary:hover {
+   background-color: #004a75; /* Темнее вариант северного синего */
+   border-color: #004a75;
+ }
+ 
+ .payments-page .ant-btn-dangerous {
+   background-color: white;
+   border-color: var(--cold-red);
+   color: var(--cold-red);
+ }
+ 
+ .payments-page .ant-btn-dangerous:hover {
+   background-color: var(--cold-red);
+   color: white;
+ }
+ 
+ /* Стилизация вкладок */
+ .payments-page .ant-tabs-nav {
+   margin-bottom: var(--spacing-md);
+ }
+ 
+ .payments-page .ant-tabs-tab {
+   padding: var(--spacing-sm) var(--spacing-md);
+   transition: all 0.2s ease;
+ }
+ 
+ .payments-page .ant-tabs-tab-active {
+   font-weight: 500;
+ }
+ 
+ .payments-page .ant-tabs-ink-bar {
+   background-color: var(--northern-blue);
+   height: 3px;
+ }
+ 
+ .payments-page .ant-tabs-tab:hover {
+   color: var(--northern-blue);
+ }
+ 
+ .payments-page .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+   color: var(--northern-blue);
+ }
+ 
+ /* Стили для таблицы */
+ .payments-page .ant-table {
+   border-radius: var(--border-radius);
+   overflow: hidden;
+ }
+ 
+ .payments-page .ant-table-thead > tr > th {
+   background-color: var(--ice-gray);
+   color: var(--steel-blue);
+   font-weight: 600;
+   font-size: var(--font-size-xs);
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+ }
+ 
+ .payments-page .ant-table-tbody > tr > td {
+   padding: 12px 16px;
+   font-size: var(--font-size-sm);
+ }
+ 
+ .payments-page .ant-table-tbody > tr.ant-table-row:hover > td {
+   background-color: var(--light-azure);
+ }
+ 
+ .payments-page .ant-table-pagination {
+   margin: 16px 0;
+ }
+ 
+ /* Стили для рамок и разделителей */
+ .payments-page .ant-divider {
+   border-color: var(--fog-gray);
+ }
+ 
+ .payments-page .ant-divider-inner-text {
+   color: var(--steel-blue);
+   font-weight: 500;
+ }
+ 
+ /* Стили для тегов */
+ .payments-page .ant-tag {
+   border-radius: 12px;
+   padding: 2px 8px;
+   font-size: var(--font-size-xs);
+   border: none;
+   font-weight: 500;
+   line-height: 1.4;
+ }
+ 
+ /* Настраиваем цвета тегов в соответствии с палитрой */
+ .payments-page .ant-tag-success {
+   background-color: rgba(0, 179, 164, 0.15);
+   color: var(--aquamarine);
+ }
+ 
+ .payments-page .ant-tag-processing {
+   background-color: rgba(0, 91, 143, 0.15);
+   color: var(--northern-blue);
+ }
+ 
+ .payments-page .ant-tag-warning {
+   background-color: #FFF8E1;
+   color: #FF8F00;
+ }
+ 
+ .payments-page .ant-tag-error {
+   background-color: rgba(214, 69, 69, 0.15);
+   color: var(--cold-red);
+ }
+ 
+ .payments-page .ant-tag-default {
+   background-color: var(--ice-gray);
+   color: var(--steel-blue);
+ }
+ 
+ .payments-page .ant-tag-cyan {
+   background-color: rgba(0, 179, 164, 0.1);
+   color: #0097a7;
+ }
+ 
+ /* Стили для оповещений и сообщений об ошибках */
+ .error-message {
+   margin-bottom: var(--spacing-md);
+ }
+ 
+ .payments-page .ant-alert {
+   border-radius: var(--border-radius);
+   border: none;
+ }
+ 
+ .payments-page .ant-alert-error {
+   background-color: rgba(214, 69, 69, 0.1);
+   border-left: 3px solid var(--cold-red);
+ }
+ 
+ .payments-page .ant-alert-message {
+   color: var(--coal-gray);
+   font-weight: 600;
+ }
+ 
+ .payments-page .ant-alert-description {
+   color: var(--steel-blue);
+ }
+ 
+ /* Стили для модальных окон и панелей */
+ .payments-page .ant-drawer-header {
+   background-color: var(--ice-gray);
+   border-bottom: 1px solid var(--fog-gray);
+ }
+ 
+ .payments-page .ant-drawer-title {
+   color: var(--coal-gray);
+   font-weight: 600;
+ }
+ 
+ .payments-page .ant-drawer-content {
+   background-color: white;
+ }
+ 
+ .payments-page .ant-drawer-footer {
+   border-top: 1px solid var(--fog-gray);
+   padding: var(--spacing-md);
+   display: flex;
+   justify-content: flex-end;
+ }
+ 
+ /* Стили для форм */
+ .payments-page .ant-form-item-label > label {
+   color: var(--coal-gray);
+   font-weight: 500;
+ }
+ 
+ .payments-page .ant-form-item-required::before {
+   color: var(--cold-red);
+ }
+ 
+ .payments-page .ant-form-item-explain-error {
+   color: var(--cold-red);
+   margin-top: 4px;
+   font-size: var(--font-size-xs);
+ }
+ 
+ /* Стилизация select и selectOption */
+ .payments-page .ant-select-dropdown {
+   border-radius: var(--border-radius);
+   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+ }
+ 
+ .payments-page .ant-select-item-option-selected {
+   background-color: var(--light-azure);
+   color: var(--northern-blue);
+   font-weight: 500;
+ }
+ 
+ .payments-page .ant-select-item-option-active {
+   background-color: rgba(185, 221, 242, 0.5);
+ }
+ 
+ /* Настройка DatePicker */
+ .payments-page .ant-picker-dropdown {
+   border-radius: var(--border-radius);
+   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+ }
+ 
+ .payments-page .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+   background-color: var(--northern-blue);
+ }
+ 
+ .payments-page .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+   border-color: var(--northern-blue);
+ }
+ 
+ /* Стили для таблицы товаров в заказе */
+ .order-items-table .ant-table-thead > tr > th {
+   background: var(--ice-gray);
+   font-size: var(--font-size-xs);
+ }
+ 
+ .order-items-table .ant-table-tbody > tr > td {
+   font-size: var(--font-size-sm);
+   padding: 8px 16px;
+ }
+ 
+ .order-items-table .ant-table-summary {
+   background-color: var(--snow-white);
+ }
+ 
+ .order-items-table .ant-table-summary-row .ant-table-cell {
+   background-color: var(--snow-white);
+   color: var(--coal-gray);
+   font-weight: 600;
+ }
+ 
+ /* Стили для уведомлений */
+ .payments-page .ant-notification .ant-notification-notice {
+   border-radius: var(--border-radius);
+   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+ }
+ 
+ .payments-page .ant-notification .ant-notification-notice-message {
+   color: var(--coal-gray);
+   font-weight: 600;
+ }
+ 
+ .payments-page .ant-notification .ant-notification-notice-description {
+   color: var(--steel-blue);
+ }
+ 
+ /* Стили для числовых полей */
+ .payments-page .ant-input-number {
+   width: 100%;
+   border-color: var(--fog-gray);
+   border-radius: var(--border-radius);
+ }
+ 
+ .payments-page .ant-input-number:hover {
+   border-color: var(--northern-blue);
+ }
+ 
+ .payments-page .ant-input-number-focused {
+   border-color: var(--northern-blue);
+   box-shadow: 0 0 0 2px rgba(0, 91, 143, 0.1);
+ }
+ 
+ /* Стили для состояний оплаты */
+ .payment-status-completed {
+   color: var(--aquamarine);
+ }
+ 
+ .payment-status-pending {
+   color: #FF8F00;
+ }
+ 
+ .payment-status-failed {
+   color: var(--cold-red);
+ }
+ 
+ /* Стили для небольших карточек данных */
+ .payments-page .ant-card-small {
+   margin-bottom: var(--spacing-sm);
+ }
+ 
+ .payments-page .ant-card-small .ant-card-head {
+   min-height: 36px;
+   padding: 0 var(--spacing-sm);
+ }
+ 
+ .payments-page .ant-card-small .ant-card-head-title {
+   font-size: var(--font-size-sm);
+   padding: 8px 0;
+ }
+ 
+ .payments-page .ant-card-small .ant-card-body {
+   padding: var(--spacing-sm);
+ }
+ 
+ /* Стили для текстовых областей */
+ .payments-page .ant-input-textarea textarea {
+   min-height: 80px;
+   border-color: var(--fog-gray);
+   border-radius: var(--border-radius);
+ }
+ 
+ .payments-page .ant-input-textarea textarea:hover {
+   border-color: var(--northern-blue);
+ }
+ 
+ .payments-page .ant-input-textarea textarea:focus {
+   border-color: var(--northern-blue);
+   box-shadow: 0 0 0 2px rgba(0, 91, 143, 0.1);
+ }
+ 
+ /* Стили для списка в деталях */
+ .payments-page .detail-list {
+   margin-bottom: var(--spacing-md);
+ }
+ 
+ .payments-page .detail-list-item {
+   display: flex;
+   margin-bottom: var(--spacing-xs);
+ }
+ 
+ .payments-page .detail-list-label {
+   font-weight: 500;
+   color: var(--steel-blue);
+   width: 40%;
+ }
+ 
+ .payments-page .detail-list-value {
+   color: var(--coal-gray);
+   width: 60%;
+ }
+ 
+ /* Адаптивная верстка */
+ @media (max-width: 992px) {
+   .payments-page {
+     padding: var(--spacing-md);
+   }
+   
+   .payments-page .ant-row .ant-col {
+     margin-bottom: var(--spacing-xs);
+   }
+   
+   .payments-page .ant-space {
+     flex-wrap: wrap;
+     gap: var(--spacing-xs);
+   }
+ }
+ 
+ @media (max-width: 768px) {
+   .payments-page {
+     padding: var(--spacing-sm);
+   }
+   
+   .payments-page .ant-table {
+     font-size: var(--font-size-xs);
+   }
+   
+   .payments-page .ant-btn {
+     padding: 0 10px;
+     font-size: 12px;
+     height: 32px;
+   }
+   
+   .payments-page .ant-btn > .anticon + span,
+   .payments-page .ant-btn > span + .anticon {
+     margin-left: 4px;
+   }
+   
+   .payments-page .ant-card-small .ant-card-body {
+     padding: 8px;
+   }
+ }
+ 
+ @media (max-width: 576px) {
+   .payments-page .ant-drawer {
+     width: 100% !important;
+   }
+   
+   .payments-page .ant-space {
+     display: flex;
+     flex-direction: column;
+     width: 100%;
+   }
+   
+   .payments-page .ant-space .ant-btn {
+     width: 100%;
+     margin-bottom: var(--spacing-xs);
+   }
+ }
+ 
+ /* Стили для печати */
+ @media print {
+   body {
+     background-color: white;
+   }
+   
+   .payments-page {
+     padding: 0;
+   }
+   
+   .payments-page .ant-tabs-nav,
+   .payments-page .filter-card,
+   .payments-page .ant-btn,
+   .payments-page .ant-pagination {
+     display: none !important;
+   }
+   
+   .payments-page .ant-card {
+     box-shadow: none;
+     margin: 0;
+     padding: 0;
+   }
+   
+   .payments-page .ant-table {
+     font-size: 10pt;
+   }
+   
+   .payments-page .ant-table-thead > tr > th,
+   .payments-page .ant-table-tbody > tr > td {
+     padding: 8px;
+     border: 1px solid #ddd;
+   }
+ }

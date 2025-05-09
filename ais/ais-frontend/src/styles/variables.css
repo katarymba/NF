@@ -1,0 +1,67 @@
+/*
+ * Global Variables CSS
+ * Общие стилевые переменные для всего проекта AIS
+ */
+
+ :root {
+  /* Основная палитра цветов */
+  --snow-white: #F8FAFB;         /* Основной фон */
+  --coal-gray: #1C1C1E;          /* Основной текст */
+  --ice-gray: #E3E7EB;           /* Вторичный фон */
+  --northern-blue: #005B8F;      /* Основной акцент */
+  --steel-blue: #4A6A7D;         /* Вторичный акцент */
+  --aquamarine: #00B3A4;         /* Подсветка/успех */
+  --cold-red: #D64545;           /* Ошибка/опасность */
+  --fog-gray: #CBD2D9;           /* Границы/разделители */
+  --dark-graphite: #2F2F32;      /* Тени/глубина */
+  --light-azure: #B9DDF2;        /* Выделение/hover */
+  
+  /* Основные переменные интерфейса */
+  --background-color: var(--snow-white);
+  --card-background: white;
+  --text-primary: var(--coal-gray);
+  --text-secondary: var(--steel-blue);
+  --border-color: var(--fog-gray);
+  --shadow-color: rgba(47, 47, 50, 0.08);
+  
+  /* Акцентные цвета */
+  --primary-color: var(--northern-blue);
+  --secondary-color: var(--steel-blue);
+  --success-color: var(--aquamarine);
+  --danger-color: var(--cold-red);
+  --highlight-color: var(--light-azure);
+  
+  /* Радиусы и тени */
+  --border-radius: 6px;
+  --card-shadow: 0 2px 8px var(--shadow-color);
+  
+  /* Переходы */
+  --transition-default: all 0.2s ease;
+  
+  /* Размеры шрифтов */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  
+  /* Отступы */
+  --spacing-xs: 0.25rem;      /* 4px */
+  --spacing-sm: 0.5rem;       /* 8px */
+  --spacing-md: 1rem;         /* 16px */
+  --spacing-lg: 1.5rem;       /* 24px */
+  --spacing-xl: 2rem;         /* 32px */
+}
+
+/* Переопределение для темной темы */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: var(--dark-graphite);
+    --card-background: #24252A;
+    --text-primary: #E5E7EB;
+    --text-secondary: #B0B7C3;
+    --border-color: #3E4149;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+  }
+}
