@@ -1,0 +1,713 @@
+/* Warehouse.css - Стили для страницы склада, соответствующие макету */
+
+/* Основные цвета */
+:root {
+    /* Основная палитра цветов */
+    --snow-white: #F8FAFB;
+    --coal-gray: #1C1C1E;
+    --ice-gray: #E3E7EB;
+    --northern-blue: #005B8F;
+    --steel-blue: #4A6A7D;
+    --aquamarine: #00B3A4;
+    --cold-red: #D64545;
+    --fog-gray: #CBD2D9;
+    --dark-graphite: #2F2F32;
+    --light-azure: #B9DDF2;
+    
+    /* Цвета для элементов интерфейса */
+    --card-bg: #FFFFFF;
+    --page-bg: #F8FAFB;
+    --text-primary: #1C1C1E;
+    --text-secondary: #64748B;
+    --text-light: #94A3B8;
+    --border-color: #E5E7EB;
+    --table-header-bg: #F1F5F9;
+    
+    /* Цвета действий */
+    --action-blue: #2563EB;
+    --action-green: #10B981;
+    --action-purple: #8B5CF6;
+    --action-orange: #F97316;
+    --action-yellow: #F59E0B;
+    --action-red: #EF4444;
+    
+    /* Акцентные цвета */
+    --status-blue: rgba(37, 99, 235, 0.1);
+    --status-green: rgba(16, 185, 129, 0.1);
+    --status-yellow: rgba(245, 158, 11, 0.1);
+    --status-red: rgba(239, 68, 68, 0.1);
+    --status-purple: rgba(139, 92, 246, 0.1);
+    
+    /* Настройки для компонентов */
+    --border-radius: 8px;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --button-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Темная тема */
+  .dark-theme {
+    --card-bg: #1E293B;
+    --page-bg: #0F172A;
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-light: #64748B;
+    --border-color: #334155;
+    --table-header-bg: #1E293B;
+  }
+  
+  /* Базовые стили страницы */
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background-color: var(--page-bg);
+  }
+  
+  /* Контейнер страницы */
+  .container {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+  
+  /* Заголовок страницы */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  
+  .page-title {
+    color: var(--text-primary);
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+  }
+  
+  .page-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0;
+  }
+  
+  /* Кнопки действий */
+  .action-buttons {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    background-color: var(--action-blue);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    line-height: 1.4;
+    height: 40px;
+    white-space: nowrap;
+  }
+  
+  .btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .btn-blue {
+    background-color: var(--action-blue);
+  }
+  
+  .btn-blue:hover {
+    background-color: #1D4ED8;
+  }
+  
+  .btn-green {
+    background-color: var(--action-green);
+  }
+  
+  .btn-green:hover {
+    background-color: #059669;
+  }
+  
+  .btn-purple {
+    background-color: var(--action-purple);
+  }
+  
+  .btn-purple:hover {
+    background-color: #7C3AED;
+  }
+  
+  .btn-orange {
+    background-color: var(--action-orange);
+  }
+  
+  .btn-orange:hover {
+    background-color: #EA580C;
+  }
+  
+  /* Карточки статистики */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .stats-card {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .stats-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  .stats-value {
+    color: var(--text-primary);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  
+  .stats-subtext {
+    color: var(--text-light);
+    font-size: 12px;
+  }
+  
+  .value-blue {
+    color: var(--action-blue);
+  }
+  
+  .value-yellow {
+    color: var(--action-yellow);
+  }
+  
+  .value-red {
+    color: var(--action-red);
+  }
+  
+  /* Вкладки */
+  .tabs-container {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 24px;
+  }
+  
+  .tab {
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  
+  .tab:hover {
+    color: var(--text-primary);
+  }
+  
+  .tab.active {
+    color: var(--action-blue);
+    border-bottom-color: var(--action-blue);
+  }
+  
+  /* Панель поиска и фильтров */
+  .filters-panel {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .filters-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .filter-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  
+  .filter-input,
+  .filter-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+  
+  .filter-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 36px;
+  }
+  
+  .search-input {
+    padding-left: 36px;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    width: 16px;
+    height: 16px;
+  }
+  
+  .filters-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .filters-count {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  
+  .filters-count-value {
+    font-weight: 600;
+  }
+  
+  .filters-reset {
+    color: var(--text-secondary);
+    font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  
+  .filters-reset:hover {
+    color: var(--text-primary);
+  }
+  
+  .refresh-icon {
+    margin-left: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  
+  .refresh-icon:hover {
+    color: var(--text-primary);
+  }
+  
+  /* Таблица товаров */
+  .table-container {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  thead {
+    background-color: var(--table-header-bg);
+  }
+  
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  td {
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  .dark-theme tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+  
+  /* Сортировки в таблице */
+  .sort-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .sort-icon {
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+  }
+  
+  /* Статусы */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .status-in-stock {
+    background-color: var(--status-green);
+    color: var(--action-green);
+  }
+  
+  .status-low-stock {
+    background-color: var(--status-yellow);
+    color: var(--action-yellow);
+  }
+  
+  .status-out-of-stock {
+    background-color: var(--status-red);
+    color: var(--action-red);
+  }
+  
+  .status-synced {
+    background-color: var(--status-blue);
+    color: var(--action-blue);
+  }
+  
+  /* Пустое состояние */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 0;
+    color: var(--text-secondary);
+  }
+  
+  .empty-state-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--text-light);
+    margin-bottom: 16px;
+  }
+  
+  .empty-state-text {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .empty-state-button {
+    margin-top: 8px;
+  }
+  
+  /* Индикатор загрузки */
+  .loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 0;
+  }
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(37, 99, 235, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--action-blue);
+    animation: spin 1s ease-in-out infinite;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Модальные окна */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+  }
+  
+  .modal {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .modal-title {
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  
+  .modal-close:hover {
+    color: var(--text-primary);
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  /* Таблица с лёгкими стилями внутри страницы */
+  .light-table {
+    width: 100%;
+  }
+  
+  .light-table th {
+    background-color: transparent;
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 8px 16px;
+  }
+  
+  .light-table td {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  /* Кастомные классы для кнопок действий на странице склада */
+  .add-product-btn {
+    background-color: #2563EB;
+  }
+  
+  .new-shipment-btn {
+    background-color: #10B981;
+  }
+  
+  .inventory-count-btn {
+    background-color: #8B5CF6;
+  }
+  
+  .sync-btn {
+    background-color: #F97316;
+  }
+  
+  /* Footer */
+  .page-footer {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-light);
+    font-size: 12px;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  /* Адаптивный дизайн */
+  @media (max-width: 1200px) {
+    .stats-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .filters-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .action-buttons {
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      width: 100%;
+    }
+    
+    .filters-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .page-header {
+      flex-direction: column;
+    }
+    
+    .action-buttons {
+      margin-top: 16px;
+      width: 100%;
+    }
+  }
+  
+  /* Переопределение стилей Tailwind для компонентов страницы склада */
+  
+  /* Кнопки в Tailwind */
+  .bg-blue-600 {
+    background-color: var(--action-blue) !important;
+  }
+  
+  .bg-blue-600:hover {
+    background-color: #1D4ED8 !important;
+  }
+  
+  .bg-green-600 {
+    background-color: var(--action-green) !important;
+  }
+  
+  .bg-green-600:hover {
+    background-color: #059669 !important;
+  }
+  
+  .bg-purple-600 {
+    background-color: var(--action-purple) !important;
+  }
+  
+  .bg-purple-600:hover {
+    background-color: #7C3AED !important;
+  }
+  
+  .bg-orange-600 {
+    background-color: var(--action-orange) !important;
+  }
+  
+  .bg-orange-600:hover {
+    background-color: #EA580C !important;
+  }
+  
+  /* Карточки */
+  .rounded-lg.shadow.p-4 {
+    background-color: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius) !important;
+    box-shadow: var(--card-shadow) !important;
+    padding: 16px !important;
+  }
+  
+  /* Текст */
+  .text-2xl.font-bold {
+    color: var(--text-primary) !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+  }
+  
+  .text-sm.text-gray-500 {
+    color: var(--text-secondary) !important;
+    font-size: 14px !important;
+  }
+  
+  .text-xs.text-gray-500 {
+    color: var(--text-light) !important;
+    font-size: 12px !important;
+  }
+  
+  /* Вкладки */
+  .border-blue-500.text-blue-600 {
+    border-color: var(--action-blue) !important;
+    color: var(--action-blue) !important;
+  }
+  
+  /* Таблица */
+  .bg-gray-50, .dark\:bg-gray-700 {
+    background-color: var(--table-header-bg) !important;
+  }
+  
+  /* Статусы */
+  .px-2.inline-flex.text-xs.leading-5.font-semibold.rounded-full {
+    display: inline-flex !important;
+    padding: 4px 8px !important;
+    border-radius: 9999px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+  }
+  
+  .bg-green-100.text-green-800 {
+    background-color: var(--status-green) !important;
+    color: var(--action-green) !important;
+  }
+  
+  .bg-yellow-100.text-yellow-800 {
+    background-color: var(--status-yellow) !important;
+    color: var(--action-yellow) !important;
+  }
+  
+  .bg-red-100.text-red-800 {
+    background-color: var(--status-red) !important;
+    color: var(--action-red) !important;
+  }
+  
+  .bg-blue-100.text-blue-800 {
+    background-color: var(--status-blue) !important;
+    color: var(--action-blue) !important;
+  }

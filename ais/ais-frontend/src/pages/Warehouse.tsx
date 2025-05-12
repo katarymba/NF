@@ -19,6 +19,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import '../styles/Warehouse.css';
 
 // Интерфейсы для типов данных, основанные на структуре БД
 interface Product {

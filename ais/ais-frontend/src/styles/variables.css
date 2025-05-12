@@ -52,6 +52,121 @@
   --spacing-md: 1rem;         /* 16px */
   --spacing-lg: 1.5rem;       /* 24px */
   --spacing-xl: 2rem;         /* 32px */
+  
+  /* Цветовые переменные для Tailwind CSS */
+  --tw-blue-500: var(--northern-blue);
+  --tw-blue-600: var(--northern-blue);
+  --tw-blue-700: #004a77;
+  --tw-blue-800: #003b61;
+  --tw-blue-900: #002c49;
+  
+  --tw-green-500: var(--aquamarine);
+  --tw-green-600: var(--aquamarine);
+  --tw-green-700: #009b8e;
+  --tw-green-800: #008377;
+  --tw-green-900: #006a62;
+  
+  --tw-red-500: var(--cold-red);
+  --tw-red-600: var(--cold-red);
+  --tw-red-700: #b33a3a;
+  --tw-red-800: #912e2e;
+  --tw-red-900: #6e2323;
+  
+  --tw-yellow-500: #eab308;
+  --tw-yellow-600: #ca8a04;
+  
+  --tw-purple-500: #8b5cf6;
+  --tw-purple-600: #7c3aed;
+  
+  --tw-gray-50: #f9fafb;
+  --tw-gray-100: #f3f4f6;
+  --tw-gray-200: var(--fog-gray);
+  --tw-gray-300: var(--fog-gray);
+  --tw-gray-400: #a1a1aa;
+  --tw-gray-500: var(--steel-blue);
+  --tw-gray-600: var(--steel-blue);
+  --tw-gray-700: var(--dark-graphite);
+  --tw-gray-800: #1f2024;
+  --tw-gray-900: var(--coal-gray);
+  
+  /* Размеры для компонентов интерфейса */
+  --header-height: 4rem;
+  --sidebar-width: 16rem;
+  --sidebar-collapsed-width: 4.5rem;
+  
+  /* Z-индексы */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  
+  /* Сетка */
+  --grid-gap: 1.5rem;
+  --container-padding: 1.5rem;
+  
+  /* Анимации */
+  --animation-fast: 0.15s;
+  --animation-normal: 0.3s;
+  --animation-slow: 0.5s;
+  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  
+  /* Типография */
+  --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-family-heading: var(--font-family-base);
+  --font-family-monospace: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  
+  /* Линия высоты */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  
+  /* Интерактивные состояния */
+  --focus-ring-color: rgba(0, 91, 143, 0.4);
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+  
+  /* Сетка дропдаунов и модальных окон */
+  --dropdown-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --modal-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --popup-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  
+  /* Таблицы */
+  --table-header-bg: var(--ice-gray);
+  --table-border-color: var(--fog-gray);
+  --table-row-hover-bg: rgba(227, 231, 235, 0.3);
+  
+  /* Формы */
+  --input-height: 2.5rem;
+  --input-padding-x: 0.75rem;
+  --input-padding-y: 0.5rem;
+  --input-border-color: var(--fog-gray);
+  --input-focus-border-color: var(--northern-blue);
+  --input-border-radius: var(--border-radius);
+  --input-placeholder-color: #a1a1aa;
+  --input-disabled-bg: #f3f4f6;
+  --input-disabled-color: #6b7280;
+  
+  /* Кнопки */
+  --btn-padding-x: 1rem;
+  --btn-padding-y: 0.5rem;
+  --btn-font-size: var(--font-size-sm);
+  --btn-line-height: 1.5;
+  --btn-border-radius: var(--border-radius);
+  --btn-transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  
+  /* Карточки */
+  --card-border-width: 1px;
+  --card-border-color: var(--fog-gray);
+  --card-border-radius: var(--border-radius);
+  --card-padding: 1.25rem;
+  --card-cap-padding-y: 0.75rem;
+  --card-cap-padding-x: 1.25rem;
+  --card-cap-bg: rgba(227, 231, 235, 0.3);
 }
 
 /* Переопределение для темной темы */
@@ -63,5 +178,69 @@
     --text-secondary: #B0B7C3;
     --border-color: #3E4149;
     --shadow-color: rgba(0, 0, 0, 0.2);
+    --table-header-bg: #2A2A2E;
+    --table-row-hover-bg: rgba(47, 47, 50, 0.3);
+    --input-disabled-bg: #2A2A2E;
+    --input-disabled-color: #9CA3AF;
+    --card-cap-bg: rgba(47, 47, 50, 0.3);
+    --focus-ring-color: rgba(0, 91, 143, 0.6);
   }
 }
+
+/* Класс для принудительного включения темной темы */
+.dark-theme {
+  --background-color: var(--dark-graphite);
+  --card-background: #24252A;
+  --text-primary: #E5E7EB;
+  --text-secondary: #B0B7C3;
+  --border-color: #3E4149;
+  --shadow-color: rgba(0, 0, 0, 0.2);
+  --table-header-bg: #2A2A2E;
+  --table-row-hover-bg: rgba(47, 47, 50, 0.3);
+  --input-disabled-bg: #2A2A2E;
+  --input-disabled-color: #9CA3AF;
+  --card-cap-bg: rgba(47, 47, 50, 0.3);
+  --focus-ring-color: rgba(0, 91, 143, 0.6);
+}
+
+/* Класс для принудительного включения светлой темы */
+.light-theme {
+  --background-color: var(--snow-white);
+  --card-background: white;
+  --text-primary: var(--coal-gray);
+  --text-secondary: var(--steel-blue);
+  --border-color: var(--fog-gray);
+  --shadow-color: rgba(47, 47, 50, 0.08);
+  --table-header-bg: var(--ice-gray);
+  --table-row-hover-bg: rgba(227, 231, 235, 0.3);
+  --input-disabled-bg: #f3f4f6;
+  --input-disabled-color: #6b7280;
+  --card-cap-bg: rgba(227, 231, 235, 0.3);
+  --focus-ring-color: rgba(0, 91, 143, 0.4);
+}
+
+/* Вспомогательные классы для цветов */
+.text-primary { color: var(--text-primary) !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-accent { color: var(--primary-color) !important; }
+.text-success { color: var(--success-color) !important; }
+.text-danger { color: var(--danger-color) !important; }
+
+.bg-primary { background-color: var(--primary-color) !important; }
+.bg-success { background-color: var(--success-color) !important; }
+.bg-danger { background-color: var(--danger-color) !important; }
+.bg-accent { background-color: var(--secondary-color) !important; }
+.bg-light { background-color: var(--background-color) !important; }
+.bg-card { background-color: var(--card-background) !important; }
+
+.border-primary { border-color: var(--primary-color) !important; }
+.border-secondary { border-color: var(--secondary-color) !important; }
+.border-default { border-color: var(--border-color) !important; }
+
+/* Вспомогательные классы для типографики */
+.text-xs { font-size: var(--font-size-xs) !important; }
+.text-sm { font-size: var(--font-size-sm) !important; }
+.text-base { font-size: var(--font-size-base) !important; }
+.text-lg { font-size: var(--font-size-lg) !important; }
+.text-xl { font-size: var(--font-size-xl) !important; }
+.text-2xl { font-size: var(--font-size-2xl) !important; }

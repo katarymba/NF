@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { DocumentTextIcon, ArrowDownTrayIcon, EnvelopeIcon, PrinterIcon, MagnifyingGlassIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { XMarkIcon } from '@heroicons/react/24/solid';
+import '../styles/Reports.css';
 
 interface Report {
   id: string;

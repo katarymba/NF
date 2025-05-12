@@ -1,0 +1,639 @@
+/* Reports.css - Улучшенные стили для страницы отчетов с акцентом на качественную темную тему */
+
+/* Основные цвета */
+:root {
+    /* Основная палитра цветов */
+    --snow-white: #F8FAFB;
+    --coal-gray: #1C1C1E;
+    --ice-gray: #E3E7EB;
+    --northern-blue: #005B8F;
+    --steel-blue: #4A6A7D;
+    --aquamarine: #00B3A4;
+    --cold-red: #D64545;
+    --fog-gray: #CBD2D9;
+    --dark-graphite: #2F2F32;
+    --light-azure: #B9DDF2;
+    
+    /* Цвета для светлой темы */
+    --page-bg: var(--snow-white);
+    --card-bg: #FFFFFF;
+    --table-bg: #FFFFFF;
+    --text-primary: var(--coal-gray);
+    --text-secondary: #64748B;
+    --text-light: #94A3B8;
+    --border-color: #E5E7EB;
+    --table-header-bg: #F8FAFB;
+    
+    /* Цвета статусов и акцентов */
+    --blue-bg: #EFF6FF;
+    --blue-text: #0069B4;
+    --yellow-bg: #FEF9C3;
+    --yellow-text: #CA8A04;
+    --green-bg: #DCFCE7;
+    --green-text: #16A34A;
+    --red-bg: #FEE2E2;
+    --red-text: #DC2626;
+    --orange-bg: #FFEDD5;
+    --orange-text: #C2410C;
+    
+    /* UI элементы */
+    --button-primary-bg: var(--northern-blue);
+    --button-primary-hover: #0069B4;
+    --button-primary-text: white;
+    --input-bg: white;
+    --input-text: var(--coal-gray);
+    --input-border: #D1D5DB;
+    --input-focus-border: var(--northern-blue);
+    --input-focus-shadow: rgba(0, 91, 143, 0.1);
+    
+    /* Размеры и другие настройки */
+    --border-radius: 8px;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Темная тема - улучшенная, более контрастная */
+  .dark {
+    /* Цвета для темной темы */
+    --page-bg: #111827; /* Более темный фон */
+    --card-bg: #1F2937; /* Более темный фон карточки */
+    --table-bg: #1E293B; /* Более темный фон таблицы */
+    --text-primary: #F3F4F6; /* Более яркий текст */
+    --text-secondary: #D1D5DB; /* Более светлый вторичный текст */
+    --text-light: #9CA3AF; /* Более светлый текст */
+    --border-color: #374151; /* Более контрастные границы */
+    --table-header-bg: #1a243a; /* Более контрастный заголовок таблицы */
+    
+    /* Цвета статусов и акцентов для темной темы - более яркие и контрастные */
+    --blue-bg: rgba(37, 99, 235, 0.3);
+    --blue-text: #60A5FA;
+    --yellow-bg: rgba(202, 138, 4, 0.3);
+    --yellow-text: #FCD34D;
+    --green-bg: rgba(22, 163, 74, 0.3);
+    --green-text: #4ADE80;
+    --red-bg: rgba(220, 38, 38, 0.3);
+    --red-text: #F87171;
+    --orange-bg: rgba(194, 65, 12, 0.3);
+    --orange-text: #FB923C;
+    
+    /* UI элементы для темной темы */
+    --button-primary-bg: #0284C7; /* Более яркая кнопка */
+    --button-primary-hover: #0EA5E9;
+    --button-primary-text: white;
+    --input-bg: #374151; /* Более темный фон ввода */
+    --input-text: #F9FAFB;
+    --input-border: #4B5563;
+    --input-focus-border: #60A5FA;
+    --input-focus-shadow: rgba(59, 130, 246, 0.3);
+    
+    /* Тени для темной темы */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Базовые стили страницы */
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--page-bg);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+  }
+  
+  .container {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.5rem;
+    margin: 0 auto;
+  }
+  
+  /* Основной контейнер отчетов */
+  .reports-container {
+    background-color: var(--page-bg);
+    min-height: calc(100vh - 64px);
+    padding: 1.5rem;
+    color: var(--text-primary);
+  }
+  
+  /* Заголовок страницы */
+  .reports-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  
+  /* Кнопка создания отчета */
+  .create-report-button {
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text);
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .create-report-button:hover {
+    background-color: var(--button-primary-hover);
+  }
+  
+  /* Поле поиска с иконкой */
+  .search-container {
+    position: relative;
+    margin-bottom: 1.5rem;
+    max-width: 100%;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    font-size: 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  
+  .search-input:focus {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    outline: none;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  
+  /* Фильтр отчетов */
+  .filter-select {
+    padding: 0.75rem 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+  }
+  
+  .filter-select:focus {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    outline: none;
+  }
+  
+  /* Разделение между фильтрами и таблицей */
+  .search-filter-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .search-container {
+    flex: 1;
+    margin-right: 1rem;
+    margin-bottom: 0;
+  }
+  
+  /* Таблица отчетов */
+  .reports-table-container {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  
+  .reports-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  .reports-table th {
+    background-color: var(--table-header-bg);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .reports-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+  }
+  
+  .reports-table tbody tr {
+    background-color: var(--table-bg);
+    transition: background-color 0.2s;
+  }
+  
+  .reports-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  .dark .reports-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+  
+  /* Иконка документа */
+  .document-icon {
+    color: var(--text-secondary);
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  
+  /* Типы отчетов */
+  .report-type {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+  }
+  
+  .report-type.pdf {
+    background-color: var(--red-bg);
+    color: var(--red-text);
+  }
+  
+  .report-type.excel {
+    background-color: var(--green-bg);
+    color: var(--green-text);
+  }
+  
+  .report-type.word {
+    background-color: var(--blue-bg);
+    color: var(--blue-text);
+  }
+  
+  /* Название отчета и период */
+  .report-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    display: block;
+  }
+  
+  .report-period {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+  
+  /* Статусы отчетов */
+  .report-status {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .report-status.sent {
+    background-color: var(--green-bg);
+    color: var(--green-text);
+  }
+  
+  .report-status.printed {
+    background-color: var(--blue-bg);
+    color: var(--blue-text);
+  }
+  
+  .report-status.draft {
+    background-color: var(--orange-bg);
+    color: var(--orange-text);
+  }
+  
+  /* Иконки действий */
+  .action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1.5rem;
+  }
+  
+  .action-button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 0;
+  }
+  
+  .action-button:hover {
+    color: var(--text-primary);
+  }
+  
+  /* Футер с информацией */
+  .reports-footer {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 2rem;
+    text-align: right;
+  }
+  
+  .reports-footer-info div {
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Модальное окно для создания отчета */
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .dark .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  
+  .modal {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    max-width: 36rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .modal-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  
+  .close-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  
+  .modal-content {
+    padding: 1.5rem;
+  }
+  
+  .modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+  
+  /* Пошаговый прогресс */
+  .steps-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+  }
+  
+  .steps-container::before {
+    content: '';
+    position: absolute;
+    top: 1rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--border-color);
+    z-index: 0;
+  }
+  
+  .step {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+  
+  .step-circle {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background-color: var(--card-bg);
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+  
+  .step-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  
+  .step.active .step-circle {
+    border-color: var(--button-primary-bg);
+    background-color: var(--button-primary-bg);
+    color: white;
+  }
+  
+  .step.active .step-label {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  
+  .step.completed .step-circle {
+    border-color: var(--button-primary-bg);
+    background-color: var(--button-primary-bg);
+    color: white;
+  }
+  
+  /* Форма создания отчета */
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--input-text);
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  
+  .form-control:focus {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    outline: none;
+  }
+  
+  .form-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+  }
+  
+  /* Декоративные стили для конкретной страницы отчетов */
+  .report-category {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  
+  .report-organization {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+  
+  /* Адаптивный дизайн */
+  @media (max-width: 768px) {
+    .search-filter-container {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .search-container {
+      margin-right: 0;
+      margin-bottom: 1rem;
+    }
+    
+    .reports-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .create-report-button {
+      margin-top: 1rem;
+      width: 100%;
+      justify-content: center;
+    }
+    
+    .reports-table th:nth-child(2),
+    .reports-table td:nth-child(2) {
+      display: none;
+    }
+    
+    .action-buttons {
+      gap: 1rem;
+    }
+  }
+  
+  /* Специальные стили для улучшения темной темы */
+  .dark .reports-container {
+    background-color: #111827;
+  }
+  
+  .dark .reports-table-container {
+    background-color: #1F2937;
+  }
+  
+  .dark .reports-table th {
+    background-color: #1a243a;
+  }
+  
+  .dark .reports-table tbody tr {
+    background-color: #1F2937;
+  }
+  
+  .dark .reports-table tbody tr:nth-child(odd) {
+    background-color: #1E293B;
+  }
+  
+  /* Улучшенные стили для статусных элементов в темной теме */
+  .dark .report-status.sent {
+    background-color: rgba(22, 163, 74, 0.3);
+    color: #4ADE80;
+  }
+  
+  .dark .report-status.printed {
+    background-color: rgba(37, 99, 235, 0.3);
+    color: #60A5FA;
+  }
+  
+  .dark .report-status.draft {
+    background-color: rgba(194, 65, 12, 0.3);
+    color: #FB923C;
+  }
+  
+  .dark .report-type.pdf {
+    background-color: rgba(220, 38, 38, 0.3);
+    color: #F87171;
+  }
+  
+  .dark .report-type.excel {
+    background-color: rgba(22, 163, 74, 0.3);
+    color: #4ADE80;
+  }
+  
+  .dark .report-type.word {
+    background-color: rgba(37, 99, 235, 0.3);
+    color: #60A5FA;
+  }
