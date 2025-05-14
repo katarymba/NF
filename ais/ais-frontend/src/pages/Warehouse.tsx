@@ -21,67 +21,62 @@ import {
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import '../styles/Warehouse.css';
 
-// Интерфейсы для типов данных, основанные на структуре БД
-interface Product {
-  id: string;
-  sku: string; // Артикул/код товара
-  name: string;
-  description?: string;
-  category_id: string;
-  category_name: string; // Название категории для отображения
-  unit: string;
-  price: number;
-  tax_rate?: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  supplier?: string;
-  image_url?: string;
-  sr_stock_quantity?: number; // Количество по данным Север-Рыба
-  sr_sync?: boolean; // Флаг синхронизации с Север-Рыбой
-}
+import '../styles/Warehouse.css';
 
-interface StockItem {
-  id: string;
-  product_id: string;
-  product_name: string; // Для отображения
-  warehouse_id: string;
-  warehouse_name: string; // Для отображения
-  quantity: number;
-  minimum_quantity: number;
-  maximum_quantity?: number;
-  reorder_level: number;
-  quantity_reserved?: number;
-  last_count_date?: string;
-  last_counted_by?: string;
-  status: 'in-stock' | 'low-stock' | 'out-of-stock' | 'over-stock';
-}
+// Import the three modules
+import StockManagement from './warehouse/StockManagement';
+import SupplyManagement from './warehouse/SupplyManagement';
+import StockMovements from './warehouse/StockMovements';
 
-interface Warehouse {
-  id: string;
-  name: string;
-  address?: string;
-  city?: string;
-  is_active: boolean;
-  type: string; // Тип склада (основной, холодильник, морозильник и т.д.)
-}
+// Import interfaces
+import {
+  Product,
+  StockItem,
+  Warehouse as WarehouseType,
+  Category,
+  Shipment,
+  ShipmentItem,
+  StockMovement
+} from './warehouse/interfaces';
 
-interface StockMovement {
-  id: string;
-  product_id: string;
-  product_name: string;
-  warehouse_id: string;
-  warehouse_name: string;
-  quantity: number;
-  previous_quantity: number;
-  movement_type: 'receipt' | 'issue' | 'adjustment' | 'transfer';
-  reference_id?: string;
-  reference_type?: string;
-  performed_by: string;
-  movement_date: string;
-  notes?: string;
-}
+// Import API constants and functions
+import {
+  API_BASE_URL,
+  getProducts,
+  getStocks,
+  getWarehouses,
+  getCategories,
+  getSupplies,
+  getStockMovements
+} from '../services/api';
 
+<<<<<<< HEAD
+// Helper functions
+const getCurrentDateTime = () => {
+  return new Date().toISOString().replace('T', ' ').substring(0, 19);
+};
+
+const getCurrentUser = () => {
+  return localStorage.getItem('currentUser') || 'katarymba';
+};
+
+// API key and URL for Север-Рыба
+const SEVER_RYBA_API_URL = `http://localhost:8000`;
+const SEVER_RYBA_API_KEY = localStorage.getItem('severRybaApiKey') || 'sr_api_key_2025';
+
+// Add auth header helper function since it's not exported from api.ts
+const getAxiosAuthConfig = () => {
+  const token = localStorage.getItem('token');
+  return {
+    headers: token ? {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    } : {
+      'Content-Type': 'application/json'
+    }
+  };
+};
+=======
 interface Shipment {
   id: string;
   supplier: string;
@@ -149,16 +144,23 @@ const getCurrentUser = () => {
 // API ключ и URL для Север-Рыба
 const SEVER_RYBA_API_URL = `http://localhost:8000`;
 const SEVER_RYBA_API_KEY = localStorage.getItem('severRybaApiKey') || 'sr_api_key_2025';
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 
 const Warehouse: React.FC = () => {
-  // Состояния для данных
+  // State for data
   const [products, setProducts] = useState<Product[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [shipments, setShipments] = useState<Shipment[]>([]);
 
+<<<<<<< HEAD
+  // UI states
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'inventory' | 'shipments' | 'movements'>('inventory');
+=======
   // Состояния UI
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -235,11 +237,69 @@ const Warehouse: React.FC = () => {
     new_quantity: 0,
     notes: ''
   });
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 
-  // Функция для получения данных
+  // Function to fetch data
   const fetchData = async () => {
     setIsLoading(true);
     try {
+<<<<<<< HEAD
+      // Use the imported functions where possible
+      const productsData = await getProducts().catch(error => {
+        console.warn("Failed to fetch products:", error);
+        return [];
+      });
+
+      const stocksData = await getStocks().catch(error => {
+        console.warn("Failed to fetch stocks:", error);
+        return [];
+      });
+
+      const warehousesData = await getWarehouses().catch(error => {
+        console.warn("Failed to fetch warehouses:", error);
+        return [];
+      });
+
+      const categoriesData = await getCategories().catch(error => {
+        console.warn("Failed to fetch categories:", error);
+        return [];
+      });
+
+      const suppliesData = await getSupplies().catch(error => {
+        console.warn("Failed to fetch supplies:", error);
+        return [];
+      });
+
+      let stockMovementsData: any[] = [];
+      try {
+        stockMovementsData = await getStockMovements();
+      } catch (error) {
+        console.warn("Failed to fetch stock movements:", error);
+        // Try direct axios call as fallback using both possible endpoints
+        try {
+          // Try with /api prefix first
+          const response = await axios.get(`${API_BASE_URL}/api/stock-movements`, getAxiosAuthConfig());
+          stockMovementsData = response.data;
+        } catch (directError) {
+          // Then try without /api prefix
+          try {
+            const fallbackResponse = await axios.get(`${API_BASE_URL}/stock-movements`, getAxiosAuthConfig());
+            stockMovementsData = fallbackResponse.data;
+          } catch (finalError) {
+            console.error("All attempts to fetch stock movements failed:", finalError);
+            stockMovementsData = [];
+          }
+        }
+      }
+
+      // Set state with the fetched data
+      setProducts(productsData);
+      setStockItems(stocksData);
+      setWarehouses(warehousesData);
+      setCategories(categoriesData);
+      setShipments(suppliesData);
+      setStockMovements(stockMovementsData);
+=======
       // Запрос к API для получения данных из реальной базы
       const [
         productsResponse,
@@ -285,51 +345,76 @@ const Warehouse: React.FC = () => {
       setCategories(categoriesResponse.data);
       setShipments(shipmentsResponse.data);
       setStockMovements(stockMovementsResponse.data);
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 
       setError(null);
     } catch (err) {
       console.error("Failed to fetch warehouse data:", err);
+<<<<<<< HEAD
+      setError("Не удалось загрузить данные склада. Пожалуйста, проверьте подключение.");
+=======
       setError("Не удалось загрузить данные склада.");
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
     } finally {
       setIsLoading(false);
     }
   };
 
+<<<<<<< HEAD
+  // Fetch data on component load
+=======
   // Получение данных при загрузке компонента
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
   useEffect(() => {
     fetchData();
   }, []);
 
+<<<<<<< HEAD
+  // Function to merge product data from different sources
+=======
   // Функция для объединения данных продуктов из разных источников
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
   const mergeProductData = (aisProducts: Product[], severRybaProducts: any[], categoriesList: Category[]) => {
-    // Если нет данных от Север-Рыбы, возвращаем данные АИС
+    // If there's no data from Север-Рыба, return AIS data
     if (!severRybaProducts || !severRybaProducts.length) {
       return aisProducts;
     }
 
+<<<<<<< HEAD
+    // Map for quick product search by SKU
+=======
     // Карта для быстрого поиска продуктов по SKU
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
     const productMap = new Map();
     aisProducts.forEach(product => {
       productMap.set(product.sku, product);
     });
 
+<<<<<<< HEAD
+    // Function to find category ID by name
+=======
     // Функция для поиска ID категории по её названию
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
     const findCategoryId = (categoryName: string) => {
       const category = categoriesList.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
-      return category ? category.id : '1'; // Возвращаем ID по умолчанию, если категория не найдена
+      return category ? category.id : '1'; // Return default ID if category not found
     };
 
+<<<<<<< HEAD
+    // Update or add products from Север-Рыба
+=======
     // Обновляем или добавляем продукты из Север-Рыбы
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
     severRybaProducts.forEach(srProduct => {
       if (productMap.has(srProduct.sku)) {
-        // Обновляем существующий продукт
+        // Update existing product
         const existingProduct = productMap.get(srProduct.sku);
         existingProduct.price = srProduct.price || existingProduct.price;
         existingProduct.updated_at = srProduct.last_updated || existingProduct.updated_at;
         existingProduct.sr_stock_quantity = srProduct.quantity || 0;
         existingProduct.sr_sync = true;
       } else {
-        // Добавляем новый продукт из Север-Рыбы
+        // Add new product from Север-Рыба
         productMap.set(srProduct.sku, {
           id: `SR-${srProduct.id}`,
           sku: srProduct.sku,
@@ -348,6 +433,163 @@ const Warehouse: React.FC = () => {
         });
       }
     });
+<<<<<<< HEAD
+
+    return Array.from(productMap.values());
+  };
+
+  // Function to sync data with Север-Рыба
+  const syncWithSeverRyba = async (showAlerts = true) => {
+    if (showAlerts) setIsLoading(true);
+
+    try {
+      // Try different possible endpoints for Север-Рыба API
+      let severRybaData = { products: [] };
+
+      try {
+        // First try /inventory
+        const response = await axios.get(`${SEVER_RYBA_API_URL}/inventory`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('severRybaToken')}`,
+            'X-API-Key': SEVER_RYBA_API_KEY
+          }
+        });
+        severRybaData = response.data;
+      } catch (err) {
+        try {
+          // Then try /products
+          const response = await axios.get(`${SEVER_RYBA_API_URL}/products`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('severRybaToken')}`,
+              'X-API-Key': SEVER_RYBA_API_KEY
+            }
+          });
+          severRybaData = { products: response.data };
+        } catch (innerErr) {
+          // Finally try /api/products
+          try {
+            const response = await axios.get(`${SEVER_RYBA_API_URL}/api/products`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('severRybaToken')}`,
+                'X-API-Key': SEVER_RYBA_API_KEY
+              }
+            });
+            severRybaData = { products: response.data };
+          } catch (finalErr) {
+            console.error("All Север-Рыба API attempts failed:", finalErr);
+            throw new Error("Не удалось подключиться к API Север-Рыба");
+          }
+        }
+      }
+
+      // Get actual data from our DB
+      const productsResponse = await axios.get(`${API_BASE_URL}/api/products`, getAxiosAuthConfig());
+
+      // Combine data
+      const combinedProducts = mergeProductData(
+          productsResponse.data,
+          severRybaData.products || [],
+          categories
+      );
+
+      // Update products that have changed
+      for (const product of combinedProducts) {
+        if (product.sr_sync) {
+          await axios.put(`${API_BASE_URL}/api/products/${product.id}`, {
+            price: product.price,
+            updated_at: new Date().toISOString()
+          }, getAxiosAuthConfig());
+
+          // If we have stock in our system but it's not in Север-Рыба
+          // or vice versa - create or update records
+          if (product.sr_stock_quantity !== undefined) {
+            const stockItem = stockItems.find(item =>
+                item.product_id === product.id &&
+                item.warehouse_id === '1' // Assume the main warehouse has ID 1
+            );
+
+            if (stockItem) {
+              // Update existing stock record
+              await axios.patch(`${API_BASE_URL}/api/stocks/${stockItem.id}`, {
+                quantity: product.sr_stock_quantity,
+                last_count_date: new Date().toISOString(),
+                last_counted_by: 'Север-Рыба Sync',
+                status: determineStockStatus(product.sr_stock_quantity, stockItem.minimum_quantity)
+              }, getAxiosAuthConfig());
+
+              // Try to create stock movement record
+              try {
+                await axios.post(`${API_BASE_URL}/api/stock-movements`, {
+                  product_id: product.id,
+                  warehouse_id: '1',
+                  quantity: product.sr_stock_quantity - stockItem.quantity,
+                  previous_quantity: stockItem.quantity,
+                  movement_type: 'adjustment',
+                  performed_by: 'Север-Рыба Sync',
+                  movement_date: new Date().toISOString(),
+                  notes: 'Автоматическая синхронизация с Север-Рыба'
+                }, getAxiosAuthConfig());
+              } catch (moveError) {
+                console.warn("Failed to create stock movement:", moveError);
+              }
+            } else {
+              // Create new stock record
+              await axios.post(`${API_BASE_URL}/api/stocks`, {
+                product_id: product.id,
+                warehouse_id: '1',
+                quantity: product.sr_stock_quantity,
+                minimum_quantity: 5, // Default value
+                reorder_level: 10, // Default value
+                status: determineStockStatus(product.sr_stock_quantity, 5),
+                last_count_date: new Date().toISOString(),
+                last_counted_by: 'Север-Рыба Sync'
+              }, getAxiosAuthConfig());
+
+              // Try to create stock movement record
+              try {
+                await axios.post(`${API_BASE_URL}/api/stock-movements`, {
+                  product_id: product.id,
+                  warehouse_id: '1',
+                  quantity: product.sr_stock_quantity,
+                  previous_quantity: 0,
+                  movement_type: 'receipt',
+                  performed_by: 'Север-Рыба Sync',
+                  movement_date: new Date().toISOString(),
+                  notes: 'Первоначальное добавление через синхронизацию с Север-Рыба'
+                }, getAxiosAuthConfig());
+              } catch (moveError) {
+                console.warn("Failed to create stock movement:", moveError);
+              }
+            }
+          }
+        }
+      }
+
+      // Update page data
+      await fetchData();
+
+      if (showAlerts) {
+        alert('Синхронизация с Север-Рыба выполнена успешно!');
+      }
+    } catch (err) {
+      console.error("Ошибка при синхронизации с Север-Рыба:", err);
+      if (showAlerts) {
+        alert('Не удалось выполнить синхронизацию с Север-Рыба. Пожалуйста, проверьте подключение и попробуйте снова.');
+      }
+    } finally {
+      if (showAlerts) setIsLoading(false);
+    }
+  };
+
+  // Determine stock status
+  const determineStockStatus = (quantity: number, minQuantity: number) => {
+    if (quantity <= 0) return 'out-of-stock';
+    if (quantity < minQuantity) return 'low-stock';
+    return 'in-stock';
+  };
+
+  // Calculate warehouse stats
+=======
 
     return Array.from(productMap.values());
   };
@@ -579,38 +821,59 @@ const Warehouse: React.FC = () => {
   }, [stockMovements]);
 
   // Расчет общей статистики склада
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
   const warehouseStats = useMemo(() => {
     if (!stockItems.length) return {
       totalProducts: 0,
       totalItems: 0,
       totalValue: 0,
-      totalValueBySR: 0, // Добавляем учет стоимости по данным Север-Рыба
+      totalValueBySR: 0,
       lowStockItems: 0,
       outOfStockItems: 0,
-      pendingSyncItems: 0 // Элементы, требующие синхронизации
+      pendingSyncItems: 0
     };
 
+<<<<<<< HEAD
+    // Calculate stats and total value
+=======
     // Расчет статистики и общей стоимости
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
     let totalValue = 0;
     let totalValueBySR = 0;
     let pendingSyncItems = 0;
 
+<<<<<<< HEAD
+    // Create Map for quick product lookup
+    const productMap = new Map();
+    products.forEach(p => productMap.set(p.id, p));
+
+    // Calculate total warehouse value considering data from both sources
+=======
     // Создаем Map для быстрого поиска товаров
     const productMap = new Map();
     products.forEach(p => productMap.set(p.id, p));
 
     // Подсчет общей стоимости склада с учетом данных из обоих источников
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
     stockItems.forEach(item => {
       const product = productMap.get(item.product_id);
       if (product) {
-        // Обычная стоимость по данным АИС
+        // Regular value based on AIS data
         totalValue += item.quantity * product.price;
 
+<<<<<<< HEAD
+        // Value considering Север-Рыба prices, if available
+        const srPrice = product.sr_sync ? (product.price || 0) : 0;
+        totalValueBySR += item.quantity * (srPrice || product.price);
+
+        // Count items without sync
+=======
         // Стоимость с учетом цен Север-Рыба, если доступны
         const srPrice = product.sr_sync ? (product.price || 0) : 0;
         totalValueBySR += item.quantity * (srPrice || product.price);
 
         // Подсчет элементов без синхронизации
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
         if (!product.sr_sync) {
           pendingSyncItems++;
         }
@@ -620,7 +883,7 @@ const Warehouse: React.FC = () => {
     return {
       totalProducts: products.length,
       totalItems: stockItems.length,
-      totalValue: parseFloat(totalValue.toFixed(2)), // Округляем для точности
+      totalValue: parseFloat(totalValue.toFixed(2)), // Round for precision
       totalValueBySR: parseFloat(totalValueBySR.toFixed(2)),
       lowStockItems: stockItems.filter(item => item.status === 'low-stock').length,
       outOfStockItems: stockItems.filter(item => item.status === 'out-of-stock').length,
@@ -628,6 +891,8 @@ const Warehouse: React.FC = () => {
     };
   }, [stockItems, products]);
 
+<<<<<<< HEAD
+=======
   // Обработчики форм
   const handleFilterChange = (name: keyof ProductFilter, value: string) => {
     setFilters(prev => ({
@@ -1142,9 +1407,10 @@ const Warehouse: React.FC = () => {
     }).format(amount);
   };
 
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
   return (
       <div className="container mx-auto p-4">
-        {/* Заголовок и кнопки действий */}
+        {/* Header and action buttons */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Склад</h1>
@@ -1155,6 +1421,17 @@ const Warehouse: React.FC = () => {
 
           <div className="flex space-x-2">
             <button
+<<<<<<< HEAD
+                onClick={() => syncWithSeverRyba(true)}
+                className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-md flex items-center"
+                disabled={isLoading}
+            >
+              {isLoading ? (
+                  <span className="animate-spin mr-1">⟳</span>
+              ) : (
+                  <ArrowPathIcon className="h-5 w-5 mr-1" />
+              )}
+=======
                 onClick={() => setShowAddProductModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center"
             >
@@ -1184,12 +1461,17 @@ const Warehouse: React.FC = () => {
                 className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-md flex items-center"
             >
               <ArrowPathIcon className="h-5 w-5 mr-1" />
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
               Синхронизация с Север-Рыба
             </button>
           </div>
         </div>
 
+<<<<<<< HEAD
+        {/* Cards with general statistics */}
+=======
         {/* Карточки с общей статистикой */}
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">Всего наименований</div>
@@ -1205,13 +1487,25 @@ const Warehouse: React.FC = () => {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">Общая стоимость</div>
-            <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{formatCurrency(warehouseStats.totalValue)}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
+              {new Intl.NumberFormat('ru-RU', {
+                style: 'currency',
+                currency: 'RUB',
+                minimumFractionDigits: 2
+              }).format(warehouseStats.totalValue)}
+            </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">По данным АИС</div>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">Стоимость по Север-Рыба</div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{formatCurrency(warehouseStats.totalValueBySR)}</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+              {new Intl.NumberFormat('ru-RU', {
+                style: 'currency',
+                currency: 'RUB',
+                minimumFractionDigits: 2
+              }).format(warehouseStats.totalValueBySR)}
+            </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">С учетом цен поставщика</div>
           </div>
 
@@ -1228,7 +1522,33 @@ const Warehouse: React.FC = () => {
           </div>
         </div>
 
+<<<<<<< HEAD
+        {/* Error message display */}
+        {error && (
+            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong className="font-bold">Ошибка!</strong>
+              <span className="block sm:inline"> {error}</span>
+              <button
+                  className="absolute top-0 right-0 px-4 py-3"
+                  onClick={() => setError(null)}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+        )}
+
+        {/* Loading indicator */}
+        {isLoading && (
+            <div className="mb-6 p-4 flex justify-center items-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <span className="ml-2 text-gray-600 dark:text-gray-300">Загрузка данных...</span>
+            </div>
+        )}
+
+        {/* Tabs */}
+=======
         {/* Вкладки */}
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
         <div className="border-b border-gray-200 dark:border-gray-700 mb-4">
           <nav className="-mb-px flex space-x-8">
             <button
@@ -1266,6 +1586,52 @@ const Warehouse: React.FC = () => {
           </nav>
         </div>
 
+<<<<<<< HEAD
+        {/* Tab content */}
+        {activeTab === 'inventory' && (
+            <StockManagement
+                isLoading={isLoading}
+                products={products}
+                stockItems={stockItems}
+                warehouses={warehouses}
+                categories={categories}
+                fetchData={fetchData}
+                API_BASE_URL={`${API_BASE_URL}/api`}
+                getCurrentDateTime={getCurrentDateTime}
+                getCurrentUser={getCurrentUser}
+                determineStockStatus={determineStockStatus}
+            />
+        )}
+
+        {activeTab === 'shipments' && (
+            <SupplyManagement
+                isLoading={isLoading}
+                products={products}
+                shipments={shipments}
+                warehouses={warehouses}
+                fetchData={fetchData}
+                API_BASE_URL={`${API_BASE_URL}/api`}
+                getCurrentDateTime={getCurrentDateTime}
+                getCurrentUser={getCurrentUser}
+            />
+        )}
+
+        {activeTab === 'movements' && (
+            <StockMovements
+                isLoading={isLoading}
+                products={products}
+                stockItems={stockItems}
+                warehouses={warehouses}
+                stockMovements={stockMovements}
+                fetchData={fetchData}
+                API_BASE_URL={`${API_BASE_URL}/api`}
+                getCurrentDateTime={getCurrentDateTime}
+                getCurrentUser={getCurrentUser}
+            />
+        )}
+
+        {/* Footer */}
+=======
         {/* Содержимое вкладки "Складской учет" */}
         {activeTab === 'inventory' && (
             <>
@@ -2846,6 +3212,7 @@ const Warehouse: React.FC = () => {
             </div>
           </div>
         </div>
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
       </div>
   );
 };

@@ -1,6 +1,6 @@
 // ais/ais-frontend/src/services/api.ts
 
-// Исправление: используем относительные URL, чтобы работало с прокси
+// Используем относительные URL, чтобы работало с прокси
 export const API_BASE_URL = '/ais';
 
 // Добавляем объявление переменной API_ENDPOINTS, которая используется, но не определена
@@ -27,7 +27,13 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     
     // Проверка статуса ответа
     if (!response.ok) {
+      // Detailed error handling
       const errorText = await response.text();
+      if (response.status === 401) {
+        console.error("Authentication error - redirecting to login");
+        // Optionally redirect to login
+        // window.location.href = '/login';
+      }
       throw new Error(`API Error: ${response.status} ${response.statusText}\n${errorText}`);
     }
     
@@ -236,4 +242,27 @@ export async function updateDeliveryAddress(orderId: number, deliveryAddress: st
     },
     body: JSON.stringify({ delivery_address: deliveryAddress })
   });
+<<<<<<< HEAD
+}
+
+
+export async function getStocks() {
+  return fetchWithAuth(`${API_ENDPOINTS.api}/stocks`);
+}
+
+
+export async function getWarehouses() {
+  return fetchWithAuth(`${API_ENDPOINTS.api}/warehouses`);
+}
+
+
+export async function getSupplies() {
+  return fetchWithAuth(`${API_ENDPOINTS.api}/supplies`);
+}
+
+
+export async function getStockMovements() {
+  return fetchWithAuth(`${API_ENDPOINTS.api}/stock-movements`);
+=======
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 }

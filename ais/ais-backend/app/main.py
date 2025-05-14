@@ -7,7 +7,16 @@ from dotenv import load_dotenv
 from sqlalchemy import text 
 
 from app.database import engine, Base, get_db, SessionLocal
+<<<<<<< HEAD
+from app.routers import (
+    users, administrators, product,
+    category, orders, payments,
+    shipments, auth, integration,
+    warehouse, delivery, supply, stock, stock_movement
+)
+=======
 from app.routers import users, administrators, products, categories, orders, payments, shipments, auth, integration, warehouse, delivery
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 from app.admin import create_default_admin
 from app.services.message_handlers import register_message_handlers
 
@@ -78,6 +87,38 @@ logger.info("✅ CORS middleware подключен!")
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(administrators.router, prefix="/administrators", tags=["Administrators"])
+<<<<<<< HEAD
+
+app.include_router(product.router, prefix="/api/products", tags=["Products"])
+
+app.include_router(category.router, prefix="/api", tags=["Categories"])
+app.include_router(category.router, tags=["Categories"])
+
+app.include_router(orders.router, prefix="/api", tags=["Orders"])
+app.include_router(orders.router, tags=["Orders"])
+
+# app.include_router(payments.router, prefix="/api", tags=["Payments"])
+# app.include_router(payments.router, tags=["Payments"])
+
+app.include_router(warehouse.router, prefix="/api", tags=["warehouse"])
+app.include_router(warehouse.router, tags=["warehouse"])
+
+app.include_router(shipments.router, prefix="/shipments", tags=["Shipments"])
+app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
+app.include_router(delivery.router, prefix="/api/delivery", tags=["Delivery"])
+
+app.include_router(supply.router)
+app.include_router(supply.router, prefix="/api", tags=["Supply"])
+
+app.include_router(stock.router, prefix="/api", tags=["Stocks"])
+app.include_router(stock.router, tags=["Stocks"])
+
+
+app.include_router(stock_movement.router, prefix="/api", tags=["Stock Movements"])
+app.include_router(stock_movement.router,  tags=["Stock Movements"])
+
+
+=======
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
@@ -89,6 +130,7 @@ app.include_router(warehouse.router, prefix="/warehouse", tags=["warehouse"])
 app.include_router(shipments.router, prefix="/shipments", tags=["Shipments"])
 app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
 app.include_router(delivery.router, prefix="/api/delivery", tags=["Delivery"])
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 
 @app.get("/")
 def read_root():

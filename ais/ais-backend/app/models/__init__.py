@@ -14,4 +14,9 @@ from app.models.cart_item import CartItem
 from app.models.price_history import PriceHistory
 from app.models.warehouse import Warehouse
 from app.models.stock import Stock
+<<<<<<< HEAD
 from app.models.stock_movement import StockMovement
+from app.models.supply import Supply, SupplyItem
+=======
+from app.models.stock_movement import StockMovement
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2

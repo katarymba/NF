@@ -12,9 +12,9 @@ target_metadata = Base.metadata
 # Импортируйте Base и модели
 from app.database import Base
 from app.models import (
-    User, Product, Category, Order, 
-    OrderItem, Payment, Shipment, 
-    Administrator  # Добавьте импорт Administrator
+    User, Product, Category, Order,
+    OrderItem, Payment, Shipment,
+    administrator  # Добавьте импорт Administrator
 )
 
 config = context.config

@@ -80,4 +80,13 @@ from app.schemas.shipment import (
 from app.schemas.delivery import (
     OrderDeliveryUpdate, DeliveryUpdate, DeliveryResponse,
     CourierInfo, DeliveryStats
+<<<<<<< HEAD
+)
+
+#Экспортируем схемы поставок
+from app.schemas.supply import (
+    Supply, SupplyBase, SupplyCreate, SupplyUpdate, SupplyResponse,
+    SupplyItemBase, SupplyItemCreate, SupplyItemUpdate, SupplyItem
+=======
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 )

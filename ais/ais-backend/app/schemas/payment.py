@@ -31,5 +31,9 @@ class PaymentResponse(PaymentInDB):
 
 
 class PaymentListResponse(PaymentInDB):
+<<<<<<< HEAD
+    pass
+=======
     class Config:
         orm_mode = True
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2

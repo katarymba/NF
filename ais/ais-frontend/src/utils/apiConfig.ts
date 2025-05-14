@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+import axios from 'axios';
+
+// Базовый URL API
+export const API_BASE_URL = "http://localhost:8001";
+=======
 /**
  * Конфигурация API для фронтенд-приложения
  * @file ais/ais-frontend/src/utils/apiConfig.ts
@@ -9,6 +15,7 @@ import axios from 'axios';
 
 // Базовый URL API
 export const API_BASE_URL = "http://127.0.0.1:8001";
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 
 // Функция для получения токена авторизации из различных хранилищ
 export const getAuthToken = (): string | null => {
@@ -140,6 +147,27 @@ export const API_PRODUCTS_ENDPOINTS = {
   delete: (id: number) => apiClient.delete(`/api/products/${id}`),
 };
 
+<<<<<<< HEAD
+export const API_SUPPLIES_ENDPOINTS = {
+  // Эндпоинты для работы с поставками
+  GET_ALL: `${API_BASE_URL}/api/supplies`,
+  GET_BY_ID: (id: string) => `${API_BASE_URL}/api/supplies/${id}`,
+  CREATE: `${API_BASE_URL}/api/supplies`,
+  UPDATE: (id: string) => `${API_BASE_URL}/api/supplies/${id}`,
+  DELETE: (id: string) => `${API_BASE_URL}/api/supplies/${id}`,
+  PROCESS: (id: string) => `${API_BASE_URL}/api/supplies/${id}/process`,
+
+  // Функции-обертки для удобного использования
+  getAll: (params = {}) => apiClient.get('/api/supplies', { params }),
+  getById: (id: string) => apiClient.get(`/api/supplies/${id}`),
+  create: (data: any) => apiClient.post('/api/supplies', data),
+  update: (id: string, data: any) => apiClient.put(`/api/supplies/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/api/supplies/${id}`),
+  process: (id: string) => apiClient.post(`/api/supplies/${id}/process`),
+};
+
+=======
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 // Интерфейсы для работы с доставками
 export interface DeliveryStatus {
   PENDING: 'pending';
@@ -311,6 +339,10 @@ export default {
   delivery: API_DELIVERY_ENDPOINTS,
   orders: API_ORDERS_ENDPOINTS,
   products: API_PRODUCTS_ENDPOINTS,
+<<<<<<< HEAD
+  supplies: API_SUPPLIES_ENDPOINTS,
+=======
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
   statusTranslations,
   paymentMethodTranslations,
   formatDate,

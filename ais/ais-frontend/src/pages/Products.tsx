@@ -403,9 +403,12 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                   <th onClick={() => handleSort('price')}>
                     Цена {sortBy === 'price' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
+<<<<<<< HEAD
+=======
                   <th onClick={() => handleSort('stock')}>
                     На складе {sortBy === 'stock' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
                   <th>Действия</th>
                 </tr>
               </thead>
@@ -430,6 +433,8 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                     <td>{getCategoryName(product.category_id)}</td>
                     <td>{product.price.toLocaleString('ru-RU')} ₽</td>
                     <td>
+<<<<<<< HEAD
+=======
                       <span className={`stock-indicator ${
                         product.stock_quantity > 10 
                           ? 'stock-high' 
@@ -441,6 +446,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                       </span>
                     </td>
                     <td>
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
                       <button
                         onClick={() => openEditModal(product)}
                         className="table-action-btn"
@@ -534,6 +540,8 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                 </div>
                 
                 <div className="form-group">
+<<<<<<< HEAD
+=======
                   <label className="form-label form-label-required">
                     Количество на складе
                   </label>
@@ -548,6 +556,7 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                 </div>
                 
                 <div className="form-group">
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
                   <label className="form-label">
                     URL изображения
                   </label>

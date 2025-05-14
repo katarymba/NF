@@ -1,3 +1,32 @@
+<<<<<<< HEAD
+import os
+from datetime import datetime, timedelta
+from typing import Optional
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.models import Administrator, User
+from app.database import get_db
+
+# Настройки JWT
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+try:
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
+except (TypeError, ValueError):
+    ACCESS_TOKEN_EXPIRE_MINUTES = 60*24
+
+# Инициализация CryptContext один раз
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+
+
+=======
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -16,11 +45,30 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 часа
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 class TokenData(BaseModel):
     username: Optional[str] = None
     role: Optional[str] = None
     user_id: Optional[int] = None
 
+<<<<<<< HEAD
+
+# Верификация пароля
+def verify_password(plain_password, hashed_password):
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+# Хеширование пароля
+def get_password_hash(password):
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    return pwd_context.hash(password)
+
+
+=======
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 # Генерация JWT-токена
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -33,6 +81,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 # Проверка токена и получение текущего пользователя
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -66,6 +118,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             raise credentials_exception
         return user
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 # Проверка прав доступа для администратора
 async def get_current_admin(current_user = Depends(get_current_user)):
     if current_user.role != "admin":
@@ -74,6 +130,8 @@ async def get_current_admin(current_user = Depends(get_current_user)):
             detail="Недостаточно прав доступа",
         )
     return current_user
+<<<<<<< HEAD
+=======
 
 # Верификация пароля
 def verify_password(plain_password, hashed_password):
@@ -86,3 +144,4 @@ def get_password_hash(password):
     from passlib.context import CryptContext
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     return pwd_context.hash(password)
+>>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
