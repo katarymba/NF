@@ -238,8 +238,8 @@ alembic upgrade head
 
 ## Лицензия
 
-[Укажите лицензию Вашего проекта]
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## Авторы
 
-[Ваша информация]
+katarymba || Корнеева Ксения
