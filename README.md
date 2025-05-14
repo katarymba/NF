@@ -236,10 +236,6 @@ alembic upgrade head
 - Username: main_admin
 - Password: qwerty123
 
-## Лицензия
-
-![License](https://img.shields.io/badge/license-MIT-blue)
-
 ## Авторы
 
 katarymba || Корнеева Ксения
