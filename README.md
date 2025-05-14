@@ -168,11 +168,11 @@ run-sever-ryba-frontend.bat  # Запускает клиентский фрон�
 ```
 /NF
 ├── Sever-Fish/              # Клиентская часть
-│   ├── backend/             # API для клиентского приложения
-│   │   ├── migrations/      # Миграции БД
-│   │   ├── models.py        # Модели данных
+│   ├── backend/  
+│   │   ├── app/             # API для клиентского приложения
+│   │   ├── models/       	 # Модели данных
 │   │   ├── routers/         # Эндпоинты API
-│   │   ├── schemas.py       # Схемы валидации Pydantic
+│   │   ├── schemas/       	 # Схемы валидации Pydantic
 │   │   └── main.py          # Точка входа
 │   │
 │   └── frontend/            # Клиентский веб-интерфейс
@@ -182,9 +182,9 @@ run-sever-ryba-frontend.bat  # Запускает клиентский фрон�
 ├── ais/                     # Административная система
 │   ├── ais-backend/         # API для админки
 │   │   ├── app/             # Основной код
-│   │   │   ├── models.py    # Модели данных
+│   │   │   ├── models/      # Модели данных
 │   │   │   ├── routers/     # Эндпоинты API
-│   │   │   └── schemas.py   # Схемы Pydantic
+│   │   │   └── schemas/     # Схемы Pydantic
 │   │   └── alembic/         # Миграции БД
 │   │
 │   └── ais-frontend/        # Административный веб-интерфейс
