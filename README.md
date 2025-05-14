@@ -86,8 +86,8 @@
 #### 1. Клонирование репозитория
 
 ```bash
-git clone https://your-repository-url/nf.git
-cd nf
+git clone https://github.com/katarymba/NF.git
+cd NF
 ```
 
 #### 2. Настройка окружения для бэкенда
@@ -95,21 +95,16 @@ cd nf
 ##### Sever-Fish Бэкенд
 ```bash
 cd Sever-Fish/backend
-python -m venv .venv
 source .venv/bin/activate  # На Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Настройка БД
-alembic upgrade head
-
 # Запуск сервера
-python main.py
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ##### AIS Бэкенд
 ```bash
 cd ais/ais-backend
-python -m venv .venv
 source .venv/bin/activate  # На Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
@@ -120,7 +115,7 @@ alembic upgrade head
 python init_admin.py
 
 # Запуск сервера
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 #### 3. Настройка окружения для фронтенда
@@ -143,12 +138,11 @@ npm run dev
 
 ```bash
 cd api-gateway
-python -m venv .venv
 source .venv/bin/activate  # На Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # Запуск
-uvicorn main:app --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 ### Быстрый запуск через скрипты (Windows)
@@ -217,13 +211,6 @@ run-sever-ryba-frontend.bat  # Запускает клиентский фрон�
 
 ### Добавление новых миграций
 
-#### Sever-Fish
-```bash
-cd Sever-Fish/backend
-alembic revision --autogenerate -m "описание изменений"
-alembic upgrade head
-```
-
 #### AIS
 ```bash
 cd ais/ais-backend
@@ -251,8 +238,8 @@ alembic upgrade head
 
 ## Лицензия
 
-MIT
+[Укажите лицензию Вашего проекта]
 
-## Автор : 
+## Авторы
 
-katarymba; Корнеева Ксения
+[Ваша информация]
