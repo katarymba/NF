@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL, getProducts, getCategories } from '../services/api';
+import { API_BASE_URL } from '../utils/api'; 
 import { runFullSync } from '../services/integration';
 import { useLoading } from '../context/LoadingContext';
 import '../styles/Products.css';

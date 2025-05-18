@@ -1,0 +1,147 @@
+version: "3.8"
+
+services:
+  # База данных PostgreSQL
+  db:
+    image: postgres:latest
+    container_name: northfish-db
+    restart: always
+    environment:
+      POSTGRES_USER: northf_user
+      POSTGRES_PASSWORD: "%KM041286)zz!"
+      POSTGRES_DB: north_fish
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - northfish_network
+  
+  # AIS Backend
+  ais-backend:
+    build:
+      context: ./ais/ais-backend
+      dockerfile: Dockerfile
+    container_name: ais-backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://northf_user:%25KM041286)zz!@db/north_fish"
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./ais/ais-backend:/app
+      - ais_backend_logs:/app/logs
+      - ais_backend_data:/app/data
+    networks:
+      - northfish_network
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+  
+  # AIS Frontend
+  ais-frontend:
+    build:
+      context: ./ais/ais-frontend
+      dockerfile: Dockerfile
+    container_name: ais-frontend
+    restart: always
+    depends_on:
+      - ais-backend
+      - api-gateway
+    environment:
+      # Установка API URL для фронтенда - указываем на API Gateway
+      VITE_API_URL: "http://localhost:8080"
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./ais/ais-frontend:/app
+      - /app/node_modules
+    networks:
+      - northfish_network
+  
+  # Sever-Fish Backend
+  sever-fish-backend:
+    build:
+      context: ./Sever-Fish/backend
+      dockerfile: Dockerfile
+    container_name: sever-fish-backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://northf_user:%25KM041286)zz!@db/north_fish"
+      AIS_BASE_URL: "http://ais-backend:8001"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Sever-Fish/backend:/app
+      - sever_fish_backend_logs:/app/logs
+      - sever_fish_backend_media:/app/media
+      - sever_fish_backend_static:/app/static
+    networks:
+      - northfish_network
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+  
+  # Sever-Fish Frontend
+  sever-fish-frontend:
+    build:
+      context: ./Sever-Fish/frontend
+      dockerfile: Dockerfile
+    container_name: sever-fish-frontend
+    restart: always
+    depends_on:
+      - sever-fish-backend
+      - api-gateway
+    environment:
+      VITE_API_URL: "http://localhost:8080"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./Sever-Fish/frontend:/app
+      - /app/node_modules
+    networks:
+      - northfish_network
+  
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: always
+    depends_on:
+      - ais-backend
+      - sever-fish-backend
+    environment:
+      AIS_URL: "http://ais-backend:8001"
+      SEVER_FISH_URL: "http://sever-fish-backend:8000"
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api-gateway:/app
+      - api_gateway_logs:/app/logs
+    networks:
+      - northfish_network
+    # Важно: убедимся, что API Gateway запускается на нужном порту 8080
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+
+networks:
+  northfish_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: northfish-postgres-data
+  ais_backend_logs:
+    name: northfish-ais-backend-logs
+  ais_backend_data:
+    name: northfish-ais-backend-data
+  sever_fish_backend_logs:
+    name: northfish-sever-fish-backend-logs
+  sever_fish_backend_media:
+    name: northfish-sever-fish-backend-media
+  sever_fish_backend_static:
+    name: northfish-sever-fish-backend-static
+  api_gateway_logs:
+    name: northfish-api-gateway-logs

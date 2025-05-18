@@ -2,12 +2,12 @@ import { API_BASE_URL } from '../services/api';
 
 export async function validateApiEndpoints() {
     const endpoints = [
-        '/api/products',
-        '/api/stocks',
-        '/api/warehouses',
-        '/api/categories',
-        '/api/supplies',
-        '/api/stock-movements'
+        '/ais/api/products',
+        '/ais/api/stocks',
+        '/ais/api/warehouses',
+        '/ais/api/categories',
+        '/ais/api/supplies',
+        '/ais/api/stock-movements'
     ];
 
     console.log('Validating API endpoints...');

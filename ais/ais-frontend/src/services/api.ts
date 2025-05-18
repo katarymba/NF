@@ -1,289 +1,268 @@
-// ais/ais-frontend/src/services/api.ts
-import axios from "axios";
-// Используем относительные URL, чтобы работало с прокси
+import { getAuthToken, clearAuthToken } from './auth';
 
-export const API_BASE_URL = '/ais';
-export const API_FULL_URL = `${API_BASE_URL}/api`;
+// Базовый URL API Gateway
+export const API_BASE_URL = 'http://localhost:8080';
 
-// Добавляем объявление переменной API_ENDPOINTS, которая используется, но не определена
-const API_ENDPOINTS = {
-  auth: `${API_BASE_URL}/auth`,
-  api: `${API_BASE_URL}/api`,
+// Типы для API данных
+export interface Product {
+    id: number;
+    name: string;
+    description: string;
+    category_id: number;
+    price: number;
+    stock_quantity: number;
+    created_at: string;
+    updated_at: string;
+    image_url?: string;
+    category_name?: string;
+}
+
+export interface Category {
+    id: number;
+    name: string;
+    description: string;
+    created_at: string;
+    updated_at: string;
+    parent_id?: number;
+}
+
+export interface Order {
+    id: number;
+    customer_name: string;
+    customer_email: string;
+    status: string;
+    total_amount: number;
+    created_at: string;
+    updated_at: string;
+    items: OrderItem[];
+}
+
+export interface OrderItem {
+    id: number;
+    order_id: number;
+    product_id: number;
+    quantity: number;
+    unit_price: number;
+    product_name: string;
+}
+
+// Функции для работы с API
+export class APIError extends Error {
+    status: number;
+    
+    constructor(message: string, status: number) {
+        super(message);
+        this.name = 'APIError';
+        this.status = status;
+    }
+}
+
+/**
+ * Выполняет запрос к API с токеном авторизации
+ */
+export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
+    try {
+        const token = getAuthToken();
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        console.log(`API Request: ${API_BASE_URL}${endpoint}`);
+        
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+        });
+
+        if (!response.ok) {
+            console.error(`API Error: ${response.status} ${response.statusText}`);
+            
+            // Если 401 - нужна повторная авторизация
+            if (response.status === 401) {
+                console.log('Clearing auth token due to 401');
+                clearAuthToken();
+                window.location.href = '/login';
+            }
+            
+            throw new APIError(`API Error: ${response.status} ${response.statusText}`, response.status);
+        }
+
+        // Проверка Content-Type
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return await response.json();
+        } else {
+            return await response.text();
+        }
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error instanceof APIError ? error : new Error('API Error: ' + error);
+    }
 };
 
-export function getAxiosAuthConfig() {
-  const token = localStorage.getItem('token');
-  return {
-    headers: token ? {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    } : {
-      'Content-Type': 'application/json'
+// API функции для продуктов
+export const getProducts = async () => {
+    try {
+        return await fetchWithAuth('/ais/api/products');
+    } catch (error) {
+        console.error('Error getting products:', error);
+        throw error;
     }
-  };
-}
+};
 
-// Единая функция для выполнения запросов с обработкой ошибок
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  try {
-    const token = localStorage.getItem('token');
-    
-    // Если нужна авторизация и токен есть
-    if (token) {
-      options.headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`
-      };
+export const getProduct = async (id: number) => {
+    try {
+        return await fetchWithAuth(`/ais/api/products/${id}`);
+    } catch (error) {
+        console.error(`Error getting product ${id}:`, error);
+        throw error;
     }
-    
-    // Добавляем индикатор загрузки здесь если нужно
-    const response = await fetch(url, options);
-    
-    // Проверка статуса ответа
-    if (!response.ok) {
-      // Detailed error handling
-      const errorText = await response.text();
-      if (response.status === 401) {
-        console.error("Authentication error - redirecting to login");
-        // Optionally redirect to login
-        // window.location.href = '/login';
-      }
-      throw new Error(`API Error: ${response.status} ${response.statusText}\n${errorText}`);
+};
+
+export const createProduct = async (productData: Partial<Product>) => {
+    try {
+        return await fetchWithAuth('/ais/api/products', {
+            method: 'POST',
+            body: JSON.stringify(productData),
+        });
+    } catch (error) {
+        console.error('Error creating product:', error);
+        throw error;
     }
-    
-    // Для пустых ответов (например, DELETE запросы)
-    if (response.status === 204) {
-      return null;
+};
+
+export const updateProduct = async (id: number, productData: Partial<Product>) => {
+    try {
+        return await fetchWithAuth(`/ais/api/products/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(productData),
+        });
+    } catch (error) {
+        console.error(`Error updating product ${id}:`, error);
+        throw error;
     }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`API Error:`, error);
-    throw error;
-  }
-}
+};
 
-export function createAuthenticatedAxios(token: string | undefined) {
-  return axios.create({
-    baseURL: API_FULL_URL,
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-      'Content-Type': 'application/json'
+export const deleteProduct = async (id: number) => {
+    try {
+        return await fetchWithAuth(`/ais/api/products/${id}`, {
+            method: 'DELETE',
+        });
+    } catch (error) {
+        console.error(`Error deleting product ${id}:`, error);
+        throw error;
     }
-  });
-}
+};
 
-/**
- * Вход администратора
- */
-export async function loginAsAdmin(username: string, password: string): Promise<string> {
-  const formData = new URLSearchParams();
-  formData.append('username', username);
-  formData.append('password', password);
-  formData.append('grant_type', 'password');
+// API функции для категорий
+export const getCategories = async () => {
+    try {
+        return await fetchWithAuth('/ais/api/categories');
+    } catch (error) {
+        console.error('Error getting categories:', error);
+        throw error;
+    }
+};
 
-  const response = await fetch(`${API_BASE_URL}/administrators/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: formData,
-  });
+export const getCategory = async (id: number) => {
+    try {
+        return await fetchWithAuth(`/ais/api/categories/${id}`);
+    } catch (error) {
+        console.error(`Error getting category ${id}:`, error);
+        throw error;
+    }
+};
 
-  if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(errorData || 'Ошибка авторизации администратора');
-  }
-  
-  const data = await response.json();
-  return data.access_token;
-}
+export const createCategory = async (categoryData: Partial<Category>) => {
+    try {
+        return await fetchWithAuth('/ais/api/categories', {
+            method: 'POST',
+            body: JSON.stringify(categoryData),
+        });
+    } catch (error) {
+        console.error('Error creating category:', error);
+        throw error;
+    }
+};
 
-/**
- * Получение информации о текущем пользователе
- */
-export async function getCurrentUser(): Promise<any> {
-  return fetchWithAuth(`${API_BASE_URL}/auth/me`);
-}
+export const updateCategory = async (id: number, categoryData: Partial<Category>) => {
+    try {
+        return await fetchWithAuth(`/ais/api/categories/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(categoryData),
+        });
+    } catch (error) {
+        console.error(`Error updating category ${id}:`, error);
+        throw error;
+    }
+};
 
-/**
- * Получение списка товаров
- */
-export async function getProducts(categoryId?: number): Promise<any[]> {
-  const url = categoryId 
-    ? `${API_BASE_URL}/api/products?category_id=${categoryId}` 
-    : `${API_BASE_URL}/api/products`;
-  
-  try {
-    return await fetchWithAuth(url);
-  } catch (error) {
-    console.error('Error getting products:', error);
-    // Возвращаем пустой массив в случае ошибки, чтобы не прерывать выполнение программы
-    return [];
-  }
-}
+export const deleteCategory = async (id: number) => {
+    try {
+        return await fetchWithAuth(`/ais/api/categories/${id}`, {
+            method: 'DELETE',
+        });
+    } catch (error) {
+        console.error(`Error deleting category ${id}:`, error);
+        throw error;
+    }
+};
 
-/**
- * Получение списка категорий
- */
-export async function getCategories(): Promise<any[]> {
-  try {
-    return await fetchWithAuth(`${API_BASE_URL}/api/categories`);
-  } catch (error) {
-    console.error('Error getting categories:', error);
-    return [];
-  }
-}
+// API функции для заказов
+export const getOrders = async () => {
+    try {
+        return await fetchWithAuth('/ais/api/orders');
+    } catch (error) {
+        console.error('Error getting orders:', error);
+        throw error;
+    }
+};
 
-/**
- * Получение списка заказов
- */
-export async function getOrders(): Promise<any[]> {
-  try {
-    return await fetchWithAuth(`${API_BASE_URL}/api/orders`);
-  } catch (error) {
-    console.error('Error getting orders:', error);
-    return [];
-  }
-}
+export const getOrder = async (id: number) => {
+    try {
+        return await fetchWithAuth(`/ais/api/orders/${id}`);
+    } catch (error) {
+        console.error(`Error getting order ${id}:`, error);
+        throw error;
+    }
+};
 
-/**
- * Получение списка платежей
- */
-export async function getPayments(): Promise<any[]> {
-  try {
-    return await fetchWithAuth(`${API_BASE_URL}/api/payments`);
-  } catch (error) {
-    console.error('Error getting payments:', error);
-    return [];
-  }
-}
+export const createOrder = async (orderData: Partial<Order>) => {
+    try {
+        return await fetchWithAuth('/ais/api/orders', {
+            method: 'POST',
+            body: JSON.stringify(orderData),
+        });
+    } catch (error) {
+        console.error('Error creating order:', error);
+        throw error;
+    }
+};
 
-/**
- * Получение списка доставок
- */
-export async function getShipments(): Promise<any[]> {
-  try {
-    return await fetchWithAuth(`${API_BASE_URL}/api/shipments`);
-  } catch (error) {
-    console.error('Error getting shipments:', error);
-    return [];
-  }
-}
+export const updateOrder = async (id: number, orderData: Partial<Order>) => {
+    try {
+        return await fetchWithAuth(`/ais/api/orders/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(orderData),
+        });
+    } catch (error) {
+        console.error(`Error updating order ${id}:`, error);
+        throw error;
+    }
+};
 
-/**
- * Создание нового товара
- */
-export async function createProduct(productData: any): Promise<any> {
- const response = await fetchWithAuth(`${API_ENDPOINTS.api}/products`, {
-   method: 'POST',
-   headers: {
-     'Content-Type': 'application/json'
-   },
-   body: JSON.stringify(productData)
- });
- 
- return response;
-}
-
-/**
-* Обновление существующего товара
-*/
-export async function updateProduct(productId: number, productData: any): Promise<any> {
- return fetchWithAuth(`${API_ENDPOINTS.api}/products/${productId}`, {
-   method: 'PUT',
-   headers: {
-     'Content-Type': 'application/json'
-   },
-   body: JSON.stringify(productData)
- });
-}
-
-/**
-* Удаление товара
-*/
-export async function deleteProduct(productId: number): Promise<void> {
- await fetchWithAuth(`${API_ENDPOINTS.api}/products/${productId}`, {
-   method: 'DELETE'
- });
-}
-
-/**
- * Получение пользователя по ID
- */
-export async function getUserById(userId: number): Promise<any> {
-  try {
-    return await fetchWithAuth(`${API_ENDPOINTS.api}/users/${userId}`);
-  } catch (error) {
-    console.error(`Error getting user #${userId}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Получение заказа по ID
- */
-export async function getOrderById(orderId: number): Promise<any> {
-  try {
-    return await fetchWithAuth(`${API_ENDPOINTS.api}/orders/${orderId}`);
-  } catch (error) {
-    console.error(`Error getting order #${orderId}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Получение заказов пользователя
- */
-export async function getUserOrders(userId: number): Promise<any[]> {
-  try {
-    return await fetchWithAuth(`${API_ENDPOINTS.api}/users/${userId}/orders`);
-  } catch (error) {
-    console.error(`Error getting orders for user #${userId}:`, error);
-    return [];
-  }
-}
-
-/**
- * Обновление статуса заказа
- */
-export async function updateOrderStatus(orderId: number, status: string): Promise<any> {
-  return fetchWithAuth(`${API_ENDPOINTS.api}/orders/${orderId}/status`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ status })
-  });
-}
-
-/**
- * Обновление адреса доставки
- */
-export async function updateDeliveryAddress(orderId: number, deliveryAddress: string): Promise<any> {
-  return fetchWithAuth(`${API_ENDPOINTS.api}/orders/${orderId}/delivery-address`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ delivery_address: deliveryAddress })
-  });
-}
-
-
-export async function getStocks() {
-  return fetchWithAuth(`${API_ENDPOINTS.api}/stocks`);
-}
-
-
-export async function getWarehouses() {
-  return fetchWithAuth(`${API_ENDPOINTS.api}/warehouses`);
-}
-
-
-export async function getSupplies() {
-  return fetchWithAuth(`${API_ENDPOINTS.api}/supplies`);
-}
-
-
-export async function getStockMovements() {
-  return fetchWithAuth(`${API_ENDPOINTS.api}/stock-movements`);
-}
+export const deleteOrder = async (id: number) => {
+    try {
+        return await fetchWithAuth(`/ais/api/orders/${id}`, {
+            method: 'DELETE',
+        });
+    } catch (error) {
+        console.error(`Error deleting order ${id}:`, error);
+        throw error;
+    }
+};
