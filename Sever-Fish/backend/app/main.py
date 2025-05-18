@@ -11,8 +11,13 @@ import uvicorn
 from datetime import datetime
 
 from app.routers import auth, products, cart, orders, users
-from app.services import ais_integration, discount_service, rabbitmq
-from app.config import PORT, HOST, PRODUCTS_IMAGES_DIR, SECRET_KEY, DEBUG, PROJECT_NAME, PROJECT_VERSION, ALLOWED_HOSTS
+from app.api.api import api_router
+from app.services import ais_integration, discount_service
+from app.config import (
+    PORT, HOST, PRODUCTS_IMAGES_DIR, SECRET_KEY, DEBUG,
+    PROJECT_NAME, PROJECT_VERSION, ALLOWED_HOSTS,
+    API_GATEWAY_ENABLED, API_GATEWAY_URL
+)
 
 # Настройка логирования
 logging.basicConfig(
@@ -27,6 +32,9 @@ app = FastAPI(
     title=f"{PROJECT_NAME} API",
     description="API для системы управления продажами и запасами морепродуктов",
     version=PROJECT_VERSION,
+    docs_url="/docs",  # явно указываем URL для Swagger UI
+    redoc_url="/redoc",  # явно указываем URL для ReDoc
+    openapi_url="/openapi.json",  # явно указываем URL для OpenAPI схемы
 )
 
 # Настройка CORS
@@ -87,9 +95,6 @@ async def startup_event():
 
     # Проверка интеграции с внешними сервисами
     try:
-        # Инициализация RabbitMQ
-        await rabbitmq.initialize()
-        logger.info("RabbitMQ соединение установлено")
 
         # Проверка соединения с AIS
         ais_status = await ais_integration.check_connection()
@@ -98,6 +103,13 @@ async def startup_event():
         # Инициализация сервиса скидок
         discount_service.initialize()
         logger.info("Сервис скидок инициализирован")
+
+        # Логирование информации о интеграции с API Gateway
+        if API_GATEWAY_ENABLED:
+            logger.info(f"API Gateway интеграция включена. URL: {API_GATEWAY_URL}")
+        else:
+            logger.info("API Gateway интеграция отключена")
+
     except Exception as e:
         logger.error(f"Ошибка при инициализации сервисов: {str(e)}")
         logger.error(traceback.format_exc())
@@ -108,15 +120,9 @@ async def shutdown_event():
     """Выполняется при остановке приложения"""
     logger.info("Остановка приложения")
 
-    # Закрытие соединений
-    try:
-        await rabbitmq.close()
-        logger.info("RabbitMQ соединение закрыто")
-    except Exception as e:
-        logger.error(f"Ошибка при закрытии соединений: {str(e)}")
 
-
-# Монтирование маршрутов
+# Монтирование основных маршрутов под двумя префиксами (для обратной совместимости)
+# Стандартные маршруты без префикса
 app.include_router(auth.router, tags=["authentication"])
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(products.router, prefix="/products", tags=["products"])
@@ -124,11 +130,11 @@ app.include_router(cart.router, prefix="/cart", tags=["cart"])
 app.include_router(orders.router, prefix="/orders", tags=["orders"])
 
 # Маршруты API для фронтенда с префиксом /api
-app.include_router(products.router, prefix="/api/products", tags=["Products API"])
-app.include_router(cart.router, prefix="/api/cart", tags=["Cart API"])
-app.include_router(orders.router, prefix="/api/orders", tags=["Orders API"])
-app.include_router(users.router, prefix="/api/users", tags=["Users API"])
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth API"])
+app.include_router(api_router, prefix="/api")
+
+# Подключение API для интеграции с API Gateway
+if API_GATEWAY_ENABLED:
+    app.include_router(api_router, prefix="/sever-ryba")
 
 # Монтирование статических файлов для изображений продуктов
 if os.path.exists(PRODUCTS_IMAGES_DIR):
@@ -187,6 +193,14 @@ async def get_routes():
         {"path": "/api/auth/register", "method": "POST", "description": "Зарегистрироваться"},
         {"path": "/health", "method": "GET", "description": "Проверка работоспособности API"}
     ]
+    # Добавляем маршруты для API Gateway
+    if API_GATEWAY_ENABLED:
+        gateway_routes = [
+            {"path": "/sever-ryba/products", "method": "GET", "description": "API Gateway: Получить все товары"},
+            {"path": "/sever-ryba/auth/login", "method": "POST", "description": "API Gateway: Войти в систему"},
+            {"path": "/sever-ryba/health", "method": "GET", "description": "API Gateway: Статус сервиса"}
+        ]
+        routes.extend(gateway_routes)
     return routes
 
 

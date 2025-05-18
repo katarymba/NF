@@ -68,7 +68,7 @@ async def register(
             )
 
         # Проверяем, существует ли пользователь с таким именем
-        existing_name = db.query(User).filter(User.name == user_data.name).first()
+        existing_name = db.query(User).filter(User.username == user_data.name).first()  # Изменено name на username
         if existing_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -80,9 +80,9 @@ async def register(
 
         # Создаем пользователя
         new_user = User(
-            name=user_data.name,
+            username=user_data.name,  # Изменено name на username
             email=user_data.email,
-            hashed_password=hashed_password,
+            password_hash=hashed_password,  # Изменено hashed_password на password_hash
             full_name=user_data.full_name,
             phone=user_data.phone,
             created_at=datetime.utcnow(),
@@ -127,9 +127,9 @@ async def login(
 
         # Если пользователь не найден по email, проверяем по имени
         if not user:
-            user = db.query(User).filter(User.name == login_data.email).first()
+            user = db.query(User).filter(User.username == login_data.email).first()  # Изменено name на username
 
-        if not user or not verify_password(login_data.password, user.hashed_password):
+        if not user or not verify_password(login_data.password, user.password_hash):  # Изменено hashed_password на password_hash
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Неверный email/имя пользователя или пароль",
@@ -171,13 +171,13 @@ async def login_oauth(
     OAuth2 совместимый эндпоинт для аутентификации.
     """
     # Ищем пользователя по имени пользователя (username в OAuth2 может быть и email)
-    user = db.query(User).filter(User.name == form_data.username).first()
+    user = db.query(User).filter(User.username == form_data.username).first()  # Изменено name на username
 
     # Если не нашли по имени, пробуем по email
     if not user:
         user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not verify_password(form_data.password, user.password_hash):  # Изменено hashed_password на password_hash
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверное имя пользователя или пароль",
@@ -263,7 +263,7 @@ async def reset_password(
         )
 
     # Устанавливаем новый пароль
-    user.hashed_password = get_password_hash(reset_data.new_password)
+    user.password_hash = get_password_hash(reset_data.new_password)  # Изменено hashed_password на password_hash
     db.commit()
 
     return {

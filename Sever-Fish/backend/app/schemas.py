@@ -94,15 +94,25 @@ class Token(BaseModel):
 # Схемы для продуктов
 class ProductBase(BaseModel):
     name: str
-    price: float = Field(gt=0)
+    description: Optional[str] = None
+    price: Optional[float] = None
+    # Переименовываем stock в stock_quantity для соответствия модели в БД
+    stock: Optional[int] = 0  # В API остаётся stock для совместимости
     category_id: Optional[int] = None
+    image_url: Optional[str] = None
     weight: Optional[str] = None
 
 
 class ProductCreate(ProductBase):
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    stock_quantity: Optional[int] = Field(default=0, ge=0)
+    pass
+
+class Product(ProductBase):
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True
 
 
 class ProductUpdate(BaseModel):

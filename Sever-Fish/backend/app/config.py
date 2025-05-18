@@ -67,14 +67,6 @@ LOG_LEVEL_VALUE = LOG_LEVEL_MAP.get(LOG_LEVEL.upper(), logging.INFO)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 USE_REDIS_CACHE = os.getenv("USE_REDIS_CACHE", "False").lower() == "true"
 
-# Настройки RabbitMQ для очередей сообщений
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
-RABBITMQ_VHOST = os.getenv("RABBITMQ_VHOST", "/")
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{RABBITMQ_VHOST}")
-USE_RABBITMQ = os.getenv("USE_RABBITMQ", "False").lower() == "true"
 
 # Наименования обменника и очередей для RabbitMQ
 EXCHANGE_NAME = "ais_sever_ryba_exchange"

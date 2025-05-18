@@ -1,122 +1,71 @@
-# ais/ais-backend/app/routers/integration.py
-from fastapi import APIRouter, Depends, HTTPException, Body
-from sqlalchemy.orm import Session
-from typing import Dict, Any, List
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from pydantic import BaseModel
+from typing import Optional, Dict, Any, List
 import logging
 
-from app.database import get_db
-from app import models
-from app.services.rabbitmq import rabbitmq_service
-from app.services.integration_service import send_order_info, send_product_stock_request, send_payment_status
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/integration",
+    tags=["integration"],
+    responses={404: {"description": "Not found"}},
+)
 
+class Message(BaseModel):
+    type: str
+    payload: Dict[str, Any]
 
 @router.get("/status")
-def get_integration_status():
+async def get_status():
     """
-    Проверка статуса интеграции с Север-Рыба
+    Проверить статус соединения с очередями сообщений
     """
-    if rabbitmq_service.connected:
-        return {"status": "connected", "message": "Соединение с RabbitMQ установлено"}
-    else:
-        return {"status": "disconnected", "message": "Соединение с RabbitMQ отсутствует"}
+    logger.info("Запрос статуса интеграции - RabbitMQ отключен")
+    return {"status": "disabled", "message": "RabbitMQ отключен"}
 
-
-@router.post("/orders/{order_id}/send")
-def send_order_to_sever_ryba(order_id: int, db: Session = Depends(get_db)):
+@router.post("/ais-to-sever-ryba")
+async def send_to_sever_ryba(message: Message):
     """
-    Отправка данных заказа в систему Север-Рыба
+    Отправить сообщение из АИС в Север-Рыба
     """
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Заказ не найден")
-    
-    # Получение данных заказа
-    order_data = {
-        "order_id": order.id,
-        "total_price": float(order.total_price),
-        "status": order.status,
-        "created_at": order.created_at.isoformat(),
-        "user_id": order.user_id
-    }
-    
-    # Получение данных о товарах в заказе
-    order_items = db.query(models.OrderItem).filter(models.OrderItem.order_id == order.id).all()
-    order_data["items"] = [
-        {
-            "product_id": item.product_id,
-            "quantity": item.quantity,
-            "price": float(item.price)
-        } for item in order_items
-    ]
-    
-    # Отправка в RabbitMQ
-    result = send_order_info(order_data)
-    
-    if result:
-        return {"status": "success", "message": "Заказ успешно отправлен в систему Север-Рыба"}
-    else:
-        raise HTTPException(status_code=500, detail="Ошибка при отправке заказа")
+    try:
+        logger.info(f"Попытка отправки сообщения в Север-Рыба: {message.type}")
+        # Используем HTTP вместо RabbitMQ
+        # Можно реализовать здесь HTTP запрос к Север-Рыба API
+        return {"status": "disabled", "message": "Интеграция с RabbitMQ отключена"}
+    except Exception as e:
+        logger.error(f"Ошибка при отправке сообщения: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при отправке сообщения: {str(e)}")
 
-
-@router.post("/products/stock-request")
-def request_product_stock(product_ids: List[int] = Body(...)):
+@router.post("/notification")
+async def send_notification(message: Message):
     """
-    Запрос информации о наличии товаров в системе Север-Рыба
+    Отправить уведомление
     """
-    if not product_ids:
-        raise HTTPException(status_code=400, detail="Не указаны ID товаров")
-    
-    # Отправка запроса в RabbitMQ
-    result = send_product_stock_request(product_ids)
-    
-    if result:
-        return {"status": "success", "message": "Запрос на получение данных о наличии товаров отправлен"}
-    else:
-        raise HTTPException(status_code=500, detail="Ошибка при отправке запроса")
-
-
-@router.post("/payments/{payment_id}/send")
-def send_payment_to_sever_ryba(payment_id: int, db: Session = Depends(get_db)):
-    """
-    Отправка информации о платеже в систему Север-Рыба
-    """
-    payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
-    if not payment:
-        raise HTTPException(status_code=404, detail="Платеж не найден")
-    
-    # Формирование данных о платеже
-    payment_data = {
-        "payment_id": payment.id,
-        "order_id": payment.order_id,
-        "payment_method": payment.payment_method,
-        "payment_status": payment.payment_status,
-        "transaction_id": payment.transaction_id,
-        "created_at": payment.created_at.isoformat()
-    }
-    
-    # Отправка в RabbitMQ
-    result = send_payment_status(payment_data)
-    
-    if result:
-        return {"status": "success", "message": "Данные о платеже успешно отправлены в систему Север-Рыба"}
-    else:
-        raise HTTPException(status_code=500, detail="Ошибка при отправке данных о платеже")
-
+    try:
+        logger.info(f"Попытка отправки уведомления: {message.type}")
+        return {"status": "disabled", "message": "Интеграция с RabbitMQ отключена"}
+    except Exception as e:
+        logger.error(f"Ошибка при отправке уведомления: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при отправке уведомления: {str(e)}")
 
 @router.post("/reconnect")
-def reconnect_rabbitmq():
+async def reconnect_rabbitmq():
     """
-    Переподключение к RabbitMQ
+    Переподключение к RabbitMQ (заглушка)
     """
-    rabbitmq_service.reconnect()
-    
-    if rabbitmq_service.connected:
-        return {"status": "success", "message": "Переподключение к RabbitMQ выполнено успешно"}
-    else:
-        raise HTTPException(status_code=500, detail="Не удалось переподключиться к RabbitMQ")
+    logger.info("Попытка переподключения к RabbitMQ (отключено)")
+    return {"status": "disabled", "message": "RabbitMQ отключен"}
+
+@router.post("/receive")
+async def receive_message(message: Message):
+    """
+    Конечная точка для приема сообщений через HTTP
+    """
+    try:
+        logger.info(f"Получено сообщение через HTTP: {message.type}")
+        # Здесь можно обработать сообщение как будто оно пришло через RabbitMQ
+        return {"status": "success", "message": "Сообщение получено"}
+    except Exception as e:
+        logger.error(f"Ошибка при обработке входящего сообщения: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при обработке сообщения: {str(e)}")

@@ -12,7 +12,7 @@ from app.utils.auth import (
 )
 from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter()
 
 
 @router.post("/register", response_model=UserProfile)

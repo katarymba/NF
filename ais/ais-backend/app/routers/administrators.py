@@ -8,7 +8,7 @@ from typing import List
 
 from app.database import get_db
 from app.models import Administrator
-from ..schemas import AdministratorCreate, AdministratorResponse, AdministratorUpdate, AdministratorLogin
+from app.schemas import AdministratorCreate, AdministratorResponse, AdministratorUpdate, AdministratorLogin
 from app.routers.auth import get_password_hash, verify_password, create_access_token, require_admin
 from dotenv import load_dotenv
 

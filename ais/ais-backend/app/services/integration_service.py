@@ -1,177 +1,74 @@
-# ais/ais-backend/app/services/integration_service.py
-import json
+"""
+Модуль для интеграции с другими системами
+"""
+
 import logging
-import time
-import uuid
-from typing import Any, Dict, List, Optional
-from threading import Thread
+import requests
+import json
+from typing import Dict, Any, Callable, Optional
+import threading
+from app.config import settings
 
-from app.services.rabbitmq import rabbitmq_service, SEVER_RYBA_TO_AIS_QUEUE, send_to_sever_ryba
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Глобальное хранилище для обработчиков сообщений
-message_handlers = {}
+# Заглушки для совместимости
+SEVER_RYBA_TO_AIS_QUEUE = "sever_ryba_to_ais"
 
-
-def register_handler(message_type: str, handler_func):
+def send_to_sever_ryba(data: Dict[str, Any]) -> bool:
     """
-    Регистрация обработчика для определенного типа сообщений
+    Отправка данных в Север-Рыба через HTTP вместо RabbitMQ
     
     Args:
-        message_type: Тип сообщения
-        handler_func: Функция-обработчик
-    """
-    global message_handlers
-    message_handlers[message_type] = handler_func
-    logger.info(f"Зарегистрирован обработчик для типа сообщений: {message_type}")
-
-
-def handle_message(ch, method, properties, body):
-    """
-    Обработка входящего сообщения из RabbitMQ
-    
-    Args:
-        ch: Канал RabbitMQ
-        method: Информация о методе
-        properties: Свойства сообщения
-        body: Тело сообщения
+        data: Данные для отправки
+        
+    Returns:
+        bool: Успешность отправки
     """
     try:
-        # Декодирование сообщения из JSON
-        message = json.loads(body.decode('utf-8'))
-        message_type = message.get('type')
-        
-        if not message_type:
-            logger.warning("Получено сообщение без указания типа")
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            return
+        # Отправка через HTTP API
+        base_url = settings.SEVER_FISH_API_URL
+        if not base_url:
+            base_url = "http://sever-fish-backend:8000"
             
-        logger.info(f"Получено сообщение типа: {message_type}")
-        
-        # Поиск обработчика для данного типа сообщений
-        if message_type in message_handlers:
-            try:
-                handler = message_handlers[message_type]
-                result = handler(message)
-                logger.info(f"Сообщение типа {message_type} успешно обработано")
-                
-                # Если есть ID корреляции, отправляем ответ
-                if properties.correlation_id:
-                    response = {
-                        'type': f"{message_type}_response",
-                        'status': 'success',
-                        'data': result,
-                        'request_id': properties.correlation_id
-                    }
-                    send_to_sever_ryba(response, properties.correlation_id)
-            except Exception as e:
-                logger.error(f"Ошибка при обработке сообщения типа {message_type}: {e}")
-                # Отправка сообщения об ошибке, если есть ID корреляции
-                if properties.correlation_id:
-                    error_response = {
-                        'type': f"{message_type}_response",
-                        'status': 'error',
-                        'error': str(e),
-                        'request_id': properties.correlation_id
-                    }
-                    send_to_sever_ryba(error_response, properties.correlation_id)
+        response = requests.post(
+            f"{base_url}/api/integration/receive",
+            json=data,
+            timeout=5
+        )
+        if response.status_code == 200:
+            logger.info(f"Данные успешно отправлены в Север-Рыба: {data}")
+            return True
         else:
-            logger.warning(f"Не найден обработчик для типа сообщений: {message_type}")
-            
-        # Подтверждаем обработку сообщения
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except json.JSONDecodeError:
-        logger.error("Ошибка декодирования JSON из сообщения")
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            logger.error(f"Ошибка при отправке данных в Север-Рыба: {response.status_code}, {response.text}")
+            return False
     except Exception as e:
-        logger.error(f"Необработанная ошибка при обработке сообщения: {e}")
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        logger.error(f"Ошибка при отправке данных в Север-Рыба: {e}")
+        return False
 
-
-class MessageListener(Thread):
-    """Поток для прослушивания сообщений RabbitMQ"""
-    
-    def __init__(self):
-        Thread.__init__(self, daemon=True)
-        self.is_running = False
-        
-    def run(self):
-        """Запуск прослушивания очереди"""
-        self.is_running = True
-        while self.is_running:
-            try:
-                rabbitmq_service.consume_messages(SEVER_RYBA_TO_AIS_QUEUE, handle_message)
-            except Exception as e:
-                logger.error(f"Ошибка в процессе прослушивания очереди: {e}")
-                time.sleep(5)  # Пауза перед повторной попыткой
-                
-    def stop(self):
-        """Остановка прослушивания"""
-        self.is_running = False
-        rabbitmq_service.stop_consuming()
-
-
-# Функции для отправки типизированных сообщений в систему Север-Рыба
-
-def send_order_info(order_data: Dict[str, Any]) -> bool:
+def handle_message(channel, method, properties, body) -> None:
     """
-    Отправка информации о заказе в систему Север-Рыба
-    
-    Args:
-        order_data: Данные заказа
-        
-    Returns:
-        bool: Успешность отправки сообщения
+    Заглушка для обработки входящего сообщения (для совместимости)
     """
-    message = {
-        'type': 'order_info',
-        'timestamp': int(time.time()),
-        'data': order_data
-    }
-    return send_to_sever_ryba(message, str(uuid.uuid4()))
+    logger.info("Функциональность RabbitMQ отключена")
+    return None
 
-
-def send_product_stock_request(product_ids: List[int]) -> bool:
+def register_handler(message_type: str, handler_func: Callable) -> None:
     """
-    Запрос информации о наличии товаров на складе Север-Рыба
-    
-    Args:
-        product_ids: Список ID товаров
-        
-    Returns:
-        bool: Успешность отправки сообщения
+    Заглушка для регистрации обработчика сообщений (для совместимости)
     """
-    message = {
-        'type': 'stock_request',
-        'timestamp': int(time.time()),
-        'data': {
-            'product_ids': product_ids
-        }
-    }
-    return send_to_sever_ryba(message, str(uuid.uuid4()))
+    logger.info(f"Регистрация обработчика для {message_type} пропущена, RabbitMQ отключен")
+    return None
 
-
-def send_payment_status(payment_data: Dict[str, Any]) -> bool:
+def start_listening() -> None:
     """
-    Отправка статуса платежа в систему Север-Рыба
-    
-    Args:
-        payment_data: Данные о платеже
-        
-    Returns:
-        bool: Успешность отправки сообщения
+    Заглушка для запуска прослушивания (для совместимости)
     """
-    message = {
-        'type': 'payment_status',
-        'timestamp': int(time.time()),
-        'data': payment_data
-    }
-    return send_to_sever_ryba(message, str(uuid.uuid4()))
+    logger.info("Функциональность RabbitMQ отключена")
+    return None
 
-
-# Запуск прослушивания при импорте модуля
-message_listener = MessageListener()
-message_listener.start()
+def stop_listening() -> None:
+    """
+    Заглушка для остановки прослушивания (для совместимости)
+    """
+    logger.info("Функциональность RabbitMQ отключена")
+    return None

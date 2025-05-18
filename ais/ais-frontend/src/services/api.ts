@@ -1,13 +1,27 @@
 // ais/ais-frontend/src/services/api.ts
-
+import axios from "axios";
 // Используем относительные URL, чтобы работало с прокси
+
 export const API_BASE_URL = '/ais';
+export const API_FULL_URL = `${API_BASE_URL}/api`;
 
 // Добавляем объявление переменной API_ENDPOINTS, которая используется, но не определена
 const API_ENDPOINTS = {
   auth: `${API_BASE_URL}/auth`,
   api: `${API_BASE_URL}/api`,
 };
+
+export function getAxiosAuthConfig() {
+  const token = localStorage.getItem('token');
+  return {
+    headers: token ? {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    } : {
+      'Content-Type': 'application/json'
+    }
+  };
+}
 
 // Единая функция для выполнения запросов с обработкой ошибок
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
@@ -47,6 +61,16 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     console.error(`API Error:`, error);
     throw error;
   }
+}
+
+export function createAuthenticatedAxios(token: string | undefined) {
+  return axios.create({
+    baseURL: API_FULL_URL,
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json'
+    }
+  });
 }
 
 /**
@@ -242,7 +266,6 @@ export async function updateDeliveryAddress(orderId: number, deliveryAddress: st
     },
     body: JSON.stringify({ delivery_address: deliveryAddress })
   });
-<<<<<<< HEAD
 }
 
 
@@ -263,6 +286,4 @@ export async function getSupplies() {
 
 export async function getStockMovements() {
   return fetchWithAuth(`${API_ENDPOINTS.api}/stock-movements`);
-=======
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 }

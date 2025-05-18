@@ -8,7 +8,7 @@ from app.models import Order, OrderItem, Product, User
 from app.schemas import OrderCreate, OrderResponse, OrderStatus, ApiResponse, OrderUpdate
 from app.utils.auth import require_auth, get_current_user_id, require_admin
 
-router = APIRouter(prefix="/orders", tags=["Orders"])
+router = APIRouter()
 
 
 @router.post("/", response_model=OrderResponse)

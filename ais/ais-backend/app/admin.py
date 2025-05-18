@@ -2,7 +2,7 @@
 import logging
 from sqlalchemy.exc import IntegrityError
 from app.database import get_db
-from app.models import administrator
+from app.models import Administrator
 from passlib.context import CryptContext
 
 # Настройка логирования

@@ -1,5 +1,6 @@
 # app/routers/products.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query, Path, File, UploadFile, Form
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
@@ -8,6 +9,7 @@ import uuid
 import shutil
 from datetime import datetime
 
+from app import schemas
 from app.database import get_db
 from app.models import Product, Category
 from app.schemas import ProductResponse, CategoryResponse, ProductCreate, ProductUpdate, CategoryCreate
@@ -17,59 +19,68 @@ from app.config import PRODUCTS_IMAGES_DIR
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/products", tags=["Products"])
+router = APIRouter()
 
 
 # Получить все товары с пагинацией и фильтрацией
-@router.get("/", response_model=List[ProductResponse])
-async def get_all_products(
-        db: Session = Depends(get_db),
-        skip: int = Query(0, ge=0, description="Сколько товаров пропустить"),
-        limit: int = Query(100, ge=1, le=100, description="Максимальное количество товаров"),
-        search: Optional[str] = Query(None, description="Поиск по названию товара"),
-        category_id: Optional[int] = Query(None, description="Фильтр по ID категории"),
-        min_price: Optional[float] = Query(None, ge=0, description="Минимальная цена"),
-        max_price: Optional[float] = Query(None, ge=0, description="Максимальная цена"),
-        sort_by: Optional[str] = Query("name", description="Поле для сортировки (name, price, created_at)")
+@router.get("/", response_model=List[schemas.Product])
+def get_products(
+        request: Request,
+        skip: int = 0,
+        limit: int = 100,
+        category_id: Optional[int] = None,
+        sort_by: str = Query("name", description="Поле для сортировки"),
+        db: Session = Depends(get_db)
 ):
     """
-    Получить список всех товаров с возможностью пагинации, фильтрации и сортировки
+    Получить список всех продуктов.
+    Можно фильтровать по категории, используя query parameter category_id.
     """
     try:
-        # Начинаем с базового запроса
         query = db.query(Product)
-
-        # Применяем фильтры
-        if search:
-            query = query.filter(Product.name.ilike(f"%{search}%"))
 
         if category_id:
             query = query.filter(Product.category_id == category_id)
 
-        if min_price is not None:
-            query = query.filter(Product.price >= min_price)
-
-        if max_price is not None:
-            query = query.filter(Product.price <= max_price)
-
         # Применяем сортировку
-        if sort_by == "price":
-            query = query.order_by(Product.price)
-        elif sort_by == "price_desc":
-            query = query.order_by(Product.price.desc())
-        elif sort_by == "created_at":
-            query = query.order_by(Product.created_at.desc())
-        else:  # По умолчанию сортируем по имени
+        if sort_by == "name":
             query = query.order_by(Product.name)
+        elif sort_by == "price":
+            query = query.order_by(Product.price)
+        elif sort_by == "category":
+            query = query.order_by(Product.category_id)
 
-        # Применяем пагинацию
         products = query.offset(skip).limit(limit).all()
+        logger.info(f"Найдено {len(products)} продуктов")
 
-        return products
+        # Преобразуем относительные URL изображений в абсолютные
+        base_url = str(request.base_url).rstrip('/')
+
+        # Создаем копии продуктов с полными URL
+        result = []
+        for product in products:
+            product_dict = {
+                "id": product.id,
+                "name": product.name,
+                "description": product.description,
+                "price": product.price,
+                # Используем stock_quantity вместо stock
+                "stock": product.stock_quantity,
+                "category_id": product.category_id,
+                "image_url": f"{base_url}{product.image_url}" if product.image_url else None,
+                "created_at": product.created_at,
+                # Используем created_at вместо updated_at, т.к. updated_at отсутствует в БД
+                "updated_at": product.created_at,
+                # Добавляем поле weight
+                "weight": product.weight
+            }
+            result.append(product_dict)
+
+        return result
     except Exception as e:
         logger.error(f"Ошибка при получении товаров: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Ошибка сервера при получении товаров: {str(e)}"
         )
 

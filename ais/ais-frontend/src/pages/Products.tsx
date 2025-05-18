@@ -403,12 +403,6 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                   <th onClick={() => handleSort('price')}>
                     Цена {sortBy === 'price' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-<<<<<<< HEAD
-=======
-                  <th onClick={() => handleSort('stock')}>
-                    На складе {sortBy === 'stock' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
                   <th>Действия</th>
                 </tr>
               </thead>
@@ -433,20 +427,6 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                     <td>{getCategoryName(product.category_id)}</td>
                     <td>{product.price.toLocaleString('ru-RU')} ₽</td>
                     <td>
-<<<<<<< HEAD
-=======
-                      <span className={`stock-indicator ${
-                        product.stock_quantity > 10 
-                          ? 'stock-high' 
-                          : product.stock_quantity > 0 
-                            ? 'stock-medium' 
-                            : 'stock-low'
-                      }`}>
-                        {product.stock_quantity} шт.
-                      </span>
-                    </td>
-                    <td>
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
                       <button
                         onClick={() => openEditModal(product)}
                         className="table-action-btn"
@@ -540,23 +520,6 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
                 </div>
                 
                 <div className="form-group">
-<<<<<<< HEAD
-=======
-                  <label className="form-label form-label-required">
-                    Количество на складе
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={newProduct.stock_quantity}
-                    onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value)})}
-                    className="form-control"
-                  />
-                </div>
-                
-                <div className="form-group">
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
                   <label className="form-label">
                     URL изображения
                   </label>

@@ -17,10 +17,7 @@ import Delivery from './pages/Delivery';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound'; // Импортируем новый компонент 404
 import { LoadingProvider } from './context/LoadingContext';
-<<<<<<< HEAD
 import { validateApiEndpoints } from './utils/apiValidator';
-=======
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 
 // Импортируем GIF-анимацию - предзагружаем для быстрого отображения
 import fishGif from './assets/images/340.gif';
@@ -72,7 +69,6 @@ const App: React.FC = () => {
         return () => clearTimeout(timer);
     }, []);
 
-<<<<<<< HEAD
     useEffect(() => {
         // Only run in development
         if (process.env.NODE_ENV === 'development') {
@@ -80,8 +76,6 @@ const App: React.FC = () => {
         }
     }, []);
 
-=======
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
     const handleToken = (newToken: string) => {
         console.log("Token received:", newToken.substring(0, 10) + "...");
         localStorage.setItem('token', newToken);
@@ -151,11 +145,7 @@ const App: React.FC = () => {
 
                             <Route
                                 path="warehouse"
-<<<<<<< HEAD
                                 element={<Warehouse token ={token || ''} />}
-=======
-                                element={<Warehouse token={token || ''} />}
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
                             />
 
                             <Route

@@ -38,15 +38,6 @@ def setup_logging(log_dir='logs', log_level=logging.INFO):
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
     
-    # Отдельный логгер для RabbitMQ
-    rabbitmq_logger = logging.getLogger('rabbitmq')
-    rabbitmq_file_handler = RotatingFileHandler(
-        os.path.join(log_dir, 'rabbitmq.log'),
-        maxBytes=10*1024*1024,
-        backupCount=5
-    )
-    rabbitmq_file_handler.setFormatter(formatter)
-    rabbitmq_logger.addHandler(rabbitmq_file_handler)
     
     # Отдельный логгер для интеграции
     integration_logger = logging.getLogger('integration')

@@ -1,15 +1,9 @@
-<<<<<<< HEAD
 # app/schemas/stock.py
-=======
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from app.schemas.enums import StockStatus
 
-<<<<<<< HEAD
 
-=======
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2
 class StockItemBase(BaseModel):
     product_id: str
     warehouse_id: str
@@ -47,8 +41,4 @@ class StockItemInDB(StockItemBase):
 
 
 class StockItemResponse(StockItemInDB):
-<<<<<<< HEAD
     model_config = ConfigDict(from_attributes=True)
-=======
-    model_config = ConfigDict(from_attributes=True)
->>>>>>> b1b3b0565179e70862bbd7358ba4a46d0177d1d2

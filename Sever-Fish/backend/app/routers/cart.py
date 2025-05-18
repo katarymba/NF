@@ -14,7 +14,7 @@ from app.utils.auth import extract_token_from_header, decode_token
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/cart", tags=["Cart"])
+router = APIRouter()
 
 MAX_QUANTITY = 99
 
