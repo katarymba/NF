@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL } from '../utils/api'; 
+import { API_BASE_URL } from "../services/api";
 import { runFullSync } from '../services/integration';
 import { useLoading } from '../context/LoadingContext';
 import '../styles/Products.css';
+import { getProducts, getCategories } from '../services/api';
 
 interface Product {
   id: number;
@@ -56,26 +57,34 @@ const Products: React.FC<ProductsProps> = ({ token }) => {
 
   // Загрузка товаров и категорий при монтировании
   useEffect(() => {
+    // Модифицируем функцию fetchData
     const fetchData = async () => {
       try {
-        // Запускаем анимацию загрузки без сообщения
         startLoading();
         setLoading(true);
-        
-        const [productsData, categoriesData] = await Promise.all([
-          getProducts(),
-          getCategories()
-        ]);
-        
-        setProducts(productsData);
-        setCategories(categoriesData);
         setError(null);
+
+        console.log("Начало загрузки данных для Products.tsx");
+
+        try {
+          // Используем новые функции API с поддержкой нескольких URL
+          const productsData = await getProducts(filter || undefined);
+          const categoriesData = await getCategories();
+
+          setProducts(productsData);
+          setCategories(categoriesData);
+
+          console.log(`Успешно загружено ${productsData.length} продуктов и ${categoriesData.length} категорий`);
+        } catch (err) {
+          console.error('Ошибка при загрузке данных:', err);
+          setError('Не удалось загрузить данные товаров или категорий. Пожалуйста, убедитесь, что API доступен.');
+        }
+
       } catch (err) {
-        console.error('Ошибка при загрузке данных:', err);
-        setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
+        console.error('Критическая ошибка при загрузке данных:', err);
+        setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже или обратитесь к администратору.');
       } finally {
         setLoading(false);
-        // Останавливаем анимацию загрузки
         stopLoading();
       }
     };

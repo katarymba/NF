@@ -1,7 +1,6 @@
 import os
 import logging
 import httpx
-import json
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -11,13 +10,11 @@ from starlette.background import BackgroundTask
 load_dotenv()
 
 # Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Получение URL сервисов из переменных окружения
+# Исправление: использование переменных AIS_URL и SEVER_FISH_URL из docker-compose.yml
 AIS_API = os.getenv("AIS_URL", "http://ais-backend:8001")
 SEVER_RYBA_API = os.getenv("SEVER_FISH_URL", "http://sever-fish-backend:8000")
 
@@ -41,9 +38,9 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://localhost:8080",
+    # Добавляем Docker-контейнеры в список разрешенных источников
     "http://ais-frontend:5174",
-    "http://sever-fish-frontend:5173",
-    "*"  # Разрешаем все источники для отладки (убрать в продакшене!)
+    "http://sever-fish-frontend:5173"
 ]
 
 app.add_middleware(
@@ -71,9 +68,14 @@ async def check_services():
         services_status["ais"] = {"status": "offline", "message": str(e)}
         logger.error(f"Ошибка при проверке AIS: {e}")
     
-    # Проверка Север-Рыба (временно отключаем проверку)
+    # Проверка Север-Рыба
     try:
-        services_status["sever_ryba"] = {"status": "online", "message": "Temporarily marked as online"}
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{SEVER_RYBA_API}/health", timeout=5.0)
+            services_status["sever_ryba"] = {
+                "status": "online" if response.status_code == 200 else "error",
+                "message": response.json() if response.status_code == 200 else str(response.status_code)
+            }
     except Exception as e:
         services_status["sever_ryba"] = {"status": "offline", "message": str(e)}
         logger.error(f"Ошибка при проверке Север-Рыба: {e}")
@@ -125,19 +127,6 @@ async def proxy_request(target_url: str, request: Request):
     
     try:
         logger.info(f"Отправка запроса: {method} {target_url}")
-        logger.info(f"Заголовки запроса: {json.dumps(headers)}")
-        
-        # Отображение параметров запроса для отладки
-        if request.query_params:
-            logger.info(f"Query params: {request.query_params}")
-        
-        if content:
-            try:
-                content_str = content.decode('utf-8')
-                logger.info(f"Содержимое запроса: {content_str[:1000]}")  # Логируем первые 1000 символов
-            except:
-                logger.info(f"Содержимое запроса - бинарные данные, размер: {len(content)} байт")
-        
         # Отправка запроса к целевому сервису
         response = await client.request(
             method=method,
@@ -150,22 +139,6 @@ async def proxy_request(target_url: str, request: Request):
         )
         
         logger.info(f"Ответ получен: {response.status_code}")
-        logger.info(f"Заголовки ответа: {json.dumps(dict(response.headers))}")
-        
-        # Логируем тело ответа для отладки
-        try:
-            content_type = response.headers.get('content-type', '')
-            if 'application/json' in content_type:
-                response_content = response.json()
-                logger.info(f"Тело ответа (JSON): {json.dumps(response_content)[:500]}...")  # Логируем первые 500 символов
-            elif 'text' in content_type:
-                response_text = response.text
-                logger.info(f"Тело ответа (текст): {response_text[:500]}...")  # Логируем первые 500 символов
-            else:
-                logger.info(f"Тело ответа - бинарные данные, размер: {len(response.content)} байт")
-        except Exception as e:
-            logger.error(f"Ошибка при логировании тела ответа: {e}")
-        
         # Закрываем клиент после завершения запроса
         return Response(
             content=response.content,

@@ -100,9 +100,9 @@
     <p>Главная страница</p>
     <img src="docs/screenshots/1.png" alt="Главная страница" width="600"/>
     <p>ФУНКЦИЯ 1</p>
-    <img src="docs/screenshots/2.png" alt="ФУНКЦИЯ 2" width="600"/>
+    <img src="docs/screenshots/2.png" alt="Игровой режим" width="600"/>
     <p>ФУНКЦИЯ 2</p>
-    <img src="docs/screenshots/3.png" alt="ФУНКЦИЯ 3" width="600"/>
+    <img src="docs/screenshots/3.png" alt="Падающие производные" width="600"/>
     <p>ФУНКЦИЯ 3</p>
   </details>
 </div>

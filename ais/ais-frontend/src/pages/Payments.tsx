@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Table, Tag, Button, Card, Select, Input, DatePicker, Typography, Space, Spin, Tooltip, Modal, Drawer, Form, notification, Row, Col, InputNumber, Tabs, Divider } from 'antd';
+import { Table, Tag, Button, Card, Select, Input, DatePicker, Typography, Space, Spin, Tooltip, Modal, Drawer, Form, notification, Row, Col, InputNumber, Tabs, Divider, Alert } from 'antd';
 import { 
   SearchOutlined, FilterOutlined, ReloadOutlined, EyeOutlined, EditOutlined, 
   ExportOutlined, SyncOutlined, PlusOutlined, DollarOutlined, PrinterOutlined, 
@@ -11,6 +11,7 @@ import '../styles/Payments.css';
 import OrderItemsTable from "../components/delivery/OrderItemsTable";
 import OrderStatusBadge from "../components/delivery/OrderStatusBadge";
 import axios from 'axios';
+import { API_BASE_URL as GATEWAY_URL, API_FULL_URL } from '../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -20,7 +21,8 @@ const { TabPane } = Tabs;
 // Константы
 const CURRENT_DATE = '2025-05-08 18:28:55';
 const CURRENT_USER = 'katarymba';
-const API_BASE_URL = 'http://localhost:8001'; // Использовать основной API для прямого доступа к данным
+
+const API_BASE_URL = GATEWAY_URL;
 
 // Типы на основе схемы базы данных
 enum DeliveryStatus {
@@ -1131,11 +1133,11 @@ const Payments: React.FC = () => {
   return (
     <div className="payments-page">
       <Title level={2}>Управление заказами и платежами</Title>
-      
+
       {error && (
-        <div className="error-message">
-          <Alert message="Ошибка" description={error} type="error" showIcon closable />
-        </div>
+          <div className="error-message">
+            <Alert message="Ошибка" description={error} type="error" showIcon closable />
+          </div>
       )}
       
       <Tabs defaultActiveKey="1" onChange={setActiveTab} activeKey={activeTab}>

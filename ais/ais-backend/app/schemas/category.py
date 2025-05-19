@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
+from datetime import datetime
 
 class CategoryBase(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100)
-    parent_category_id: Optional[int] = None
+    name: str
+    description: Optional[str] = None
 
 
 class CategoryCreate(CategoryBase):
@@ -12,7 +13,7 @@ class CategoryCreate(CategoryBase):
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
-    parent_category_id: Optional[int] = None
+    description: Optional[str] = None
 
 
 class CategoryInDB(CategoryBase):
@@ -23,3 +24,12 @@ class CategoryInDB(CategoryBase):
 
 class CategoryResponse(CategoryInDB):
     pass
+
+
+class Category(CategoryBase):
+    id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True
+        from_attributes = True

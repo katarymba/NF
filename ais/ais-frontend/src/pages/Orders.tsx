@@ -47,8 +47,8 @@ import {
   getPayments,
   getOrders,
   createAuthenticatedAxios,
-  getAxiosAuthConfig
 } from '../services/api';
+import { getAxiosAuthConfig } from '../services/api';
 
 // Устанавливаем русскую локаль для dayjs и плагины
 dayjs.locale('ru');
@@ -68,6 +68,30 @@ const createAxiosInstance = () => {
     baseURL: API_FULL_URL,
     ...getAxiosAuthConfig()
   });
+};
+
+const autoUpdateOrderStatuses = async (ordersList, axiosInstance, updateOrderStatus, autoAssignCourier) => {
+  try {
+    for (const order of ordersList) {
+      // Если заказ оплачен и ожидает обработки
+      if (
+          order.payment_status === 'completed' &&
+          order.status === 'pending' &&
+          order.payment_method !== 'cash_on_delivery' &&
+          order.payment_method !== 'cash'
+      ) {
+        // Обновляем статус заказа на "processing"
+        await updateOrderStatus(order.id, 'processing');
+
+        // Если у заказа нет назначенного курьера, назначаем автоматически
+        if (!order.courier_name) {
+          await autoAssignCourier(order.id);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка при автообновлении статусов:', error);
+  }
 };
 
 // Типы данных
@@ -188,86 +212,149 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
     });
   }, []);
 
+
   // Получение заказов из базы данных через API
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      // Получаем заказы
-      const ordersResponse = await axiosInstance.get('/orders/');
+      // Массив возможных URL для заказов с разными префиксами
+      const orderUrls = [
+        '/orders/',
+        '/api/orders/',
+        `${API_FULL_URL}/orders/`,
+        `${API_BASE_URL}/api/orders/`,
+        `${API_BASE_URL}/orders/`
+      ];
 
-      if (Array.isArray(ordersResponse.data)) {
-        const ordersData = ordersResponse.data;
+      // Массив возможных URL для платежей
+      const paymentUrls = [
+        '/payments',
+        '/api/payments',
+        `${API_FULL_URL}/payments`,
+        `${API_BASE_URL}/api/payments`,
+        `${API_BASE_URL}/payments`
+      ];
 
-        // Получаем платежи напрямую здесь, без вызова fetchPayments
-        let paymentData: Payment[] = [];
+      // Пробуем получить заказы из разных URL
+      let ordersData = null;
+      let ordersResponse = null;
+      let isOrdersFetched = false;
+
+      for (const url of orderUrls) {
         try {
-          setPaymentsLoading(true);
-          const paymentsResponse = await axiosInstance.get('/payments');
+          console.log(`Попытка получить заказы по URL: ${url}`);
+          ordersResponse = await axiosInstance.get(url);
 
-          if (Array.isArray(paymentsResponse.data)) {
-            paymentData = paymentsResponse.data;
-            setPayments(paymentData); // Обновляем состояние платежей
+          if (Array.isArray(ordersResponse.data)) {
+            ordersData = ordersResponse.data;
+            console.log(`Успешно получены заказы по URL: ${url}`);
+            isOrdersFetched = true;
+            break;
           }
-        } catch (paymentError) {
-          console.error('Ошибка при получении платежей:', paymentError);
-          notification.error({
-            message: 'Ошибка при загрузке платежей',
-            description: 'Не удалось получить данные платежей из базы данных'
-          });
-        } finally {
-          setPaymentsLoading(false);
+        } catch (err) {
+          console.log(`Не удалось получить заказы по URL: ${url}`, err);
+          // Продолжаем пробовать следующий URL
+        }
+      }
+
+      // Проверяем, удалось ли получить заказы
+      if (!isOrdersFetched || !ordersData) {
+        throw new Error('Не удалось получить данные заказов ни по одному из доступных URL');
+      }
+
+      // Получаем платежи напрямую здесь, без вызова fetchPayments
+      let paymentData = [];
+      setPaymentsLoading(true);
+
+      try {
+        let isPaymentsFetched = false;
+
+        for (const url of paymentUrls) {
+          try {
+            console.log(`Попытка получить платежи по URL: ${url}`);
+            const paymentsResponse = await axiosInstance.get(url);
+
+            if (Array.isArray(paymentsResponse.data)) {
+              paymentData = paymentsResponse.data;
+              console.log(`Успешно получены платежи по URL: ${url}`);
+              isPaymentsFetched = true;
+              break;
+            }
+          } catch (err) {
+            console.log(`Не удалось получить платежи по URL: ${url}`, err);
+            // Продолжаем пробовать следующий URL
+          }
         }
 
-        // Обогащаем данные заказов информацией о платежах
-        const enrichedOrders = ordersData.map((order: Order) => {
-          // Находим платежи для этого заказа
-          const orderPayments = paymentData.filter(p => p.order_id === order.id);
-
-          // Получаем последний платеж
-          const latestPayment = orderPayments.length ?
-              orderPayments.sort((a, b) =>
-                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-              )[0] : null;
-
-          // Обработка order_items, если они представлены строкой
-          let orderItems = order.order_items;
-          if (typeof orderItems === 'string') {
-            try {
-              orderItems = JSON.parse(orderItems);
-            } catch (e) {
-              console.error('Ошибка при парсинге order_items:', e);
-              orderItems = [];
-            }
-          }
-
-          // Добавляем информацию о платеже в заказ
-          return {
-            ...order,
-            order_items: orderItems,
-            payment_status: latestPayment?.payment_status || 'pending',
-            transaction_id: latestPayment?.transaction_id
-          };
+        if (isPaymentsFetched) {
+          setPayments(paymentData); // Обновляем состояние платежей
+        } else {
+          console.error('Не удалось получить данные платежей ни по одному из доступных URL');
+          notification.warning({
+            message: 'Ошибка при загрузке платежей',
+            description: 'Не удалось получить данные платежей. Информация о платежах может быть неполной.'
+          });
+        }
+      } catch (paymentError) {
+        console.error('Ошибка при получении платежей:', paymentError);
+        notification.error({
+          message: 'Ошибка при загрузке платежей',
+          description: 'Не удалось получить данные платежей из базы данных'
         });
-
-        setOrders(enrichedOrders);
-
-        // Рассчитываем статистику
-        const stats: {[key: string]: number} = {};
-        const payStats: {[key: string]: number} = {};
-
-        enrichedOrders.forEach((order: Order) => {
-          stats[order.status] = (stats[order.status] || 0) + 1;
-          if (order.payment_status) {
-            payStats[order.payment_status] = (payStats[order.payment_status] || 0) + 1;
-          }
-        });
-
-        setStatistics(stats);
-        setPaymentStatistics(payStats);
-
-        // Автоматически обновляем статусы и назначаем курьеров
-        autoUpdateOrderStatuses(enrichedOrders);
+      } finally {
+        setPaymentsLoading(false);
       }
+
+      // Обогащаем данные заказов информацией о платежах
+      const enrichedOrders = ordersData.map((order) => {
+        // Находим платежи для этого заказа
+        const orderPayments = paymentData.filter(p => p.order_id === order.id);
+
+        // Получаем последний платеж
+        const latestPayment = orderPayments.length ?
+            orderPayments.sort((a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )[0] : null;
+
+        // Обработка order_items, если они представлены строкой
+        let orderItems = order.order_items;
+        if (typeof orderItems === 'string') {
+          try {
+            orderItems = JSON.parse(orderItems);
+          } catch (e) {
+            console.error('Ошибка при парсинге order_items:', e);
+            orderItems = [];
+          }
+        }
+
+        // Добавляем информацию о платеже в заказ
+        return {
+          ...order,
+          order_items: orderItems,
+          payment_status: latestPayment?.payment_status || 'pending',
+          transaction_id: latestPayment?.transaction_id
+        };
+      });
+
+      setOrders(enrichedOrders);
+
+      // Рассчитываем статистику
+      const stats = {};
+      const payStats = {};
+
+      enrichedOrders.forEach((order) => {
+        stats[order.status] = (stats[order.status] || 0) + 1;
+        if (order.payment_status) {
+          payStats[order.payment_status] = (payStats[order.payment_status] || 0) + 1;
+        }
+      });
+
+      setStatistics(stats);
+      setPaymentStatistics(payStats);
+
+      // Используем определенную выше функцию autoUpdateOrderStatuses
+      autoUpdateOrderStatuses(enrichedOrders, axiosInstance, updateOrderStatus, autoAssignCourier);
+
     } catch (error) {
       console.error('Ошибка при получении заказов:', error);
       notification.error({
@@ -277,7 +364,8 @@ const Orders: React.FC<OrdersProps> = ({ token }) => {
     } finally {
       setLoading(false);
     }
-  }, [axiosInstance]);
+  }, [axiosInstance, updateOrderStatus, autoAssignCourier]);
+
   const handleStatusFilter = (value: Key, record: Order): boolean => {
     return record.status === value;
   };

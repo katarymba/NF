@@ -7,9 +7,10 @@ services:
     container_name: northfish-db
     restart: always
     environment:
-      POSTGRES_USER: northf_user
-      POSTGRES_PASSWORD: "%KM041286)zz!"
-      POSTGRES_DB: north_fish
+      DB_USER: northf_user
+      DB_PASSWORD: "%KM041286)zz!"
+      DB_HOST: northfish-db
+      DB_NAME: north_fish
     ports:
       - "5432:5432"
     volumes:

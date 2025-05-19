@@ -355,7 +355,7 @@ const Warehouse: React.FC = () => {
 
   // Calculate warehouse stats
   const warehouseStats = useMemo(() => {
-    if (!stockItems.length) return {
+    if (!stockItems || !stockItems.length || !products || !products.length) return {
       totalProducts: 0,
       totalItems: 0,
       totalValue: 0,

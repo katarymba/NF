@@ -1,29 +1,26 @@
 @echo off
-rem Скрипт для запуска только API Gateway
-rem Создаем директорию для логов
+rem Script for starting AIS backend
+rem Create logs directory if it doesn't exist
 if not exist "logs" mkdir logs
 
 echo =========================================================
-echo    Проверка доступности RabbitMQ   
+echo    Starting AIS Backend on port 8001    
 echo =========================================================
-echo Убедитесь, что RabbitMQ запущен и доступен.
-echo Если RabbitMQ не установлен, скачайте его с https://www.rabbitmq.com/download.html
 
-ping -n 1 localhost > nul
-if %errorlevel% neq 0 (
-    echo Ошибка: Не удается подключиться к localhost. Проверьте, запущен ли RabbitMQ.
-    pause
-    exit /b 1
+cd ais\ais-backend
+
+rem Check for virtual environment
+if not exist ".venv" (
+    echo Creating virtual environment...
+    python -m venv .venv
+    call .venv\Scripts\activate
+    pip install -r requirements.txt
+) else (
+    call .venv\Scripts\activate
 )
 
-echo =========================================================
-echo    Запуск AIS с интеграцией через RabbitMQ   
-echo =========================================================
+echo Starting AIS backend on port 8001...
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 
-cd ais/ais-backend
-.venv\Scripts\activate
-echo Запуск AIS на порту 8001...
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
-
-rem Добавляем паузу, чтобы окно не закрылось сразу
+rem Add pause to keep window open
 pause
