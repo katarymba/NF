@@ -1,7 +1,7 @@
 # AIS + Sever-Fish + api-gateway
 
 <div align="center">
-  <img src="./ais/ais-frontend/public/logo.png" alt="sever-fish logo" width="200"/>
+  <img src="./ais/ais-frontend/public/logo2.png" alt="sever-fish logo" width="170"/><img src="./ais/ais-frontend/public/logo.png" alt="sever-fish logo" width="200"/>
   
   <p><strong>Automatic Information System [AIS](Автоматическая Информационная Система)</strong></p>
   
