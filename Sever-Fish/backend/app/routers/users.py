@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models import User
@@ -10,7 +11,13 @@ from app.utils.auth import (
     get_password_hash, verify_password, create_access_token,
     require_auth, require_admin, get_current_user
 )
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.utils.config import ACCESS_TOKEN_EXPIRE_MINUTES
+
+class ApiResponse(BaseModel):
+    status: bool = True
+    message: str = ''
+    data: Any = None
+
 
 router = APIRouter()
 

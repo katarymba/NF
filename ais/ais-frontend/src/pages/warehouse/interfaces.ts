@@ -71,7 +71,8 @@ export interface StockMovement {
 export interface Shipment {
   id?: string;
   reference_number?: string;
-  supplier: string;
+  supplier_id: number;
+  supplier?: string;
   warehouse_id?: string;
   shipment_date: string;
   expected_arrival_date?: string;
@@ -117,4 +118,16 @@ export interface ProductFilter {
   warehouse_id: string;
   sortBy: string;
   sortDirection: 'asc' | 'desc';
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }

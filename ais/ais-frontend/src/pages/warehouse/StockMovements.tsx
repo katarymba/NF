@@ -13,6 +13,7 @@ import {
     StockItem,
     StockMovement
 } from './interfaces';
+import {API_FULL_URL} from "../../services/api";
 
 interface StockMovementsProps {
     isLoading: boolean;
@@ -63,6 +64,11 @@ const StockMovements: React.FC<StockMovementsProps> = ({
 
     // Filtered movements
     const filteredMovements = useMemo(() => {
+        // Ensure stockMovements is an array before calling filter
+        if (!Array.isArray(stockMovements)) {
+            return [];
+        }
+
         return stockMovements.filter(movement => {
             // Filter by product
             if (filters.productId && movement.product_id !== filters.productId) {
@@ -129,7 +135,7 @@ const StockMovements: React.FC<StockMovementsProps> = ({
             };
 
             // Create movement in DB
-            await axios.post(`${API_BASE_URL}/stock-movements`, movementData);
+            await axios.post(`${API_FULL_URL}/stock-movements`, movementData);
 
             // Update stock
             if (stockItem) {
@@ -142,7 +148,7 @@ const StockMovements: React.FC<StockMovementsProps> = ({
                 }
 
                 // Update stock in DB
-                await axios.patch(`${API_BASE_URL}/stocks/${stockItem.id}`, {
+                await axios.patch(`${API_FULL_URL}/stocks/${stockItem.id}`, {
                     quantity: newQuantity,
                     last_count_date: getCurrentDateTime(),
                     last_counted_by: getCurrentUser()
@@ -152,7 +158,7 @@ const StockMovements: React.FC<StockMovementsProps> = ({
                 const product = products.find(p => p.id === newMovement.product_id);
 
                 if (product) {
-                    await axios.post(`${API_BASE_URL}/stocks`, {
+                    await axios.post(`${API_FULL_URL}/stocks`, {
                         product_id: newMovement.product_id,
                         warehouse_id: newMovement.warehouse_id,
                         quantity: newMovement.quantity,
@@ -211,21 +217,28 @@ const StockMovements: React.FC<StockMovementsProps> = ({
         });
     };
 
+    // Исправленная функция formatQuantity с защитой от undefined
     const formatQuantity = (movement: StockMovement) => {
+        // Проверяем, что движение существует и имеет необходимые свойства
+        if (!movement || movement.quantity === undefined) {
+            return <span>0 ед.</span>;
+        }
+
         const product = products.find(p => p.id === movement.product_id);
         const quantityStr = movement.quantity.toString();
+        const unitLabel = product?.unit || 'ед.';
 
         if (movement.movement_type === 'receipt') {
-            return <span className="text-green-600 dark:text-green-400">+{quantityStr} {product?.unit || 'ед.'}</span>;
+            return <span className="text-green-600 dark:text-green-400">+{quantityStr} {unitLabel}</span>;
         } else if (movement.movement_type === 'issue') {
-            return <span className="text-red-600 dark:text-red-400">-{quantityStr} {product?.unit || 'ед.'}</span>;
+            return <span className="text-red-600 dark:text-red-400">-{quantityStr} {unitLabel}</span>;
         } else {
             if (movement.quantity > 0) {
-                return <span className="text-blue-600 dark:text-blue-400">+{quantityStr} {product?.unit || 'ед.'}</span>;
+                return <span className="text-blue-600 dark:text-blue-400">+{quantityStr} {unitLabel}</span>;
             } else if (movement.quantity < 0) {
-                return <span className="text-orange-600 dark:text-orange-400">{quantityStr} {product?.unit || 'ед.'}</span>;
+                return <span className="text-orange-600 dark:text-orange-400">{quantityStr} {unitLabel}</span>;
             } else {
-                return <span>{quantityStr} {product?.unit || 'ед.'}</span>;
+                return <span>{quantityStr} {unitLabel}</span>;
             }
         }
     };
@@ -414,20 +427,24 @@ const StockMovements: React.FC<StockMovementsProps> = ({
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {movement.previous_quantity} → {movement.previous_quantity + movement.quantity}
+                                        {/* Защита от undefined для previous_quantity и quantity */}
+                                        {(movement.previous_quantity !== undefined ? movement.previous_quantity : 0)} →
+                                        {(movement.previous_quantity !== undefined && movement.quantity !== undefined)
+                                            ? (movement.previous_quantity + movement.quantity)
+                                            : (movement.previous_quantity !== undefined ? movement.previous_quantity : 0)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${movement.movement_type === 'receipt' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'}
-                        ${movement.movement_type === 'issue' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}
-                        ${movement.movement_type === 'adjustment' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}
-                        ${movement.movement_type === 'transfer' && 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'}
-                      `}>
-                        {movement.movement_type === 'receipt' && 'Поступление'}
-                          {movement.movement_type === 'issue' && 'Отгрузка'}
-                          {movement.movement_type === 'adjustment' && 'Корректировка'}
-                          {movement.movement_type === 'transfer' && 'Перемещение'}
-                      </span>
+                                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        ${movement.movement_type === 'receipt' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'}
+                                        ${movement.movement_type === 'issue' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}
+                                        ${movement.movement_type === 'adjustment' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}
+                                        ${movement.movement_type === 'transfer' && 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'}
+                                      `}>
+                                        {movement.movement_type === 'receipt' && 'Поступление'}
+                                          {movement.movement_type === 'issue' && 'Отгрузка'}
+                                          {movement.movement_type === 'adjustment' && 'Корректировка'}
+                                          {movement.movement_type === 'transfer' && 'Перемещение'}
+                                      </span>
 
                                         {movement.reference_id && (
                                             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">

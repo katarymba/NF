@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from datetime import datetime, timedelta
 import logging
 from pydantic import BaseModel, EmailStr
@@ -13,7 +13,12 @@ from app.utils.auth import (
     verify_password, create_access_token, get_password_hash,
     decode_token, extract_token_from_header
 )
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.utils.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+
+class ApiResponse(BaseModel):
+    status: bool = True
+    message: str = ''
+    data: Any = None
 
 # Настройка логирования
 logger = logging.getLogger(__name__)

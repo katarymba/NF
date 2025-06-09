@@ -82,8 +82,12 @@ from app.schemas.delivery import (
     CourierInfo, DeliveryStats
 )
 
-#Экспортируем схемы поставок
+# Экспортируем схемы поставок
 from app.schemas.supply import (
     Supply, SupplyBase, SupplyCreate, SupplyUpdate, SupplyResponse,
     SupplyItemBase, SupplyItemCreate, SupplyItemUpdate, SupplyItem
+)
+
+from app.schemas.supplier import (
+    Supplier, SupplierBase, SupplierCreate, SupplierUpdate, SupplierResponse
 )

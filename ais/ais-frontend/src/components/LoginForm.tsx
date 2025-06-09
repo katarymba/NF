@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { setAuthToken } from '../services/auth'; // Импортируем функцию для сохранения токена
 
 interface LoginFormProps {
     onToken: (token: string) => void;
@@ -9,12 +10,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
     // ais/ais-frontend/src/components/LoginForm.tsx
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(''); // Очищаем ошибки перед новой попыткой
+        setIsLoading(true);
 
         try {
             console.group('Вход администратора');
@@ -30,22 +33,46 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
 
             console.log('Отправляемые данные:', Object.fromEntries(formData));
 
-            // Убираем AbortController, так как он может вызывать проблемы
-            const response = await fetch('http://localhost:8080/ais/administrators/token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: formData
-            });
+            // Пробуем разные URL для входа
+            const loginEndpoints = [
+                'http://localhost:8001/administrators/token',
+                'http://localhost:8001/ais/administrators/token',
+                '/administrators/token',
+                '/ais/administrators/token'
+            ];
 
-            console.log('Статус ответа:', response.status);
-            console.log('Заголовки:', Object.fromEntries(response.headers));
+            let response = null;
+            let responseText = '';
+            
+            // Пробуем каждый URL для входа
+            for (const endpoint of loginEndpoints) {
+                try {
+                    console.log(`Пробуем авторизацию по адресу: ${endpoint}`);
+                    response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: formData
+                    });
+                    
+                    console.log(`Статус ответа (${endpoint}):`, response.status);
+                    console.log('Заголовки:', Object.fromEntries(response.headers));
+                    
+                    responseText = await response.text();
+                    console.log('Текст ответа:', responseText);
+                    
+                    if (response.ok) {
+                        // Если запрос успешен, прерываем цикл
+                        break;
+                    }
+                } catch (err) {
+                    console.warn(`Ошибка при попытке входа по адресу ${endpoint}:`, err);
+                    // Продолжаем с другими URL
+                }
+            }
 
-            const responseText = await response.text();
-            console.log('Текст ответа:', responseText);
-
-            if (!response.ok) {
+            if (!response || !response.ok) {
                 throw new Error(responseText || 'Ошибка авторизации');
             }
 
@@ -57,6 +84,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                 throw new Error('Некорректный ответ от сервера');
             }
 
+            // ВАЖНО: Сохраняем токен в localStorage через функцию из auth.ts
+            setAuthToken(data.access_token);
+            console.log('Токен успешно сохранен в localStorage с ключом "token"');
+            
+            // Для отладки: проверяем, сохранился ли токен
+            console.log("Проверка сохранения токена:", localStorage.getItem('token') ? "Токен сохранен" : "Токен НЕ сохранен");
+            
+            // Уведомляем родительский компонент
             onToken(data.access_token);
             navigate('/dashboard', { replace: true });
 
@@ -65,6 +100,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
             console.error('Полная ошибка входа:', err);
             setError(err instanceof Error ? err.message : 'Произошла ошибка при входе');
             console.groupEnd();
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -100,8 +137,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToken }) => {
                 <button
                     type="submit"
                     className="w-full py-2 px-4 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
+                    disabled={isLoading}
                 >
-                    Вход
+                    {isLoading ? 'Вход...' : 'Вход'}
                 </button>
             </form>
             {error && (

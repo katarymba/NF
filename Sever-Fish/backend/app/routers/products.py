@@ -14,7 +14,7 @@ from app.database import get_db
 from app.models import Product, Category
 from app.schemas import ProductResponse, CategoryResponse, ProductCreate, ProductUpdate, CategoryCreate
 from app.utils.auth import require_auth, require_admin
-from app.config import PRODUCTS_IMAGES_DIR
+from app.utils.config import PRODUCTS_IMAGES_DIR
 
 # Настройка логирования
 logger = logging.getLogger(__name__)

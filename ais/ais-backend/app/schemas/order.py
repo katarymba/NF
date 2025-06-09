@@ -1,17 +1,20 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import datetime
 from app.schemas.order_item import OrderItemCreate, OrderItemResponse
 from app.schemas.user import UserResponse
 
+
 class OrderBase(BaseModel):
     user_id: Optional[int] = None
-    client_name: Optional[str] = None
-    total_price: float = Field(..., ge=0)
-    status: str = "pending"
+    status: Optional[str] = "pending"
+    total_amount: Optional[float] = Field(0.0, ge=0)
     delivery_address: Optional[str] = None
-    contact_phone: Optional[str] = None
-    payment_method: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    comment: Optional[str] = None
+    payment_method: Optional[str] = "cash"
 
 
 class OrderCreate(OrderBase):
@@ -20,50 +23,46 @@ class OrderCreate(OrderBase):
 
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
-    tracking_number: Optional[str] = None
-    courier_name: Optional[str] = None
-    delivery_notes: Optional[str] = None
-    estimated_delivery: Optional[date] = None
+    delivery_address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    comment: Optional[str] = None
+    payment_method: Optional[str] = None
 
 
 class OrderInDB(OrderBase):
     id: int
-    created_at: datetime
-    tracking_number: Optional[str] = None
-    courier_name: Optional[str] = None
-    delivery_notes: Optional[str] = None
-    estimated_delivery: Optional[date] = None
-    order_items: Optional[str] = None
-    model_config = ConfigDict(from_attributes=True, frozen=True)
+    created_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderResponse(OrderInDB):
     items: Optional[List[OrderItemResponse]] = None
     user: Optional[UserResponse] = None
-    order_items: Optional[List[Dict[str, Any]]] = None  # Обработанная версия JSON строки
 
 
 class OrderWithPayment(BaseModel):
     id: int
     user_id: Optional[int] = None
-    client_name: Optional[str] = None
-    total_price: float
-    created_at: datetime
-    status: str
+    status: Optional[str] = None
+    created_at: Optional[datetime] = None
+    total_amount: Optional[float] = None
+
+    # Контактная информация
     delivery_address: Optional[str] = None
-    contact_phone: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    comment: Optional[str] = None
     payment_method: Optional[str] = None
-    # Поля доставки
-    tracking_number: Optional[str] = None
-    courier_name: Optional[str] = None
-    delivery_notes: Optional[str] = None
-    estimated_delivery: Optional[date] = None
+
+    # Данные о платеже
     payment_status: Optional[str] = None
     transaction_id: Optional[str] = None
     payment_created_at: Optional[datetime] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    order_items: Optional[List[dict]] = None
+
+    # Элементы заказа
     items: Optional[List[Dict[str, Any]]] = None
 
     model_config = ConfigDict(from_attributes=True)

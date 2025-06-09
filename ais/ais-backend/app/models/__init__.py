@@ -16,4 +16,5 @@ from app.models.warehouse import Warehouse
 from app.models.stock import Stock
 from app.models.stock_movement import StockMovement
 from app.models.supply import Supply, SupplyItem
+from app.models.supplier import Supplier
 

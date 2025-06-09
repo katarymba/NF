@@ -30,6 +30,4 @@ class Category(CategoryBase):
     id: int
     created_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

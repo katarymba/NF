@@ -1,245 +1,78 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, OperationalError
-from typing import List, Optional
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from app.database import get_db
-from app.schemas.payment import (
-    PaymentResponse,
-    PaymentCreate,
-    PaymentUpdate,
-    PaymentListResponse
-)
-from app.crud import payments as payments_crud
-from app.services.logging_service import logger
+from app.schemas.payment import PaymentCreate, PaymentUpdate
+from app.crud import payment as payment_crud
 
-router = APIRouter(
-    prefix="/payments",
-    tags=["payments"],
-    responses={404: {"description": "Платеж не найден"}},
-)
+router = APIRouter()
 
+# Получение всех платежей
+@router.get("/payments", response_model=List[Dict[str, Any]])
+def get_all_payments(db: Session = Depends(get_db)):
+    """Получение списка всех платежей с информацией о связанных заказах."""
+    payments = payment_crud.get_payments(db)
+    if payments is None:  # Если произошла ошибка
+        raise HTTPException(status_code=500, detail="Ошибка при получении платежей")
+    return payments
 
-@router.get("", response_model=List[PaymentListResponse])
-async def get_payments(
-        request: Request,
-        skip: int = 0,
-        limit: int = 100,
-        order_id: Optional[int] = None,
-        payment_status: Optional[str] = None,
-        db: Session = Depends(get_db)
-):
-    """
-    Получить список всех платежей с возможностью фильтрации
-    """
-    try:
-        # Получаем все платежи с использованием CRUD-функции
-        result = payments_crud.get_payments(db)
-
-        if result is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Ошибка при получении платежей"
-            )
-
-        # Фильтрация по order_id и payment_status, если указаны
-        if order_id:
-            result = [payment for payment in result if payment["order_id"] == order_id]
-
-        if payment_status:
-            result = [payment for payment in result if payment["payment_status"] == payment_status]
-
-        # Применяем пагинацию
-        total_count = len(result)
-        paginated_result = result[skip:skip + limit]
-
-        # Логируем информацию о запросе
-        username = request.headers.get("X-User", "unknown")
-        logger.info(f"User {username} requested payments list. Returned {len(paginated_result)} records.")
-
-        # Устанавливаем заголовок пагинации
-        # Примечание: FastAPI автоматически не устанавливает заголовки, нужно использовать Response или JSONResponse
-        response = JSONResponse(content=paginated_result)
-        response.headers["X-Total-Count"] = str(total_count)
-
-        return response
-
-    except OperationalError as e:
-        logger.error(f"Database connection error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу."
-        )
-    except SQLAlchemyError as e:
-        logger.error(f"Database error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка базы данных: {str(e)}"
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Произошла непредвиденная ошибка на сервере."
-        )
-
-
-@router.get("/{payment_id}", response_model=PaymentResponse)
+# Получение платежа по ID
+@router.get("/payments/{payment_id}", response_model=Dict[str, Any])
 def get_payment(payment_id: int, db: Session = Depends(get_db)):
-    """
-    Получить детальную информацию о платеже по ID
-    """
-    try:
-        payment = payments_crud.get_payment(payment_id, db)
+    """Получение информации о конкретном платеже по его ID."""
+    payment = payment_crud.get_payment(payment_id, db)
+    if payment is None:
+        raise HTTPException(status_code=404, detail=f"Платеж с ID {payment_id} не найден")
+    return payment
 
-        if payment is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Платеж не найден"
-            )
-
-        return payment
-    except OperationalError as e:
-        logger.error(f"Database connection error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу."
-        )
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
-    except Exception as e:
-        logger.error(f"Error getting payment {payment_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@router.get("/order/{order_id}", response_model=List[PaymentListResponse])
+# Получение платежей по заказу
+@router.get("/orders/{order_id}/payments", response_model=List[Dict[str, Any]])
 def get_order_payments(order_id: int, db: Session = Depends(get_db)):
-    """
-    Получить все платежи для конкретного заказа
-    """
-    try:
-        payments = payments_crud.get_order_payments(order_id, db)
+    """Получение списка платежей, связанных с конкретным заказом."""
+    payments = payment_crud.get_order_payments(order_id, db)
+    if payments is None:  # Если произошла ошибка
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении платежей для заказа {order_id}")
+    return payments
 
-        if payments is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Ошибка при получении платежей для заказа"
-            )
+# Создание нового платежа
+@router.post("/payments", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
+def create_payment(payment: PaymentCreate, db: Session = Depends(get_db)):
+    """Создание нового платежа для заказа."""
+    result = payment_crud.create_payment(payment, db)
+    if result is None:
+        raise HTTPException(status_code=400, detail="Не удалось создать платеж. Проверьте правильность данных или существование указанного заказа.")
+    return result
 
-        return payments
-    except OperationalError as e:
-        logger.error(f"Database connection error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу."
-        )
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
-    except Exception as e:
-        logger.error(f"Error getting payments for order {order_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+# Обновление платежа
+@router.patch("/payments/{payment_id}", response_model=Dict[str, Any])
+def update_payment(payment_id: int, payment: PaymentUpdate, db: Session = Depends(get_db)):
+    """Обновление данных платежа."""
+    result = payment_crud.update_payment(payment_id, payment, db)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Платеж с ID {payment_id} не найден или не может быть обновлен")
+    return result
 
+# Обновление статуса платежа (специальный маршрут)
+@router.patch("/payments/{payment_id}/status", response_model=Dict[str, Any])
+def update_payment_status(payment_id: int, status_data: dict, db: Session = Depends(get_db)):
+    """Обновление статуса платежа."""
+    if "payment_status" not in status_data:
+        raise HTTPException(status_code=400, detail="Поле payment_status обязательно")
+        
+    update_data = PaymentUpdate(payment_status=status_data["payment_status"])
+    result = payment_crud.update_payment(payment_id, update_data, db)
+    
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Платеж с ID {payment_id} не найден")
+    return result
 
-@router.post("/", response_model=PaymentResponse)
-def create_payment(payment_data: PaymentCreate, db: Session = Depends(get_db)):
-    """
-    Создать новый платеж
-    """
-    try:
-        new_payment = payments_crud.create_payment(payment_data, db)
-
-        if new_payment is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Не удалось создать платеж. Возможно, указанный заказ не существует."
-            )
-
-        return new_payment
-    except OperationalError as e:
-        logger.error(f"Database connection error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу."
-        )
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
-    except Exception as e:
-        logger.error(f"Error creating payment: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@router.put("/{payment_id}", response_model=PaymentResponse)
-def update_payment(
-        payment_id: int,
-        payment_data: PaymentUpdate,
-        db: Session = Depends(get_db)
-):
-    """
-    Обновить статус платежа или ID транзакции
-    """
-    try:
-        updated_payment = payments_crud.update_payment(payment_id, payment_data, db)
-
-        if updated_payment is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Платеж не найден"
-            )
-
-        return updated_payment
-    except OperationalError as e:
-        logger.error(f"Database connection error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу."
-        )
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
-    except Exception as e:
-        logger.error(f"Error updating payment {payment_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@router.delete("/{payment_id}", status_code=204)
+# Удаление платежа
+@router.delete("/payments/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_payment(payment_id: int, db: Session = Depends(get_db)):
-    """
-    Удалить платеж
-    """
-    try:
-        success = payments_crud.delete_payment(payment_id, db)
-
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Платеж не найден"
-            )
-
-        return {"detail": "Платеж успешно удален"}
-    except OperationalError as e:
-        logger.error(f"Database connection error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Отсутствует подключение к базе данных PostgreSQL. Проверьте настройки подключения и перезагрузите страницу."
-        )
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
-    except Exception as e:
-        logger.error(f"Error deleting payment {payment_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    """Удаление платежа."""
+    result = payment_crud.delete_payment(payment_id, db)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Платеж с ID {payment_id} не найден")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

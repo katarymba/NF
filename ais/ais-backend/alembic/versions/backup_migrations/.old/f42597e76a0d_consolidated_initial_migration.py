@@ -1,3 +1,5 @@
+from datetime import datetime
+
 """Consolidated initial migration
 
 Revision ID: f42597e76a0d

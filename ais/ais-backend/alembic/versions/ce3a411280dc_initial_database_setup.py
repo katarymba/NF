@@ -1,3 +1,5 @@
+from datetime import datetime
+
 """Initial database setup
 
 Revision ID: ce3a411280dc

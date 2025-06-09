@@ -11,6 +11,7 @@ import {
     ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { API_FULL_URL } from '../../services/api';
 
 import {
     Product,
@@ -244,7 +245,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
             };
 
             // Send data to our DB
-            const response = await axios.post(`${API_BASE_URL}/products`, productData);
+            const response = await axios.post(`${API_FULL_URL}/products`, productData);
             const createdProduct = response.data;
 
             // If warehouse and quantity are specified, create stock record
@@ -260,7 +261,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
                     last_counted_by: getCurrentUser()
                 };
 
-                const stockResponse = await axios.post(`${API_BASE_URL}/stocks`, stockItemData);
+                const stockResponse = await axios.post(`${API_FULL_URL}/stocks`, stockItemData);
 
                 // Create stock movement record
                 const movementItemData = {
@@ -274,7 +275,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
                     notes: 'Первоначальное добавление товара в систему'
                 };
 
-                await axios.post(`${API_BASE_URL}/stock-movements`, movementItemData);
+                await axios.post(`${API_FULL_URL}/stock-movements`, movementItemData);
             }
 
             // Clear form and close modal
@@ -317,7 +318,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
             const difference = newQuantity - previousQuantity;
 
             // Update stock in DB
-            await axios.patch(`${API_BASE_URL}/stocks/${stockItem.id}`, {
+            await axios.patch(`${API_FULL_URL}/stocks/${stockItem.id}`, {
                 quantity: newQuantity,
                 last_count_date: new Date().toISOString(),
                 last_counted_by: getCurrentUser(),
@@ -325,7 +326,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
             });
 
             // Create stock movement record
-            await axios.post(`${API_BASE_URL}/stock-movements`, {
+            await axios.post(`${API_FULL_URL}/stock-movements`, {
                 product_id: newInventoryCount.product_id,
                 warehouse_id: newInventoryCount.warehouse_id,
                 quantity: difference,

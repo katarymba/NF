@@ -1,3 +1,5 @@
+from datetime import datetime
+
 """create_supplies_tables_and_remove_stock_quantity
 
 Revision ID: 0cd254bdeb3a

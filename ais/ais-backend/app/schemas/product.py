@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import Field, ConfigDict, BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.schemas.category import CategoryResponse
+
 
 class ProductBase(BaseModel):
     name: str = Field(..., min_length=3, max_length=200)

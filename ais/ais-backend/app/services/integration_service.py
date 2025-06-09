@@ -7,7 +7,7 @@ import requests
 import json
 from typing import Dict, Any, Callable, Optional
 import threading
-from app.config import settings
+from app.utils.config import settings
 
 logger = logging.getLogger(__name__)
 

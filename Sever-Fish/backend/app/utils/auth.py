@@ -7,7 +7,7 @@ import logging
 from fastapi import HTTPException, status, Request, Header
 from sqlalchemy.orm import Session
 
-from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.utils.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Настройка логирования
 logger = logging.getLogger(__name__)

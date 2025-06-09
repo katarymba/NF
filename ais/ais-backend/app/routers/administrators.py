@@ -21,7 +21,7 @@ router = APIRouter(prefix="", tags=["Administrators"])
 @router.post("/login", response_model=AdministratorResponse)
 def login_admin(admin_data: AdministratorLogin, db: Session = Depends(get_db)):
     admin = db.query(Administrator).filter(Administrator.email == admin_data.email).first()
-    if not admin or not verify_password(admin_data.password, admin.hashed_password):
+    if not admin or not verify_password(admin_data.password, admin.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -178,9 +178,17 @@ def create_administrator(
     if existing_admin:
         raise HTTPException(status_code=400, detail="Администратор с таким именем или email уже существует")
 
+    hashed_password = get_password_hash(admin_data.password)
     new_admin = Administrator(
-        **admin_data.dict(exclude={'password'}),
-        hashed_password=get_password_hash(admin_data.password)
+        username=admin_data.username,
+        email=admin_data.email,
+        password_hash=hashed_password,
+        full_name=admin_data.full_name,
+        role=admin_data.role if admin_data.role else "admin",
+        is_active=admin_data.is_active if admin_data.is_active is not None else True,
+        permissions=admin_data.permissions,
+        position=admin_data.position,
+        phone=admin_data.phone
     )
 
     db.add(new_admin)

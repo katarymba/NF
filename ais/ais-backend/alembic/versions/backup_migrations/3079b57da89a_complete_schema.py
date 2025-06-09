@@ -1,3 +1,5 @@
+from datetime import datetime
+
 """complete_schema
 
 Revision ID: 3079b57da89a

@@ -160,30 +160,25 @@ def create_shipment(db: Session, shipment: schemas.ShipmentCreate):
 def create_stock_movement(db: Session, movement: schemas.StockMovementCreate):
     # Generate ID
     movement_id = f"SM-{uuid.uuid4().hex[:8]}"
-    now = datetime.now().isoformat()
+    now = datetime.now()
 
-    # Find product and warehouse names
+    # Find product name
     product = db.query(models.Product).filter(models.Product.id == movement.product_id).first()
-    warehouse = db.query(models.Warehouse).filter(models.Warehouse.id == movement.warehouse_id).first()
-
     product_name = product.name if product else "Unknown Product"
-    warehouse_name = warehouse.name if warehouse else "Unknown Warehouse"
 
     # Create movement model
     db_movement = models.StockMovement(
         id=movement_id,
         product_id=movement.product_id,
-        product_name=product_name,
-        warehouse_id=movement.warehouse_id,
-        warehouse_name=warehouse_name,
         quantity=movement.quantity,
-        previous_quantity=movement.previous_quantity,
         movement_type=movement.movement_type,
+        source_warehouse_id=movement.source_warehouse_id,
+        target_warehouse_id=movement.target_warehouse_id,
         reference_id=movement.reference_id,
-        reference_type=movement.reference_type,
-        performed_by=movement.performed_by,
+        notes=movement.notes,
         movement_date=now,
-        notes=movement.notes
+        created_at=now,
+        updated_at=now
     )
 
     db.add(db_movement)

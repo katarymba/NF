@@ -1,17 +1,23 @@
 // Ключи для локального хранилища
-const TOKEN_KEY = 'auth_token';
-const USER_KEY = 'auth_user';
+export const TOKEN_KEY = 'token'; // Обновлено, чтобы соответствовать App.tsx
+export const USER_KEY = 'auth_user';
 
 // Функции для работы с токеном
 export const setAuthToken = (token: string) => {
+    console.log("Сохраняем токен в localStorage:", token.substring(0, 10) + '...');
     localStorage.setItem(TOKEN_KEY, token);
+    // Устанавливаем время сохранения токена для отладки
+    localStorage.setItem('token_saved_at', new Date().toISOString());
 };
 
 export const getAuthToken = (): string | null => {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    console.log("Получаем токен из localStorage:", token ? `${token.substring(0, 10)}...` : "null");
+    return token;
 };
 
 export const clearAuthToken = () => {
+    console.log("Очищаем токен из localStorage");
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
 };
@@ -28,5 +34,7 @@ export const getUserData = () => {
 
 // Проверка авторизации
 export const isAuthenticated = (): boolean => {
-    return !!getAuthToken();
+    const token = getAuthToken();
+    console.log("Проверка авторизации:", !!token);
+    return !!token;
 };

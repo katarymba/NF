@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict, BaseModel, ConfigDict
 from typing import Optional, List
 from app.schemas.shipment_item import ShipmentItemCreate, ShipmentItemInDB
 

@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime
 import logging
+from pydantic import BaseModel  # Добавлен импорт BaseModel
 
 from starlette import status
 
@@ -10,6 +11,12 @@ from app.database import get_db
 from app.models import Product
 from app.schemas import CartItemCreate, CartItemResponse, CartItemUpdate, ApiResponse
 from app.utils.auth import extract_token_from_header, decode_token
+
+class ApiResponse(BaseModel):
+    status: bool = True
+    message: str = ''
+    data: Any = None
+
 
 # Настройка логирования
 logger = logging.getLogger(__name__)

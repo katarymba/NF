@@ -8,7 +8,6 @@ from app.services.orders_service import OrderService
 from app.schemas.order import OrderCreate, OrderUpdate, OrderResponse, OrderWithPayment, OrderInDB
 from app.routers.auth import get_current_user, get_current_user_optional
 
-# Создаем роутер для заказов
 router = APIRouter(tags=["Orders"])
 
 router = APIRouter(
@@ -17,8 +16,6 @@ router = APIRouter(
     responses={404: {"description": "Заказ не найден"}},
 )
 
-
-# Получить все заказы
 @router.get("/", response_model=List[OrderWithPayment])
 def get_orders(db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
     """Получить все заказы в системе"""
