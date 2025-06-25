@@ -6,7 +6,7 @@
   <p><strong>Automatic Information System [AIS](Автоматическая Информационная Система)</strong></p>
   
   ![License](https://img.shields.io/badge/license-MIT-blue)
-  ![Version](https://img.shields.io/badge/version-0.0.0.4.8.6-green)
+  ![Version](https://img.shields.io/badge/version-0.0.0.4.8.7-green)
   
 </div>
 
@@ -97,13 +97,14 @@
 <div align="center">
   <details>
     <summary>📱 Скриншоты (нажмите, чтобы развернуть)</summary>
-    <p>Главная страница</p>
-    <img src="docs/screenshots/1.png" alt="Главная страница" width="600"/>
-    <p>ФУНКЦИЯ 1</p>
-    <img src="docs/screenshots/2.png" alt="Игровой режим" width="600"/>
-    <p>ФУНКЦИЯ 2</p>
-    <img src="docs/screenshots/3.png" alt="Падающие производные" width="600"/>
-    <p>ФУНКЦИЯ 3</p>
+    <img src="docs/screenshots/main.png" alt="Начальная страница" width="600"/>
+    <p>Начальная страница</p>
+    <img src="docs/screenshots/products.png" alt="Страница товаров" width="600"/>
+    <p>Страница товаров</p>
+    <img src="docs/screenshots/payments.png" alt="Платежи" width="600"/>
+    <p>Платежи</p>
+    <img src="docs/screenshots/reports.png" alt="Отчеты" width="600"/>
+    <p>Отчеты</p>
   </details>
 </div>
 
@@ -295,8 +296,8 @@ alembic upgrade head
 
 ## 📄 Лицензия
 
-Этот проект распространяется под лицензией MIT. Подробности смотрите в файле [MIT LICENSE](https://github.com/Y3ppi3/NorthFish/blob/main/LICENSE)
+Этот проект распространяется под лицензией MIT. Подробности смотрите в файле [MIT LICENSE](https://github.com/katarymba/NF/blob/main/LICENSE)
 
 ## 👨‍💻 Авторы
 
-[katarymba](https://github.com/katarymba), [Y3ppi3](https://github.com/Y3ppi3)
+[katarymba](https://github.com/katarymba);
