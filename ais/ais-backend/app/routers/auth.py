@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from app import models, schemas
 from app.database import get_db
-from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.utils.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.models import Administrator
 
 load_dotenv()

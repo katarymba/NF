@@ -1,0 +1,391 @@
+.account-container {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.account-title {
+  text-align: center;
+  font-size: 2rem;
+  color: #2c3e50;
+  margin-bottom: 2rem;
+}
+
+.account-tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+
+.account-tab {
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #546e7a;
+  position: relative;
+  white-space: nowrap;
+}
+
+.account-tab:after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: transparent;
+  transition: background-color 0.3s;
+}
+
+.account-tab.active {
+  color: #1a5f7a;
+  font-weight: 500;
+}
+
+.account-tab.active:after {
+  background-color: #1a5f7a;
+}
+
+.account-tab:hover:not(.active) {
+  color: #2c3e50;
+}
+
+.logout-tab {
+  margin-left: auto;
+  color: #e53935;
+}
+
+.logout-tab:hover {
+  color: #c62828;
+}
+
+.error-message, .success-message {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.error-message {
+  background-color: #ffebee;
+  border-left: 4px solid #f44336;
+  color: #c62828;
+}
+
+.success-message {
+  background-color: #e8f5e9;
+  border-left: 4px solid #4caf50;
+  color: #2e7d32;
+}
+
+.close-error, .close-success {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.close-error {
+  color: #c62828;
+}
+
+.close-success {
+  color: #2e7d32;
+}
+
+.account-section {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+}
+
+.account-section h2 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Профиль */
+.profile-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.profile-field {
+  margin-bottom: 1rem;
+}
+
+.field-label {
+  display: block;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+
+.field-value {
+  font-size: 1.1rem;
+  color: #2c3e50;
+}
+
+/* Заказы */
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.order-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.order-header {
+  background-color: #f5f5f5;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-id {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.order-status {
+  padding: 0.3rem 0.8rem;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status-new, .status-pending {
+  background-color: #bbdefb;
+  color: #1565c0;
+}
+
+.status-processing {
+  background-color: #fff9c4;
+  color: #f57f17;
+}
+
+.status-shipped {
+  background-color: #c8e6c9;
+  color: #2e7d32;
+}
+
+.status-delivered {
+  background-color: #dcedc8;
+  color: #33691e;
+}
+
+.status-canceled {
+  background-color: #ffcdd2;
+  color: #c62828;
+}
+
+.order-details {
+  padding: 1rem;
+}
+
+.order-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.info-item {
+  margin-bottom: 0.5rem;
+}
+
+.info-label {
+  display: block;
+  color: #7f8c8d;
+  font-size: 0.85rem;
+  margin-bottom: 0.2rem;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  color: #2c3e50;
+}
+
+.order-items {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 1rem;
+}
+
+.order-items h3 {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.item-row:last-child {
+  border-bottom: none;
+}
+
+.item-name {
+  flex-grow: 1;
+}
+
+.item-quantity {
+  color: #7f8c8d;
+  margin: 0 1rem;
+}
+
+.item-price {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.order-total {
+  text-align: right;
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.no-orders {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.no-orders p {
+  color: #7f8c8d;
+  margin-bottom: 1rem;
+}
+
+.shop-button {
+  display: inline-block;
+  background-color: #1976d2;
+  color: white;
+  text-decoration: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.shop-button:hover {
+  background-color: #1565c0;
+}
+
+.no-data {
+  color: #7f8c8d;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+/* Форма смены пароля */
+.password-form {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #1976d2;
+}
+
+.submit-button {
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+  background-color: #1565c0;
+}
+
+.loading-spinner {
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin: 2rem auto 1rem;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #1976d2;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  text-align: center;
+  color: #7f8c8d;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .account-tabs {
+    overflow-x: auto;
+  }
+  
+  .profile-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .order-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .item-row {
+    flex-direction: column;
+    padding: 0.5rem 0;
+  }
+  
+  .item-quantity, .item-price {
+    margin: 0.2rem 0;
+  }
+}

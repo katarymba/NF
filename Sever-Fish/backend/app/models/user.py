@@ -1,3 +1,5 @@
+from datetime import datetime
+
 # app/models/user.py
 from sqlalchemy import Boolean, Column, Date, DateTime, String, Integer
 from sqlalchemy.orm import relationship

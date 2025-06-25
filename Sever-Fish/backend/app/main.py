@@ -13,7 +13,7 @@ from datetime import datetime
 from app.routers import auth, products, cart, orders, users
 from app.api.api import api_router
 from app.services import ais_integration, discount_service
-from app.config import (
+from app.utils.config import (
     PORT, HOST, PRODUCTS_IMAGES_DIR, SECRET_KEY, DEBUG,
     PROJECT_NAME, PROJECT_VERSION, ALLOWED_HOSTS,
     API_GATEWAY_ENABLED, API_GATEWAY_URL

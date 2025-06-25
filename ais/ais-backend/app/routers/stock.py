@@ -8,6 +8,7 @@ from app.database import get_db
 from app.auth import get_current_user, get_current_admin
 from app.schemas.stock import StockItemCreate, StockItemPatch, StockItemResponse
 from app.crud import stock as stock_crud
+from app.models.administrator import Administrator
 
 router = APIRouter(
     prefix="/stocks",
@@ -23,7 +24,7 @@ def get_stocks(
         product_id: Optional[str] = None,
         warehouse_id: Optional[str] = None,
         db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
+        current_admin: Administrator = Depends(get_current_admin)
 ):
     """
     Получение списка запасов с возможностью фильтрации.
@@ -42,7 +43,7 @@ def get_stocks(
 def get_stock_metrics(
         product_id: Optional[str] = None,
         db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
+        current_admin: Administrator = Depends(get_current_admin)
 ):
     """
     Получение метрик по запасам.
@@ -55,7 +56,7 @@ def get_stock_metrics(
 def get_stock(
         stock_id: str,
         db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
+        current_admin: Administrator = Depends(get_current_admin)
 ):
     """
     Получение информации о запасе по ID.

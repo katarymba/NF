@@ -1,12 +1,12 @@
-# AIS + Sever-Fish + api-gateway
+# [AIS](https://github.com/Y3ppi3/NorthFish/tree/main/ais) + [Sever-Fish](https://github.com/Y3ppi3/NorthFish/tree/main/Sever-Fish) + [api-gateway](https://github.com/Y3ppi3/NorthFish/tree/main/api-gateway)
 
 <div align="center">
-  <img src="./ais/ais-frontend/public/logo2.png" alt="sever-fish logo" width="170"/><img src="./ais/ais-frontend/public/logo.png" alt="sever-fish logo" width="200"/> 
+  <img src="./ais/ais-frontend/public/logo2.png" alt="sever-fish logo" width="170"/><img src="./ais/ais-frontend/public/logo.png" alt="sever-fish logo" width="200"/>
   
   <p><strong>Automatic Information System [AIS](Автоматическая Информационная Система)</strong></p>
   
   ![License](https://img.shields.io/badge/license-MIT-blue)
-  ![Version](https://img.shields.io/badge/version-0.0.0.4.8.3-green)
+  ![Version](https://img.shields.io/badge/version-0.0.0.4.8.6-green)
   
 </div>
 
@@ -289,14 +289,14 @@ alembic upgrade head
 ## 📇 Базовые данные для входа
 
 #### AIS (административная панель)
-- Username: main_admin
-- Password: qwerty123
+- Username: admin
+- Password: admin123
 
 
 ## 📄 Лицензия
 
-Этот проект распространяется под лицензией MIT. Подробности смотрите в файле [MIT LICENSE](https://github.com/katarymba/NF/blob/main/LICENSE)
+Этот проект распространяется под лицензией MIT. Подробности смотрите в файле [MIT LICENSE](https://github.com/Y3ppi3/NorthFish/blob/main/LICENSE)
 
 ## 👨‍💻 Авторы
 
-[katarymba](https://github.com/katarymba)
+[katarymba](https://github.com/katarymba), [Y3ppi3](https://github.com/Y3ppi3)

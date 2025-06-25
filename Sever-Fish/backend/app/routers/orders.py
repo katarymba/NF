@@ -1,12 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models import Order, OrderItem, Product, User
 from app.schemas import OrderCreate, OrderResponse, OrderStatus, ApiResponse, OrderUpdate
 from app.utils.auth import require_auth, get_current_user_id, require_admin
+
+class ApiResponse(BaseModel):
+    status: bool = True
+    message: str = ''
+    data: Any = None
+
 
 router = APIRouter()
 

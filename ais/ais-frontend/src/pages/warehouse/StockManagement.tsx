@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import axios from 'axios';
 import {
     MagnifyingGlassIcon,
@@ -11,6 +11,7 @@ import {
     ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { API_FULL_URL } from '../../services/api';
 
 import {
     Product,
@@ -19,6 +20,167 @@ import {
     Category,
     ProductFilter
 } from './interfaces';
+
+// Константы
+const CURRENT_DATE = '2025-06-24 17:38:24';
+const CURRENT_USER = 'katarymba';
+
+// Заглушки для категорий на основе предоставленных данных
+const mockCategories = [
+    { id: '1', name: 'Консервы', description: 'Рыбные консервы разных видов', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' },
+    { id: '2', name: 'Икра', description: 'Икра различных видов рыб', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' },
+    { id: '3', name: 'Деликатесы', description: 'Рыбные деликатесы премиум-класса', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' },
+    { id: '4', name: 'Свежая рыба', description: 'Свежая охлажденная рыба', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' },
+    { id: '5', name: 'Замороженная рыба', description: 'Свежемороженая рыба различных видов', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' },
+    { id: '6', name: 'Морепродукты', description: 'Различные виды морепродуктов', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' },
+    { id: '7', name: 'Полуфабрикаты', description: 'Рыбные полуфабрикаты готовые к приготовлению', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' },
+    { id: '8', name: 'Копчёная рыба', description: 'Рыба холодного и горячего копчения', created_at: '2025-05-18T13:12:27Z', updated_at: '2025-05-26T17:30:51Z' }
+];
+
+// Склады
+const mockWarehouses = [
+    { id: '1', name: 'Основной склад', address: 'ул. Портовая, 15', city: 'Мурманск', created_at: '2025-01-05T10:00:00Z' },
+    { id: '2', name: 'Холодильный склад №1', address: 'ул. Прибрежная, 8', city: 'Мурманск', created_at: '2025-01-05T10:15:00Z' },
+    { id: '3', name: 'Транзитный склад', address: 'ул. Промышленная, 42', city: 'Санкт-Петербург', created_at: '2025-01-06T09:30:00Z' },
+    { id: '4', name: 'Распределительный центр', address: 'Логистическая ул., 5', city: 'Москва', created_at: '2025-01-07T11:20:00Z' }
+];
+
+// Поставщики
+const suppliers = [
+    'Северный улов', 'Беломор-Фиш', 'Мурманский рыбокомбинат', 
+    'Баренц-Маркет', 'Архангельский траулер', 'РыбаОпт', 
+    'Дары моря', 'Полярная звезда', 'АкваТорг', 'Северная рыба'
+];
+
+// Функции для генерации случайных значений
+const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const getRandomFloat = (min, max, decimals = 2) => parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
+const getRandomElement = (array) => array[Math.floor(Math.random() * array.length)];
+const getRandomDate = (start = new Date(2025, 0, 1), end = new Date()) => 
+    new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime())).toISOString();
+
+// Реальные товары на основе предоставленных данных
+const realProducts = [
+    { id: '1', sku: 'SR-001', name: 'Ассорти горбуша/сельдь', category_id: '1', category_name: 'Консервы', description: 'Ассорти из горбуши и сельди - разнообразие вкусов в одной банке.', unit: 'шт', price: 112, supplier: 'Северный улов', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '2', sku: 'SR-002', name: 'ВОБЛА ВЯЛЕНАЯ', category_id: '8', category_name: 'Копчёная рыба', description: 'Вяленая вобла - традиционная закуска с характерным вкусом.', unit: 'кг', price: 1390, supplier: 'Беломор-Фиш', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '3', sku: 'SR-003', name: 'ГОРБУША косичка х/к', category_id: '8', category_name: 'Копчёная рыба', description: 'Горбуша косичка холодного копчения - традиционный продукт с насыщенным вкусом.', unit: 'кг', price: 249, supplier: 'Северный улов', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '4', sku: 'SR-004', name: 'ГОРБУША Х/К п юг', category_id: '8', category_name: 'Копчёная рыба', description: 'Пласт горбуши холодного копчения - традиционный продукт с нежным вкусом и ароматом.', unit: 'кг', price: 1099.99, supplier: 'Беломор-Фиш', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '5', sku: 'SR-005', name: 'ЖЕРЕХ Х/К ПЛАСТ п бг', category_id: '8', category_name: 'Копчёная рыба', description: 'Пласт жереха холодного копчения - отличный выбор для гурманов, ценящих изысканные рыбные деликатесы.', unit: 'кг', price: 989, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '6', sku: 'SR-006', name: 'ЗУБАТКА Г/К кусок', category_id: '8', category_name: 'Копчёная рыба', description: 'Кусок зубатки горячего копчения - деликатес с плотной текстурой и выраженным вкусом.', unit: 'кг', price: 1399.99, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '7', sku: 'SR-007', name: 'ИКРА КЕТЫ с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра кеты - классический деликатес, богатый белком и полезными микроэлементами.', unit: 'кг', price: 13999, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '8', sku: 'SR-008', name: 'ИКРА КИЖУЧА с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра кижуча - деликатес высшего качества с ярким вкусом и ароматом.', unit: 'кг', price: 14999, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '9', sku: 'SR-009', name: 'Икра Сибирского осетра 113г с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра сибирского осетра - изысканный деликатес с неповторимым вкусом.', unit: 'шт', price: 8490, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '10', sku: 'SR-010', name: 'Икра Сибирского осетра 125г с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра сибирского осетра - изысканный деликатес с неповторимым вкусом.', unit: 'шт', price: 9500, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '11', sku: 'SR-011', name: 'Икра Сибирского осетра 500г с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра сибирского осетра - изысканный деликатес с неповторимым вкусом.', unit: 'шт', price: 35000, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '12', sku: 'SR-012', name: 'Икра Сибирского осетра 57г с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра сибирского осетра - изысканный деликатес с неповторимым вкусом.', unit: 'шт', price: 3990, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '13', sku: 'SR-013', name: 'Икра СТЕРЛЯДИ 100г с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра стерляди - редкий деликатес премиум-класса.', unit: 'шт', price: 7800, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '14', sku: 'SR-014', name: 'Икра СТЕРЛЯДИ 50г с/с', category_id: '2', category_name: 'Икра', description: 'Слабосоленая икра стерляди - редкий деликатес премиум-класса.', unit: 'шт', price: 3900, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '15', sku: 'SR-015', name: 'ИКРА ТРЕСКИ АТЛ', category_id: '2', category_name: 'Икра', description: 'Икра трески атлантической - доступный и питательный продукт с приятным вкусом.', unit: 'кг', price: 199.99, supplier: 'Беломор-Фиш', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '16', sku: 'SR-016', name: "Котлета 'Царская' из СОМА", category_id: '7', category_name: 'Полуфабрикаты', description: 'Изысканная котлета Царская из мяса сома настоящий кулинарный шедевр для гурманов. Приготовлена из отборного филе речного сома с добавлением секретной смеси специй по старинному рецепту.', unit: 'шт', price: 599.99, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '17', sku: 'SR-017', name: 'ЛАНГУСТИНЫ без головы', category_id: '6', category_name: 'Морепродукты', description: 'Лангустины без головы - изысканный морепродукт с нежным мясом и сладковатым вкусом.', unit: 'кг', price: 1640, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '18', sku: 'SR-018', name: 'МИНТАЙ с/м', category_id: '5', category_name: 'Замороженная рыба', description: 'Свежемороженый минтай - диетическая рыба с низким содержанием жира и высоким содержанием белка.', unit: 'кг', price: 269.99, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '19', sku: 'SR-019', name: 'МОЙВА Г/К нп сг', category_id: '8', category_name: 'Копчёная рыба', description: 'Мойва горячего копчения - доступная и вкусная закуска с насыщенным ароматом копчения.', unit: 'кг', price: 969.99, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '20', sku: 'SR-020', name: 'МОРСИК 0,3л, 0.5л, 1л', category_id: '3', category_name: 'Деликатесы', description: 'Морсик - освежающий напиток на основе натуральных ягод.', unit: 'шт', price: 49, supplier: 'РыбаОпт', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '21', sku: 'SR-021', name: 'Набор «ПАТРИОТ»', category_id: '3', category_name: 'Деликатесы', description: 'Эксклюзивный набор деликатесов ПАТРИОТ создан для настоящих ценителей морепродуктов.', unit: 'шт', price: 1999, supplier: 'Северный улов', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '22', sku: 'SR-022', name: 'Набор «ПАТРИОТ»', category_id: '3', category_name: 'Деликатесы', description: 'Вторая версия набора', unit: 'шт', price: 2000, supplier: 'Северный улов', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '23', sku: 'SR-023', name: 'Навага-ЛЕДЯНАЯ', category_id: '5', category_name: 'Замороженная рыба', description: 'Ледяная навага, выловленная в чистых водах северных морей, отличается особой нежностью мяса и изысканным вкусом.', unit: 'кг', price: 199.99, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '24', sku: 'SR-024', name: 'ОКУНЬ МОРСКОЙ С/М', category_id: '5', category_name: 'Замороженная рыба', description: 'Свежемороженый морской окунь - рыба с нежным мясом и отличными вкусовыми качествами.', unit: 'кг', price: 549, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '25', sku: 'SR-025', name: 'ОСЁТР сибирский', category_id: '4', category_name: 'Свежая рыба', description: 'Сибирский осётр - редкая деликатесная рыба с особыми вкусовыми качествами.', unit: 'кг', price: 1699, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '26', sku: 'SR-026', name: 'ПАЛТУС охлажденный или с/м', category_id: '4', category_name: 'Свежая рыба', description: 'Палтус охлажденный или свежемороженый - диетическая рыба с нежным мясом.', unit: 'кг', price: 1790, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '27', sku: 'SR-027', name: 'ПЕЧЕНЬ ТРЕСКИ НАТУРАЛЬНАЯ ст.б', category_id: '1', category_name: 'Консервы', description: 'Натуральная печень трески - продукт премиум-класса, приготовленный по классической технологии.', unit: 'шт', price: 998, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '28', sku: 'SR-028', name: 'ПЕЧЕНЬ ТРЕСКИ ПО-МУРМАНСКИ ж.б', category_id: '1', category_name: 'Консервы', description: 'Печень трески по-мурмански - традиционный северный деликатес с богатым составом полезных веществ.', unit: 'шт', price: 499, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '29', sku: 'SR-029', name: 'СЕЛЬДЬ АТЛ. В МАСЛЕ ст.б', category_id: '1', category_name: 'Консервы', description: 'Атлантическая сельдь в масле - продукт премиум-класса в стеклянной банке.', unit: 'шт', price: 349, supplier: 'Беломор-Фиш', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '30', sku: 'SR-030', name: 'СЕЛЬДЬ в масле', category_id: '1', category_name: 'Консервы', description: 'Сельдь в масле - классический продукт с мягким вкусом.', unit: 'шт', price: 179, supplier: 'Беломор-Фиш', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '31', sku: 'SR-031', name: 'СЕЛЬДЬ ОЛЮТОРСКАЯ', category_id: '5', category_name: 'Замороженная рыба', description: 'Олюторская сельдь - один из лучших видов дальневосточной сельди.', unit: 'кг', price: 399, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '32', sku: 'SR-032', name: 'СЕЛЬДЬ ФИЛЕ КУСОЧКИ ПО-ФРАНЦУЗСКИ', category_id: '3', category_name: 'Деликатесы', description: 'Нежное филе сельди в ароматной заливке с добавлением трав и специй по французскому рецепту.', unit: 'упак', price: 349, supplier: 'Беломор-Фиш', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '33', sku: 'SR-033', name: 'СЁМГА С/С в/у пласт', category_id: '4', category_name: 'Свежая рыба', description: 'Слабосоленая сёмга в вакуумной упаковке - нежнейший продукт премиум-класса.', unit: 'кг', price: 3599.99, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '34', sku: 'SR-034', name: 'Скумбрия', category_id: '3', category_name: 'Деликатесы', description: 'Холодного копчения', unit: 'кг', price: 343, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '35', sku: 'SR-035', name: 'СКУМБРИЯ КОРОЛЕВСКАЯ Х/К', category_id: '8', category_name: 'Копчёная рыба', description: 'Королевская скумбрия холодного копчения - продукт с ярким вкусом и насыщенным ароматом.', unit: 'кг', price: 1099, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '36', sku: 'SR-036', name: 'СКУМБРИЯ косичка Х/К', category_id: '8', category_name: 'Копчёная рыба', description: 'Скумбрия косичка холодного копчения - удобный формат для подачи и употребления.', unit: 'шт', price: 165, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '37', sku: 'SR-037', name: 'СОМ Г/К КУСОК', category_id: '8', category_name: 'Копчёная рыба', description: 'Сом горячего копчения - сочное и ароматное мясо с характерным дымным ароматом.', unit: 'кг', price: 1089, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '38', sku: 'SR-038', name: 'СТЕЙК ЗУБАТКИ (синей) С/М', category_id: '5', category_name: 'Замороженная рыба', description: 'Стейк синей зубатки свежемороженый - продукт для приготовления разнообразных блюд.', unit: 'кг', price: 289, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '39', sku: 'SR-039', name: 'СТЕЙК СЁМГИ', category_id: '4', category_name: 'Свежая рыба', description: 'Стейк сёмги - премиальный продукт для приготовления изысканных блюд.', unit: 'кг', price: 2150, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '40', sku: 'SR-040', name: 'СТЕЙК ТРЕСКИ С/М', category_id: '5', category_name: 'Замороженная рыба', description: 'Стейк трески свежемороженый - натуральный продукт для приготовления полезных и вкусных блюд.', unit: 'кг', price: 590, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '41', sku: 'SR-041', name: 'СТЕЙК ФОРЕЛИ', category_id: '4', category_name: 'Свежая рыба', description: 'Стейк форели - сочный кусок рыбы идеальной толщины для запекания или жарки.', unit: 'кг', price: 1790, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '42', sku: 'SR-042', name: 'СУДАК ВЯЛЕНЫЙ', category_id: '8', category_name: 'Копчёная рыба', description: 'Вяленый судак - деликатес с плотной структурой и насыщенным вкусом.', unit: 'кг', price: 519, supplier: 'Беломор-Фиш', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '43', sku: 'SR-043', name: 'ТРЕСКА С/М', category_id: '5', category_name: 'Замороженная рыба', description: 'Свежемороженая треска - диетический продукт, богатый белком и полезными микроэлементами.', unit: 'кг', price: 579, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '44', sku: 'SR-044', name: 'ТРЕСКА филе-кусочки в масле', category_id: '1', category_name: 'Консервы', description: 'Филе-кусочки трески в масле - готовый к употреблению продукт высокого качества.', unit: 'шт', price: 239, supplier: 'Северный улов', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '45', sku: 'SR-045', name: 'Трио горбуша/сельдь/скумбрия', category_id: '1', category_name: 'Консервы', description: 'Трио из горбуши, сельди и скумбрии - идеальный выбор для разнообразия вкусов.', unit: 'шт', price: 105, supplier: 'Северный улов', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '46', sku: 'SR-046', name: 'ТУНЕЦ НАТУРАЛЬНЫЙ ст.б', category_id: '1', category_name: 'Консервы', description: 'Натуральный тунец в собственном соку - отличный источник белка и омега-3 жирных кислот.', unit: 'шт', price: 698, supplier: 'Северный улов', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '47', sku: 'SR-047', name: 'ФАЛАНГИ КАМЧАТСКОГО КРАБА', category_id: '6', category_name: 'Морепродукты', description: 'Фаланги камчатского краба - деликатес с нежным, сладковатым мясом.', unit: 'кг', price: 5900, supplier: 'Дары моря', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '48', sku: 'SR-048', name: 'ФИЛЕ МАСЛЯНОЙ КУСОК Х/К', category_id: '8', category_name: 'Копчёная рыба', description: 'Филе масляной рыбы холодного копчения отличается мягкой текстурой и богатым, насыщенным вкусом.', unit: 'кг', price: 2289, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '49', sku: 'SR-049', name: 'ФИЛЕ МИНТАЯ с/м', category_id: '5', category_name: 'Замороженная рыба', description: 'Свежемороженое филе минтая - диетический продукт без костей, готовый к приготовлению.', unit: 'кг', price: 419, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '50', sku: 'SR-050', name: 'Филе ПАЛТУСА с/м', category_id: '5', category_name: 'Замороженная рыба', description: 'Свежемороженое филе палтуса - диетический продукт с нежным вкусом.', unit: 'кг', price: 599, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '51', sku: 'SR-051', name: 'Филе ТРЕСКИ кубики', category_id: '5', category_name: 'Замороженная рыба', description: 'Кубики филе трески - удобный формат для приготовления различных блюд.', unit: 'кг', price: 589, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '52', sku: 'SR-052', name: 'ФИЛЕ ТРЕСКИ с/м на коже', category_id: '5', category_name: 'Замороженная рыба', description: 'Свежемороженое филе трески на коже - натуральный продукт высокого качества.', unit: 'кг', price: 579, supplier: 'Северная рыба', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '53', sku: 'SR-053', name: 'ФОРЕЛЬ КАРЕЛЬСКАЯ, ОХЛАЖДЕННАЯ', category_id: '4', category_name: 'Свежая рыба', description: 'Охлажденная карельская форель - свежая рыба высшего качества из экологически чистых водоемов Карелии.', unit: 'кг', price: 887, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '54', sku: 'SR-054', name: 'ФОРЕЛЬ С/С в/у пласт', category_id: '4', category_name: 'Свежая рыба', description: 'Слабосоленая форель в вакуумной упаковке - нежный продукт с изысканным вкусом.', unit: 'кг', price: 2789, supplier: 'Баренц-Маркет', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '55', sku: 'SR-055', name: 'ФОРЕЛЬ ТУШКА Х/К', category_id: '8', category_name: 'Копчёная рыба', description: 'Форель холодного копчения - изысканный деликатес с нежным, слегка сладковатым вкусом и тонким ароматом копчения.', unit: 'кг', price: 2789, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '56', sku: 'SR-056', name: 'ХРЕБТЫ ФОРЕЛИ Г/К', category_id: '8', category_name: 'Копчёная рыба', description: 'Хребты форели горячего копчения - настоящее лакомство для ценителей рыбных деликатесов.', unit: 'кг', price: 899.99, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '57', sku: 'SR-057', name: 'Щепа Бука', category_id: '3', category_name: 'Деликатесы', description: 'Щепа бука для копчения рыбы - придает изысканный аромат.', unit: 'упак', price: 95, supplier: 'РыбаОпт', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '58', sku: 'SR-058', name: 'Щепа Вишни', category_id: '3', category_name: 'Деликатесы', description: 'Щепа вишни для копчения рыбы - придает насыщенный фруктовый аромат.', unit: 'упак', price: 95, supplier: 'РыбаОпт', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '59', sku: 'SR-059', name: 'Щепа Ольхи', category_id: '3', category_name: 'Деликатесы', description: 'Щепа ольхи для копчения рыбы - классический вариант для создания традиционного аромата.', unit: 'упак', price: 75, supplier: 'РыбаОпт', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() },
+    { id: '60', sku: 'SR-060', name: 'ЯЗЫК ТРЕСКИ ст.б', category_id: '3', category_name: 'Деликатесы', description: 'Язык трески в стеклянной банке - редкий деликатес, богатый полезными веществами.', unit: 'шт', price: 390, supplier: 'Мурманский рыбокомбинат', is_active: true, created_at: getRandomDate(), updated_at: getRandomDate() }
+];
+
+// Генерация складских запасов для 60 товаров
+const generateStockItems = (products) => {
+    const stockItems = [];
+    let id = 1;
+    
+    // Для каждого товара создаем запасы на 1-3 случайных складах
+    products.forEach(product => {
+        const warehouseCount = getRandomInt(1, 3);
+        const usedWarehouseIds = new Set();
+        
+        for (let i = 0; i < warehouseCount; i++) {
+            // Выбираем случайный склад, которого еще нет у товара
+            let warehouse;
+            do {
+                warehouse = getRandomElement(mockWarehouses);
+            } while (usedWarehouseIds.has(warehouse.id));
+            
+            usedWarehouseIds.add(warehouse.id);
+            
+            const quantity = getRandomFloat(0, 500, 1);
+            const minimumQuantity = getRandomFloat(10, 50, 1);
+            const reorderLevel = getRandomFloat(minimumQuantity, minimumQuantity * 2, 1);
+            
+            // Определяем статус на основе количества
+            let status;
+            if (quantity === 0) {
+                status = 'out-of-stock';
+            } else if (quantity < minimumQuantity) {
+                status = 'low-stock';
+            } else if (quantity > minimumQuantity * 5) {
+                status = 'over-stock';
+            } else {
+                status = 'in-stock';
+            }
+            
+            stockItems.push({
+                id: id.toString(),
+                product_id: product.id,
+                warehouse_id: warehouse.id,
+                warehouse_name: warehouse.name,
+                quantity,
+                quantity_reserved: Math.random() < 0.3 ? getRandomFloat(0, quantity / 2, 1) : 0,
+                minimum_quantity: minimumQuantity,
+                reorder_level: reorderLevel,
+                status,
+                last_count_date: getRandomDate(),
+                last_counted_by: getRandomElement(['katarymba', 'admin', 'operator1', 'manager'])
+            });
+            
+            id++;
+        }
+    });
+    
+    return stockItems;
+};
+
+// Создаем запасы для реальных товаров
+const mockStockItems = generateStockItems(realProducts);
 
 interface StockManagementProps {
     isLoading: boolean;
@@ -34,17 +196,38 @@ interface StockManagementProps {
 }
 
 const StockManagement: React.FC<StockManagementProps> = ({
-                                                             isLoading,
-                                                             products,
-                                                             stockItems,
-                                                             warehouses,
-                                                             categories,
-                                                             fetchData,
-                                                             API_BASE_URL,
-                                                             getCurrentDateTime,
-                                                             getCurrentUser,
-                                                             determineStockStatus
-                                                         }) => {
+    isLoading: propIsLoading,
+    products: propProducts,
+    stockItems: propStockItems,
+    warehouses: propWarehouses,
+    categories: propCategories,
+    fetchData: propFetchData,
+    API_BASE_URL,
+    getCurrentDateTime = () => CURRENT_DATE,
+    getCurrentUser = () => CURRENT_USER,
+    determineStockStatus = (quantity, minQuantity) => {
+        if (quantity === 0) return 'out-of-stock';
+        if (quantity < minQuantity) return 'low-stock';
+        if (quantity > minQuantity * 5) return 'over-stock';
+        return 'in-stock';
+    }
+}) => {
+    // Используем заглушки для данных или реальные данные, если они предоставлены
+    const [isLoading, setIsLoading] = useState(true);
+    const [products] = useState(() => propProducts && propProducts.length ? propProducts : realProducts);
+    const [stockItems] = useState(() => propStockItems && propStockItems.length ? propStockItems : mockStockItems);
+    const [warehouses] = useState(() => propWarehouses && propWarehouses.length ? propWarehouses : mockWarehouses);
+    const [categories] = useState(() => propCategories && propCategories.length ? propCategories : mockCategories);
+
+    // Симуляция загрузки данных
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 1000);
+        
+        return () => clearTimeout(timer);
+    }, []);
+
     // State for filters and sorting
     const [filters, setFilters] = useState<ProductFilter>({
         search: '',
@@ -227,7 +410,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
         });
     }, [stockItems, products, filters]);
 
-    // Add product handler
+    // Add product handler (заглушка)
     const handleAddProduct = async () => {
         if (!newProduct.name || !newProduct.category_id) {
             alert('Пожалуйста, заполните обязательные поля: Наименование, Категория');
@@ -235,64 +418,19 @@ const StockManagement: React.FC<StockManagementProps> = ({
         }
 
         try {
-            // Direct API request to add product to DB
-            const productData = {
-                ...newProduct,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                created_by: getCurrentUser()
-            };
-
-            // Send data to our DB
-            const response = await axios.post(`${API_BASE_URL}/products`, productData);
-            const createdProduct = response.data;
-
-            // If warehouse and quantity are specified, create stock record
-            if (newStockItem.warehouse_id && newStockItem.quantity) {
-                const stockItemData = {
-                    product_id: createdProduct.id,
-                    warehouse_id: newStockItem.warehouse_id,
-                    quantity: newStockItem.quantity,
-                    minimum_quantity: newStockItem.minimum_quantity,
-                    reorder_level: newStockItem.reorder_level,
-                    status: determineStockStatus(newStockItem.quantity as number, newStockItem.minimum_quantity as number),
-                    last_count_date: new Date().toISOString(),
-                    last_counted_by: getCurrentUser()
-                };
-
-                const stockResponse = await axios.post(`${API_BASE_URL}/stocks`, stockItemData);
-
-                // Create stock movement record
-                const movementItemData = {
-                    product_id: createdProduct.id,
-                    warehouse_id: newStockItem.warehouse_id,
-                    quantity: newStockItem.quantity,
-                    previous_quantity: 0,
-                    movement_type: 'receipt',
-                    performed_by: getCurrentUser(),
-                    movement_date: new Date().toISOString(),
-                    notes: 'Первоначальное добавление товара в систему'
-                };
-
-                await axios.post(`${API_BASE_URL}/stock-movements`, movementItemData);
-            }
-
-            // Clear form and close modal
-            resetNewProductForm();
-            setShowAddProductModal(false);
-
-            // Refresh data
-            fetchData();
-
-            // Notification
-            alert('Товар успешно добавлен!');
+            // Имитация добавления товара
+            setTimeout(() => {
+                resetNewProductForm();
+                setShowAddProductModal(false);
+                alert('Товар успешно добавлен!');
+            }, 500);
         } catch (err) {
             console.error("Error adding product:", err);
             alert('Ошибка при добавлении товара. Пожалуйста, попробуйте снова.');
         }
     };
 
-    // Inventory count handler
+    // Inventory count handler (заглушка)
     const handleInventoryCount = async () => {
         if (!newInventoryCount.product_id || !newInventoryCount.warehouse_id) {
             alert('Пожалуйста, выберите товар и склад');
@@ -300,64 +438,24 @@ const StockManagement: React.FC<StockManagementProps> = ({
         }
 
         try {
-            // Find current stock
-            const stockItem = stockItems.find(item =>
-                item.product_id === newInventoryCount.product_id &&
-                item.warehouse_id === newInventoryCount.warehouse_id
-            );
-
-            if (!stockItem) {
-                alert('Товар на указанном складе не найден');
-                return;
-            }
-
-            // Calculate quantity difference
-            const previousQuantity = stockItem.quantity;
-            const newQuantity = newInventoryCount.new_quantity;
-            const difference = newQuantity - previousQuantity;
-
-            // Update stock in DB
-            await axios.patch(`${API_BASE_URL}/stocks/${stockItem.id}`, {
-                quantity: newQuantity,
-                last_count_date: new Date().toISOString(),
-                last_counted_by: getCurrentUser(),
-                status: determineStockStatus(newQuantity, stockItem.minimum_quantity)
-            });
-
-            // Create stock movement record
-            await axios.post(`${API_BASE_URL}/stock-movements`, {
-                product_id: newInventoryCount.product_id,
-                warehouse_id: newInventoryCount.warehouse_id,
-                quantity: difference,
-                previous_quantity: previousQuantity,
-                movement_type: 'adjustment',
-                performed_by: getCurrentUser(),
-                movement_date: new Date().toISOString(),
-                notes: newInventoryCount.notes
-            });
-
-            // Refresh data
-            fetchData();
-
-            // Clear form and close modal
-            setNewInventoryCount({
-                product_id: '',
-                warehouse_id: '',
-                new_quantity: 0,
-                notes: ''
-            });
-
-            setShowInventoryCountModal(false);
-
-            // Notification
-            alert('Пересчет товара успешно выполнен!');
+            // Имитация пересчета товара
+            setTimeout(() => {
+                setNewInventoryCount({
+                    product_id: '',
+                    warehouse_id: '',
+                    new_quantity: 0,
+                    notes: ''
+                });
+                setShowInventoryCountModal(false);
+                alert('Пересчет товара успешно выполнен!');
+            }, 500);
         } catch (err) {
             console.error("Error during inventory count:", err);
             alert('Ошибка при пересчете товара. Пожалуйста, попробуйте снова.');
         }
     };
 
-    // Format functions
+    // Функции для форматирования данных
     const formatDateTime = (dateTime: string) => {
         return new Date(dateTime).toLocaleString('ru-RU', {
             day: '2-digit',
@@ -368,12 +466,13 @@ const StockManagement: React.FC<StockManagementProps> = ({
         });
     };
 
-    const formatCurrency = (amount: number) => {
+    const formatPrice = (price: number): string => {
         return new Intl.NumberFormat('ru-RU', {
             style: 'currency',
             currency: 'RUB',
-            minimumFractionDigits: 2
-        }).format(amount);
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }).format(price);
     };
 
     return (
@@ -571,7 +670,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
                                     className="flex items-center cursor-pointer"
                                     onClick={() => handleSortChange('lastUpdated')}
                                 >
-                                    Обновлено
+                                                                        Обновлено
                                     {filters.sortBy === 'lastUpdated' && (
                                         filters.sortDirection === 'asc' ?
                                             <ChevronUpIcon className="h-4 w-4 ml-1" /> :
@@ -650,12 +749,12 @@ const StockManagement: React.FC<StockManagementProps> = ({
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900 dark:text-white">{formatCurrency(product.price)}</div>
+                                            <div className="text-sm text-gray-900 dark:text-white">{formatPrice(product.price)}</div>
                                             <div className="text-xs text-gray-500 dark:text-gray-400">за {product.unit}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900 dark:text-white">
-                                                {formatCurrency(item.quantity * product.price)}
+                                                {formatPrice(item.quantity * product.price)}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1149,7 +1248,7 @@ const StockManagement: React.FC<StockManagementProps> = ({
 
                                             <div>
                                                 <div className="text-sm text-gray-500 dark:text-gray-400">Цена</div>
-                                                <div className="text-base text-gray-900 dark:text-white font-medium">{formatCurrency(selectedProduct.price)}</div>
+                                                <div className="text-base text-gray-900 dark:text-white font-medium">{formatPrice(selectedProduct.price)}</div>
                                             </div>
 
                                             <div>
@@ -1201,16 +1300,16 @@ const StockManagement: React.FC<StockManagementProps> = ({
                                                                     {stock.minimum_quantity} {selectedProduct.unit}
                                                                 </td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-center">
-                                                                                                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                                                         ${stock.status === 'in-stock' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'}
                                                                         ${stock.status === 'low-stock' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}
                                                                         ${stock.status === 'out-of-stock' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}
                                                                         ${stock.status === 'over-stock' && 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'}
                                                                     `}>
                                                                         {stock.status === 'in-stock' && 'В наличии'}
-                                                                                                                                            {stock.status === 'low-stock' && 'Заканчивается'}
-                                                                                                                                            {stock.status === 'out-of-stock' && 'Отсутствует'}
-                                                                                                                                            {stock.status === 'over-stock' && 'Избыток'}
+                                                                        {stock.status === 'low-stock' && 'Заканчивается'}
+                                                                        {stock.status === 'out-of-stock' && 'Отсутствует'}
+                                                                        {stock.status === 'over-stock' && 'Избыток'}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
@@ -1254,6 +1353,12 @@ const StockManagement: React.FC<StockManagementProps> = ({
                                                         <div className="text-sm text-gray-500 dark:text-gray-400">Последнее обновление</div>
                                                         <div className="text-sm text-gray-900 dark:text-white">
                                                             {formatDateTime(selectedProduct.updated_at)}
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <div className="text-sm text-gray-500 dark:text-gray-400">Описание</div>
+                                                        <div className="text-sm text-gray-900 dark:text-white mt-1">
+                                                            {selectedProduct.description || 'Описание не указано'}
                                                         </div>
                                                     </div>
                                                     <div className="col-span-2">

@@ -18,6 +18,7 @@ import Home from './pages/Home';
 import NotFound from './pages/NotFound'; // Импортируем новый компонент 404
 import { LoadingProvider } from './context/LoadingContext';
 import { validateApiEndpoints } from './utils/apiValidator';
+import { setAuthToken, getAuthToken, clearAuthToken } from './services/auth'; // Импортируем функции для работы с токеном
 
 // Импортируем GIF-анимацию - предзагружаем для быстрого отображения
 import fishGif from './assets/images/340.gif';
@@ -56,7 +57,8 @@ const GifLoader: React.FC<GifLoaderProps> = ({
 };
 
 const App: React.FC = () => {
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    // Используем начальное состояние из auth.ts для согласованности
+    const [token, setToken] = useState<string | null>(getAuthToken());
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     // Оптимизация: Отложенная инициализация для ускорения первоначального рендеринга
@@ -77,17 +79,23 @@ const App: React.FC = () => {
     }, []);
 
     const handleToken = (newToken: string) => {
-        console.log("Token received:", newToken.substring(0, 10) + "...");
-        localStorage.setItem('token', newToken);
+        console.log("Token received in App:", newToken.substring(0, 10) + "...");
+        // Используем функцию из auth.ts для сохранения токена
+        setAuthToken(newToken);
         setToken(newToken);
+        
+        // Для отладки: проверяем, сохранился ли токен
+        console.log("App проверка сохранения токена:", getAuthToken() ? "Токен сохранен" : "Токен НЕ сохранен");
     };
 
     const checkAuth = async () => {
-        const storedToken = localStorage.getItem('token');
+        // Получаем токен из auth.ts для единообразного хранения
+        const storedToken = getAuthToken();
         
         if (storedToken) {
             try {
-                const response = await fetch('http://localhost:8080/ais/auth/me', {
+                // Обновлен порт с 8080 на 8001
+                const response = await fetch('http://localhost:8001/ais/auth/me', {
                     headers: {
                         'Authorization': `Bearer ${storedToken}`
                     }
@@ -95,20 +103,27 @@ const App: React.FC = () => {
                 
                 if (!response.ok) {
                     console.log("Токен недействителен, выполняется выход");
-                    localStorage.removeItem('token');
+                    clearAuthToken(); // Используем функцию из auth.ts
                     setToken(null);
                 } else {
                     setToken(storedToken);
                 }
             } catch (error) {
                 console.error("Ошибка проверки авторизации:", error);
-                localStorage.removeItem('token');
+                clearAuthToken(); // Используем функцию из auth.ts
                 setToken(null);
             }
         }
         
         setIsCheckingAuth(false);
     };
+
+    // Добавляем вывод текущего токена для отладки
+    useEffect(() => {
+        console.log("Текущее состояние токена в App:", token ? `${token.substring(0, 10)}...` : "null");
+        console.log("Текущая дата и время (UTC):", "2025-05-25 19:42:03");
+        console.log("Текущий пользователь:", "katarymba");
+    }, [token]);
 
     if (isCheckingAuth) {
         return <div className="flex items-center justify-center h-screen">
@@ -145,7 +160,7 @@ const App: React.FC = () => {
 
                             <Route
                                 path="warehouse"
-                                element={<Warehouse token ={token || ''} />}
+                                element={<Warehouse token={token || ''} />}
                             />
 
                             <Route
@@ -160,7 +175,7 @@ const App: React.FC = () => {
 
                             <Route
                                 path="payments"
-                                element={<Payments token={''} />}
+                                element={<Payments token={token || ''} />}
                             />
                             
                             <Route

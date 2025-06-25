@@ -2,6 +2,27 @@ from sqlalchemy import create_engine, text
 import urllib.parse
 from datetime import datetime
 
+def parse_weight(weight_str):
+    if not weight_str:
+        return 'NULL'
+    # Попытка извлечь числовое значение
+    import re
+    match = re.match(r'(\d+(?:\.\d+)?)', weight_str)
+    if match:
+        return match.group(1)
+    return 'NULL'
+
+def parse_unit(weight_str):
+    if not weight_str:
+        return 'NULL'
+    # Попытка извлечь единицу измерения
+    import re
+    match = re.match(r'\d+(?:\.\d+)?\s*(.+)', weight_str)
+    if match:
+        return f"'{match.group(1).strip()}'"
+    return 'NULL'
+
+
 # URL encode the password to handle special characters
 password = urllib.parse.quote_plus('%KM041286)zz!')
 DATABASE_URL = f"postgresql://northf_user:{password}@northfish-db:5432/north_fish"
@@ -244,9 +265,9 @@ def seed_products():
 
                 # Prepare SQL statement with proper escaping for string values
                 sql = f"""
-                INSERT INTO products (name, description, price, weight, category_id, stock_quantity, created_at, image_url)
+                INSERT INTO products (name, description, price, weight, unit, category_id, created_at, image_url)
                 VALUES ('{name.replace("'", "''")}', '{description.replace("'", "''")}', {price}, 
-                        {f"'{weight}'" if weight else 'NULL'}, {category_id}, 10, '{now}', 
+                        {parse_weight(weight)}, {parse_unit(weight)}, {category_id}, '{now}', 
                         {f"'{image_path}'" if image_path else 'NULL'})
                 """
 

@@ -76,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
                 <button className="p-2 hover:bg-gray-200 dark:hover:bg-[#424242] rounded">
                     <img
-                        src="/user-avatar.png"
+                        src="/user-avatar.svg"
                         alt="User"
                         className="h-8 w-8 rounded-full"
                     />

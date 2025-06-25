@@ -25,18 +25,18 @@ router = APIRouter(
 def get_supplies(
         skip: int = 0,
         limit: int = 100,
-        supplier: Optional[str] = None,
+        supplier_id: Optional[int] = None,
         warehouse_id: Optional[int] = None,
         status: Optional[str] = None,
         db: Session = Depends(get_db),
-        current_admin: Administrator = Depends(get_current_admin)  # Используем get_current_admin
+        current_admin: Administrator = Depends(get_current_admin)
 ):
     """
     Получение списка поставок с возможностью фильтрации.
     """
     supplies = supply_crud.get_supplies(
         db, skip=skip, limit=limit,
-        supplier=supplier, warehouse_id=warehouse_id, status=status
+        supplier_id=supplier_id, warehouse_id=warehouse_id, status=status
     )
     return supplies
 
@@ -45,7 +45,7 @@ def get_supplies(
 def create_supply(
         supply: SupplyCreate,
         db: Session = Depends(get_db),
-        current_admin: Administrator = Depends(get_current_admin)  # Используем get_current_admin
+        current_admin: Administrator = Depends(get_current_admin)
 ):
     """
     Создание новой поставки.
@@ -59,14 +59,20 @@ def create_supply(
         )
 
     # Создаем поставку
-    return supply_crud.create_supply(db, supply, current_admin.username)
+    try:
+        return supply_crud.create_supply(db, supply, current_admin.username)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/{supply_id}", response_model=SupplyResponse)
 def get_supply(
         supply_id: int,
         db: Session = Depends(get_db),
-        current_admin: Administrator = Depends(get_current_admin)  # Используем get_current_admin
+        current_admin: Administrator = Depends(get_current_admin)
 ):
     """
     Получение конкретной поставки по ID.

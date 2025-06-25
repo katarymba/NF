@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Dict, Any
 import logging
 
-from app.config import DATABASE_URL
+from app.utils.config import DATABASE_URL
 
 logger = logging.getLogger(__name__)
 

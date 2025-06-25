@@ -9,7 +9,6 @@ from sqlalchemy import (
     Float
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from app.models.base import Base
 
 
@@ -36,4 +35,4 @@ class Product(Base):
     price_history = relationship("PriceHistory", back_populates="product")
     stocks = relationship("Stock", back_populates="product", cascade="all, delete")
     stock_movements = relationship("StockMovement", back_populates="product")
-    supply_items = relationship("SupplyItem", back_populates="product")
+    supply_items = relationship("SupplyItem", back_populates="product", cascade="all, delete")

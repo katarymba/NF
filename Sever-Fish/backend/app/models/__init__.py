@@ -12,4 +12,4 @@ from app.models.order import Order, OrderItem
 # Теперь определим отношения между моделями
 # Это нужно делать после того, как все классы импортированы
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)

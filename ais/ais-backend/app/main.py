@@ -11,7 +11,8 @@ from app.routers import (
     users, administrators, product,
     category, orders, payments,
     shipments, auth, integration,
-    warehouse, delivery, supply, stock, stock_movement
+    warehouse, delivery, supply, stock, stock_movement,
+    supplier
 )
 from app.admin import create_default_admin
 from app.services.message_handlers import register_message_handlers
@@ -104,6 +105,9 @@ app.include_router(delivery.router, prefix="/api/delivery", tags=["Delivery"])
 
 app.include_router(supply.router)
 app.include_router(supply.router, prefix="/api", tags=["Supply"])
+
+app.include_router(supplier.router, prefix="/api", tags=["Suppliers"])
+app.include_router(supplier.router, tags=["Suppliers"])
 
 app.include_router(stock.router, prefix="/api", tags=["Stocks"])
 app.include_router(stock.router, tags=["Stocks"])

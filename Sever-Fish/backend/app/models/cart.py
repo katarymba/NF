@@ -1,3 +1,5 @@
+from datetime import datetime
+
 # app/models/cart.py
 from sqlalchemy import Column, ForeignKey, Integer, DateTime
 from sqlalchemy.orm import relationship

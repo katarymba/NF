@@ -1,5 +1,5 @@
 # app/schemas.py
-from pydantic import BaseModel, EmailStr, validator, Field
+from pydantic import Field, ConfigDict, model_validator, field_validator, BaseModel, field_validator, model_validator, ConfigDict, EmailStr, validator
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 from datetime import date, datetime
@@ -22,6 +22,26 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     full_name: Optional[str] = None
+
+    # Валидатор для преобразования username в name
+    @field_validator("name", mode="before")
+    @classmethod
+    def map_username_to_name(cls, value, info):
+        # Если name пустой и есть username в данных, используем username
+        if not value and "username" in info.data:
+            return info.data["username"]
+        return value
+
+    # Совместимость с клиентом
+    @model_validator(mode="before")
+    @classmethod
+    def check_username_field(cls, data):
+        if isinstance(data, dict):
+            # Если поле username существует, но name отсутствует
+            if "username" in data and "name" not in data:
+                # Копируем значение из username в name
+                data["name"] = data["username"]
+        return data
 
     @validator('password')
     def validate_password(cls, v):
@@ -111,8 +131,7 @@ class Product(ProductBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductUpdate(BaseModel):

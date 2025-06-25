@@ -2,16 +2,12 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Table, Tag, Button, Card, Select, Input, DatePicker, Typography, Space, Spin, Tooltip, Modal, Drawer, Form, notification, Row, Col, InputNumber, Tabs, Divider, Alert } from 'antd';
 import { 
   SearchOutlined, FilterOutlined, ReloadOutlined, EyeOutlined, EditOutlined, 
-  ExportOutlined, SyncOutlined, PlusOutlined, DollarOutlined, PrinterOutlined, 
+  SyncOutlined, PlusOutlined, PrinterOutlined, 
   CheckCircleOutlined, CloseCircleOutlined 
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import '../styles/Payments.css';
-import OrderItemsTable from "../components/delivery/OrderItemsTable";
-import OrderStatusBadge from "../components/delivery/OrderStatusBadge";
 import axios from 'axios';
-import { API_BASE_URL as GATEWAY_URL, API_FULL_URL } from '../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -19,20 +15,11 @@ const { RangePicker } = DatePicker;
 const { TabPane } = Tabs;
 
 // Константы
-const CURRENT_DATE = '2025-05-08 18:28:55';
+const CURRENT_DATE = '2025-06-24 17:29:44';
 const CURRENT_USER = 'katarymba';
-
-const API_BASE_URL = GATEWAY_URL;
+const API_BASE_URL = 'http://localhost:8001/api';
 
 // Типы на основе схемы базы данных
-enum DeliveryStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  SHIPPED = 'shipped',
-  DELIVERED = 'delivered',
-  CANCELLED = 'cancelled'
-}
-
 enum PaymentStatus {
   PENDING = 'pending',
   PROCESSING = 'processing',
@@ -52,39 +39,9 @@ enum PaymentMethod {
   CREDIT_CARD = 'credit_card'
 }
 
-interface OrderItem {
-  id: number;
-  product_id: number;
-  quantity: number;
-  price: number;
-  name: string;
-  product_name?: string;
-}
-
-interface Order {
-  id: number;
-  user_id: number;
-  total_price: number;
-  created_at: string;
-  status: string;
-  client_name?: string;
-  delivery_address?: string;
-  order_items: OrderItem[];
-  payment_method?: string;
-  payment_status?: string;
-  tracking_number?: string;
-  courier_name?: string;
-  delivery_notes?: string;
-  estimated_delivery?: string;
-  actual_delivery?: string;
-  contact_phone?: string;
-  delivery_status?: string;
-  total_amount?: number;
-}
-
 interface Payment {
   id: number;
-  order_id: number;
+  order_id?: number;
   payment_method: string;
   payment_status: string;
   transaction_id?: string;
@@ -94,43 +51,36 @@ interface Payment {
   payer_email?: string;
   payment_details?: string;
   updated_at?: string;
+  client_name?: string;
 }
 
 // Компонент страницы Payments
 const Payments: React.FC = () => {
   // Состояния
-  const [orders, setOrders] = useState<Order[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [orderDetails, setOrderDetails] = useState<Order | null>(null);
   const [paymentDetails, setPaymentDetails] = useState<Payment | null>(null);
   const [detailsVisible, setDetailsVisible] = useState<boolean>(false);
-  const [editVisible, setEditVisible] = useState<boolean>(false);
   const [paymentEditVisible, setPaymentEditVisible] = useState<boolean>(false);
   const [newPaymentVisible, setNewPaymentVisible] = useState<boolean>(false);
-  const [printLoading, setPrintLoading] = useState<boolean>(false);
   const [paymentPrintLoading, setPaymentPrintLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [dbStatus, setDbStatus] = useState<'loading' | 'connected' | 'error'>('loading');
-  const [activeTab, setActiveTab] = useState<string>('1');
-  const [editForm] = Form.useForm();
   const [paymentForm] = Form.useForm();
+  const [ordersData, setOrdersData] = useState<any[]>([]);
   
   // Фильтры и поиск
-  const [searchText, setSearchText] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([null, null]);
   const [paymentSearchText, setPaymentSearchText] = useState<string>('');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('');
   const [paymentDateRange, setPaymentDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([null, null]);
   
   // Сортировка
-  const [sortByDate, setSortByDate] = useState<'asc' | 'desc'>('desc');
   const [paymentSortByDate, setPaymentSortByDate] = useState<'asc' | 'desc'>('desc');
   
   // При монтировании компонента проверяем соединение с БД и загружаем данные
   useEffect(() => {
     checkDatabaseConnection();
+    fetchOrders();
   }, []);
   
   // Проверка соединения с базой данных
@@ -138,83 +88,118 @@ const Payments: React.FC = () => {
     try {
       setDbStatus('loading');
       
-      // Проверка подключения через ping API или запрос к API платежей
-      const response = await axios.get(`${API_BASE_URL}/api/payments`);
+      // Используем только рабочий URL
+      const url = `${API_BASE_URL}/payments`;
       
-      // Если запрос выполнен успешно, считаем, что соединение с базой установлено
-      if (response.status === 200) {
-        setDbStatus('connected');
-        // Загружаем данные платежей
-        fetchPayments();
-        // Загружаем данные заказов
-        fetchOrders();
-      } else {
-        throw new Error('Не удалось выполнить тестовый запрос к API');
+      try {
+        const response = await axios.get(url);
+        if (response.status === 200) {
+          console.log(`Успешное подключение через ${url}`);
+          
+          // Проверяем, что данные - это массив или имеют свойство payments
+          if (Array.isArray(response.data)) {
+            setPayments(response.data);
+            setDbStatus('connected');
+            return;
+          } else if (response.data && Array.isArray(response.data.payments)) {
+            setPayments(response.data.payments);
+            setDbStatus('connected');
+            return;
+          } else {
+            console.warn(`Данные от ${url} не являются массивом или объектом с payments:`, response.data);
+          }
+        }
+      } catch (e) {
+        console.log(`Не удалось подключиться через ${url}:`, e);
       }
+      
+      // Если не смогли подключиться, заполняем тестовыми данными
+      setMockData();
+      setDbStatus('error');
+      throw new Error('Не удалось подключиться к API платежей');
     } catch (err) {
       console.error('Ошибка подключения к API:', err);
       setDbStatus('error');
-      setError('Не удалось подключиться к API. Проверьте, что сервер запущен и доступен.');
+      setError('Не удалось подключиться к API. Используются тестовые данные.');
     }
   };
-  
-  // Загрузка заказов через API
-  const fetchOrders = useCallback(async () => {
-    if (dbStatus === 'error') {
-      notification.error({
-        message: 'Ошибка соединения',
-        description: 'Отсутствует подключение к API. Данные заказов не могут быть загружены.'
-      });
-      return;
-    }
 
-    setLoading(true);
-    setError(null);
-    
+  // Получение списка заказов для связывания с платежами
+  const fetchOrders = async () => {
     try {
-      // Пробуем все возможные маршруты API
-      try {
-        const response = await axios.get(`${API_BASE_URL}/orders`);
-        if (response.data) {
-          // Преобразуем JSONB данные, если они представлены как строки
-          const formattedOrders = response.data.map((order: any) => ({
-            ...order,
-            order_items: typeof order.order_items === 'string' 
-              ? JSON.parse(order.order_items) 
-              : order.order_items
-          }));
-          
-          setOrders(formattedOrders);
-          return; // Успешно получили данные, выходим из функции
-        }
-      } catch (e) {
-        console.log("Попытка получить данные через /orders не удалась:", e);
-        try {
-          const response = await axios.get(`${API_BASE_URL}/api/orders`);
-          if (response.data) {
-            // Преобразуем JSONB данные, если они представлены как строки
-            const formattedOrders = response.data.map((order: any) => ({
-              ...order,
-              order_items: typeof order.order_items === 'string' 
-                ? JSON.parse(order.order_items) 
-                : order.order_items
-            }));
-            
-            setOrders(formattedOrders);
-            return; // Успешно получили данные, выходим из функции
-          }
-        } catch (e) {
-          console.log("Ошибка при получении заказов через альтернативный API:", e);
-          setError('Не удалось получить данные заказов с сервера');
-        }
+      const response = await axios.get(`${API_BASE_URL}/orders`);
+      if (response.status === 200) {
+        const orders = Array.isArray(response.data) ? response.data : 
+                      (response.data && Array.isArray(response.data.orders)) ? response.data.orders : [];
+        setOrdersData(orders);
       }
     } catch (error) {
-      console.error('Ошибка при получении заказов через API:', error);
-      setError('Не удалось получить данные заказов с сервера');
-    } finally {
-      setLoading(false);
+      console.error('Ошибка при загрузке заказов:', error);
+      // В случае ошибки создаем демо-данные
+      setOrdersData([
+        { id: 1001, client_name: 'Иван Петров', total_price: 5000 },
+        { id: 1002, client_name: 'Анна Сидорова', total_price: 7500 },
+        { id: 1003, client_name: 'Алексей Смирнов', total_price: 3200 }
+      ]);
     }
-  }, [dbStatus]);
+  };
+
+  // Заполнение тестовыми данными, если API не работает
+  const setMockData = () => {
+    const mockPayments: Payment[] = [
+      {
+        id: 1,
+        order_id: 1001,
+        payment_method: 'credit_card',
+        payment_status: 'completed',
+        transaction_id: 'txn_123456789',
+        created_at: '2025-05-25T10:15:00Z',
+        amount: 5000,
+        client_name: 'Иван Петров'
+      },
+      {
+        id: 2,
+        order_id: 1002,
+        payment_method: 'cash',
+        payment_status: 'completed',
+        created_at: '2025-05-26T12:00:00Z',
+        amount: 7500,
+        client_name: 'Анна Сидорова'
+      },
+      {
+        id: 3,
+        order_id: 1003,
+        payment_method: 'online_wallet',
+        payment_status: 'failed',
+        transaction_id: 'txn_987654321',
+        created_at: '2025-05-27T09:30:00Z',
+        amount: 3200,
+        client_name: 'Алексей Смирнов'
+      },
+      {
+        id: 4,
+        order_id: 1004,
+        payment_method: 'bank_transfer',
+        payment_status: 'completed',
+        transaction_id: 'txn_456789123',
+        created_at: '2025-05-28T14:30:00Z',
+        amount: 12000,
+        client_name: 'Иван Петров'
+      },
+      {
+        id: 5,
+        order_id: 1005,
+        payment_method: 'cash',
+        payment_status: 'completed',
+        created_at: '2025-05-28T16:45:00Z',
+        amount: 9500,
+        client_name: 'Алексей Смирнов'
+      }
+    ];
+    
+    setPayments(mockPayments);
+    setError('API недоступен. Отображаются тестовые данные.');
+  };
   
   // Загрузка платежей через API
   const fetchPayments = useCallback(async () => {
@@ -230,8 +215,27 @@ const Payments: React.FC = () => {
     setError(null);
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/payments`);
-      setPayments(response.data);
+      const url = `${API_BASE_URL}/payments`;
+      
+      try {
+        const response = await axios.get(url);
+        if (response.status === 200) {
+          console.log(`Успешная загрузка платежей через ${url}`);
+          
+          // Проверяем формат данных
+          if (Array.isArray(response.data)) {
+            setPayments(response.data);
+          } else if (response.data && Array.isArray(response.data.payments)) {
+            setPayments(response.data.payments);
+          } else {
+            console.warn(`Данные от ${url} не в ожидаемом формате:`, response.data);
+            throw new Error('Данные от API в неожиданном формате');
+          }
+        }
+      } catch (e) {
+        console.log(`Не удалось загрузить платежи через ${url}:`, e);
+        throw e;
+      }
     } catch (error) {
       console.error('Ошибка при получении платежей через API:', error);
       setError('Не удалось получить данные платежей с сервера');
@@ -240,47 +244,23 @@ const Payments: React.FC = () => {
     }
   }, [dbStatus]);
   
-  // Фильтрация заказов по поисковому тексту, статусу и дате
-  const filteredOrders = useMemo(() => {
-    return orders
-      .filter(order => {
-        // Фильтр по тексту (ID заказа, имя клиента, трекинг-номер)
-        const searchLower = searchText.toLowerCase();
-        const orderIdMatch = order.id.toString().includes(searchText);
-        const clientNameMatch = (order.client_name || '').toLowerCase().includes(searchLower);
-        const trackingMatch = (order.tracking_number || '').toLowerCase().includes(searchLower);
-        const textMatch = orderIdMatch || clientNameMatch || trackingMatch;
-        
-        // Фильтр по статусу
-        const statusMatch = !statusFilter || order.status === statusFilter;
-        
-        // Фильтр по дате
-        let dateMatch = true;
-        if (dateRange[0] && dateRange[1]) {
-          const orderDate = dayjs(order.created_at);
-          dateMatch = orderDate.isAfter(dateRange[0]) && orderDate.isBefore(dateRange[1].add(1, 'day'));
-        }
-        
-        return textMatch && statusMatch && dateMatch;
-      })
-      .sort((a, b) => {
-        // Сортировка по дате
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return sortByDate === 'asc' ? dateA - dateB : dateB - dateA;
-      });
-  }, [orders, searchText, statusFilter, dateRange, sortByDate]);
-  
   // Фильтрация платежей
   const filteredPayments = useMemo(() => {
+    // Проверяем, что payments является массивом
+    if (!Array.isArray(payments)) {
+      console.warn('payments не является массивом:', payments);
+      return [];
+    }
+    
     return payments
       .filter(payment => {
-        // Фильтр по тексту (ID платежа, ID заказа, ID транзакции)
+        // Фильтр по тексту (ID платежа, ID заказа, ID транзакции, имя клиента)
         const searchLower = paymentSearchText.toLowerCase();
         const paymentIdMatch = payment.id.toString().includes(paymentSearchText);
-        const orderIdMatch = payment.order_id.toString().includes(paymentSearchText);
+        const orderIdMatch = payment.order_id ? payment.order_id.toString().includes(paymentSearchText) : false;
         const transactionIdMatch = (payment.transaction_id || '').toLowerCase().includes(searchLower);
-        const textMatch = paymentIdMatch || orderIdMatch || transactionIdMatch;
+        const clientNameMatch = (payment.client_name || '').toLowerCase().includes(searchLower);
+        const textMatch = paymentIdMatch || orderIdMatch || transactionIdMatch || clientNameMatch;
         
         // Фильтр по статусу
         const statusMatch = !paymentStatusFilter || payment.payment_status === paymentStatusFilter;
@@ -303,18 +283,8 @@ const Payments: React.FC = () => {
   }, [payments, paymentSearchText, paymentStatusFilter, paymentDateRange, paymentSortByDate]);
   
   // Обработчики событий
-  const toggleSortDirection = () => {
-    setSortByDate(sortByDate === 'asc' ? 'desc' : 'asc');
-  };
-  
   const togglePaymentSortDirection = () => {
     setPaymentSortByDate(paymentSortByDate === 'asc' ? 'desc' : 'asc');
-  };
-  
-  const clearFilters = () => {
-    setSearchText('');
-    setStatusFilter('');
-    setDateRange([null, null]);
   };
   
   const clearPaymentFilters = () => {
@@ -323,35 +293,10 @@ const Payments: React.FC = () => {
     setPaymentDateRange([null, null]);
   };
   
-  // Открытие окна с деталями заказа
-  const showOrderDetails = (order: Order) => {
-    setOrderDetails(order);
-    setDetailsVisible(true);
-  };
-  
-  // Открытие окна редактирования заказа
-  const showEditOrder = (order: Order) => {
-    setOrderDetails(order);
-    editForm.setFieldsValue({
-      status: order.status,
-      tracking_number: order.tracking_number,
-      courier_name: order.courier_name,
-      estimated_delivery: order.estimated_delivery ? dayjs(order.estimated_delivery) : null,
-      delivery_notes: order.delivery_notes,
-      delivery_status: order.delivery_status
-    });
-    setEditVisible(true);
-  };
-  
   // Открытие окна деталей платежа
   const showPaymentDetails = (payment: Payment) => {
     setPaymentDetails(payment);
-    const relatedOrder = orders.find(order => order.id === payment.order_id);
-    if (relatedOrder) {
-      setOrderDetails(relatedOrder);
-    }
     setDetailsVisible(true);
-    setActiveTab('2'); // Переключаемся на вкладку платежей
   };
   
   // Открытие окна редактирования платежа
@@ -362,7 +307,7 @@ const Payments: React.FC = () => {
       payment_status: payment.payment_status,
       transaction_id: payment.transaction_id,
       amount: payment.amount,
-      payer_name: payment.payer_name,
+      payer_name: payment.payer_name || payment.client_name,
       payer_email: payment.payer_email,
       payment_details: payment.payment_details
     });
@@ -370,43 +315,46 @@ const Payments: React.FC = () => {
   };
   
   // Открытие окна создания нового платежа
-  const showNewPayment = (orderId?: number) => {
+  const showNewPayment = () => {
     paymentForm.resetFields();
-    if (orderId) {
-      paymentForm.setFieldsValue({
-        order_id: orderId
-      });
-    }
+    paymentForm.setFieldsValue({
+      payment_status: 'completed',
+      payment_method: 'online_card',
+      payment_date: dayjs(CURRENT_DATE)
+    });
     setNewPaymentVisible(true);
   };
   
-  // Обновление статуса заказа через API
-  const updateOrderStatus = async (id: number, status: string) => {
-    try {
-      await axios.patch(`${API_BASE_URL}/orders/${id}/status`, { status });
-      notification.success({
-        message: 'Статус обновлен',
-        description: `Статус заказа №${id} изменен на "${getStatusText(status)}"`
-      });
-      fetchOrders(); // Обновляем список заказов
-    } catch (error) {
-      console.error('Ошибка при обновлении статуса:', error);
-      notification.error({
-        message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить статус заказа'
-      });
-    }
-  };
-  
   // Обработчик изменения статуса платежа
-  const updatePaymentStatus = async (id: number, status: string) => {
+  const handleUpdatePaymentStatus = async (id: number, status: string) => {
     try {
-      await axios.patch(`${API_BASE_URL}/api/payments/${id}/status`, { payment_status: status });
+      const url = `${API_BASE_URL}/payments/${id}/status`;
+      let success = false;
+      
+      if (dbStatus !== 'error') {
+        try {
+          const response = await axios.patch(url, { payment_status: status });
+          if (response.status >= 200 && response.status < 300) {
+            success = true;
+          }
+        } catch (e) {
+          console.log(`Не удалось обновить статус платежа:`, e);
+        }
+      }
+      
+      // Обновляем локальные данные даже при ошибке API
+      const updatedPayments = payments.map(payment => {
+        if (payment.id === id) {
+          return { ...payment, payment_status: status };
+        }
+        return payment;
+      });
+      setPayments(updatedPayments);
+      
       notification.success({
         message: 'Статус платежа обновлен',
-        description: `Статус платежа №${id} изменен на "${getPaymentStatusText(status)}"`
+        description: `Статус платежа №${id} изменен на "${getPaymentStatusText(status)}"${success ? '' : ' (только локально)'}`
       });
-      fetchPayments(); // Обновляем список платежей
     } catch (error) {
       console.error('Ошибка при обновлении статуса платежа:', error);
       notification.error({
@@ -416,42 +364,40 @@ const Payments: React.FC = () => {
     }
   };
   
-  // Сохранение изменений заказа
-  const handleSaveChanges = async (values: any) => {
-    if (!orderDetails?.id) return;
-    
-    try {
-      await axios.patch(`${API_BASE_URL}/orders/${orderDetails.id}`, values);
-      notification.success({
-        message: 'Заказ обновлен',
-        description: `Заказ №${orderDetails.id} успешно обновлен`
-      });
-      setEditVisible(false);
-      fetchOrders(); // Обновляем данные
-      // Обновляем детали текущего заказа
-      const updatedOrder = {...orderDetails, ...values};
-      setOrderDetails(updatedOrder);
-    } catch (error) {
-      console.error('Ошибка при обновлении заказа:', error);
-      notification.error({
-        message: 'Ошибка при обновлении',
-        description: 'Не удалось обновить данные заказа'
-      });
-    }
-  };
-  
   // Сохранение изменений платежа
   const handleSavePaymentChanges = async (values: any) => {
     if (!paymentDetails?.id) return;
     
     try {
-      await axios.patch(`${API_BASE_URL}/api/payments/${paymentDetails.id}`, values);
+      const url = `${API_BASE_URL}/payments/${paymentDetails.id}`;
+      let success = false;
+      
+      if (dbStatus !== 'error') {
+        try {
+          const response = await axios.patch(url, values);
+          if (response.status >= 200 && response.status < 300) {
+            success = true;
+          }
+        } catch (e) {
+          console.log(`Не удалось обновить платеж:`, e);
+        }
+      }
+      
+      // Обновляем локальные данные даже при ошибке API
+      const updatedPayments = payments.map(payment => {
+        if (payment.id === paymentDetails.id) {
+          return { ...payment, ...values };
+        }
+        return payment;
+      });
+      setPayments(updatedPayments);
+      
       notification.success({
         message: 'Платеж обновлен',
-        description: `Платеж №${paymentDetails.id} успешно обновлен`
+        description: `Платеж №${paymentDetails.id} успешно обновлен${success ? '' : ' (только локально)'}`
       });
       setPaymentEditVisible(false);
-      fetchPayments(); // Обновляем данные платежей
+      
       // Обновляем детали текущего платежа
       const updatedPayment = {...paymentDetails, ...values};
       setPaymentDetails(updatedPayment);
@@ -467,24 +413,64 @@ const Payments: React.FC = () => {
   // Создание нового платежа
   const handleCreatePayment = async (values: any) => {
     try {
-      // Добавляем дату создания
-      const newPayment = {
-        ...values,
-        created_at: new Date().toISOString()
+      // Преобразуем значения в формат API
+      const paymentDate = values.payment_date ? values.payment_date.toISOString() : new Date().toISOString();
+      
+      // Создаем объект для отправки на сервер
+      const newPaymentData = {
+        order_id: values.order_id,
+        payment_method: values.payment_method,
+        payment_status: values.payment_status,
+        transaction_id: values.transaction_id || null,
+        created_at: paymentDate,
+        // Дополнительные поля не относящиеся к API схеме будут сохранены только локально
+        amount: values.amount,
+        payer_name: values.payer_name,
+        payer_email: values.payer_email,
+        payment_details: values.payment_details
       };
       
-      await axios.post(`${API_BASE_URL}/api/payments`, newPayment);
+      let responseData = null;
+      let success = false;
+      
+      if (dbStatus !== 'error') {
+        try {
+          const response = await axios.post(`${API_BASE_URL}/payments`, newPaymentData);
+          if (response.status >= 200 && response.status < 300) {
+            responseData = response.data;
+            success = true;
+          }
+        } catch (e) {
+          console.log('Не удалось создать платеж:', e);
+        }
+      }
+      
+      if (!success) {
+        // Если API недоступен или запрос не успешный, создаем локальный объект платежа
+        responseData = {
+          ...newPaymentData,
+          id: Math.max(...payments.map(p => p.id), 0) + 1
+        };
+      }
+      
+      // Добавляем информацию о клиенте, если есть связанный заказ
+      if (responseData.order_id) {
+        const relatedOrder = ordersData.find(order => order.id === responseData.order_id);
+        if (relatedOrder) {
+          responseData.client_name = relatedOrder.client_name;
+        }
+      } else if (values.payer_name) {
+        responseData.client_name = values.payer_name;
+      }
+      
+      // Добавляем новый платеж в локальный массив
+      setPayments([responseData, ...payments]);
+      
       notification.success({
         message: 'Платеж создан',
-        description: `Новый платеж для заказа №${newPayment.order_id} успешно создан`
+        description: `Новый платеж успешно создан${success ? '' : ' (только локально)'}`
       });
       setNewPaymentVisible(false);
-      fetchPayments(); // Обновляем данные платежей
-      
-      // Если был выбран конкретный заказ, обновляем его детали
-      if (orderDetails && orderDetails.id === newPayment.order_id) {
-        fetchOrders();
-      }
     } catch (error) {
       console.error('Ошибка при создании платежа:', error);
       notification.error({
@@ -494,134 +480,45 @@ const Payments: React.FC = () => {
     }
   };
   
-  // Печать информации о заказе
-  const printOrderDetails = async (orderId: number) => {
-    setPrintLoading(true);
+  // Удаление платежа
+  const handleDeletePayment = async (id: number) => {
     try {
-      // Получаем детали заказа, если они еще не загружены
-      let order = orders.find(o => o.id === orderId);
-      if (!order) {
-        const orderResponse = await axios.get(`${API_BASE_URL}/orders/${orderId}`);
-        order = orderResponse.data;
-      }
-      
-      if (!order) {
-        throw new Error('Заказ не найден');
-      }
-      
-      // Получаем все платежи для этого заказа
-      const orderPayments = payments.filter(p => p.order_id === orderId);
-      
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        throw new Error('Не удалось открыть окно печати');
-      }
-      
-      // Генерация содержимого для печати на основе данных
-      const printContent = `
-        <html>
-        <head>
-          <title>Заказ №${order.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1, h2 { color: #333; }
-            .section { margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-            .total { font-weight: bold; margin-top: 10px; text-align: right; }
-            .footer { margin-top: 50px; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <h1>Заказ №${order.id}</h1>
-          <div class="section">
-            <h2>Информация о заказе</h2>
-            <p><strong>Дата создания:</strong> ${formatDate(order.created_at)}</p>
-            <p><strong>Статус:</strong> ${getStatusText(order.status)}</p>
-            <p><strong>Клиент:</strong> ${order.client_name || 'Не указан'}</p>
-            <p><strong>ID клиента:</strong> ${order.user_id}</p>
-            <p><strong>Телефон:</strong> ${order.contact_phone || 'Не указан'}</p>
-            <p><strong>Адрес доставки:</strong> ${order.delivery_address || 'Не указан'}</p>
-          </div>
+      // Подтверждение удаления
+      Modal.confirm({
+        title: 'Подтверждение удаления',
+        content: `Вы уверены, что хотите удалить платеж №${id}?`,
+        okText: 'Да, удалить',
+        okType: 'danger',
+        cancelText: 'Отмена',
+        onOk: async () => {
+          let success = false;
           
-          <div class="section">
-            <h2>Товары в заказе</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>ID товара</th>
-                  <th>Название</th>
-                  <th>Количество</th>
-                  <th>Цена за ед.</th>
-                  <th>Сумма</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${(order.order_items || []).map((item: any) => `
-                  <tr>
-                    <td>${item.product_id}</td>
-                    <td>${item.name || item.product_name || `Товар #${item.product_id}`}</td>
-                    <td>${item.quantity}</td>
-                    <td>${formatPrice(item.price)}</td>
-                    <td>${formatPrice(item.price * item.quantity)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            <div class="total">Итого: ${formatPrice(order.total_price)}</div>
-          </div>
+          if (dbStatus !== 'error') {
+            try {
+              const response = await axios.delete(`${API_BASE_URL}/payments/${id}`);
+              if (response.status >= 200 && response.status < 300) {
+                success = true;
+              }
+            } catch (e) {
+              console.log(`Не удалось удалить платеж:`, e);
+            }
+          }
           
-          <div class="section">
-            <h2>Платежи</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>ID платежа</th>
-                  <th>Способ оплаты</th>
-                  <th>Статус</th>
-                  <th>ID транзакции</th>
-                  <th>Сумма</th>
-                  <th>Дата</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${orderPayments.map((payment: any) => `
-                  <tr>
-                    <td>${payment.id}</td>
-                    <td>${getPaymentMethodText(payment.payment_method)}</td>
-                    <td>${getPaymentStatusText(payment.payment_status)}</td>
-                    <td>${payment.transaction_id || '-'}</td>
-                    <td>${formatPrice(payment.amount || order.total_price)}</td>
-                    <td>${formatDate(payment.created_at)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
+          // Удаляем платеж из локального массива даже при ошибке API
+          setPayments(payments.filter(payment => payment.id !== id));
           
-          <div class="footer">
-            <p>Документ сформирован ${CURRENT_DATE}</p>
-            <p>Оператор: ${CURRENT_USER}</p>
-          </div>
-          
-          <script>
-            window.onload = function() { window.print(); }
-          </script>
-        </body>
-        </html>
-      `;
-      
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-    } catch (error) {
-      console.error('Ошибка при печати заказа:', error);
-      notification.error({
-        message: 'Ошибка печати',
-        description: error instanceof Error ? error.message : 'Не удалось распечатать информацию о заказе'
+          notification.success({
+            message: 'Платеж удален',
+            description: `Платеж №${id} успешно удален${success ? '' : ' (только локально)'}`
+          });
+        }
       });
-    } finally {
-      setPrintLoading(false);
+    } catch (error) {
+      console.error('Ошибка при удалении платежа:', error);
+      notification.error({
+        message: 'Ошибка при удалении',
+        description: 'Не удалось удалить платеж'
+      });
     }
   };
   
@@ -631,24 +528,19 @@ const Payments: React.FC = () => {
     try {
       // Получаем детали платежа
       let payment = payments.find(p => p.id === paymentId);
-      if (!payment) {
-        const paymentResponse = await axios.get(`${API_BASE_URL}/api/payments/${paymentId}`);
-        payment = paymentResponse.data;
+      if (!payment && dbStatus !== 'error') {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/payments/${paymentId}`);
+          if (response.status === 200) {
+            payment = response.data;
+          }
+        } catch (e) {
+          console.log(`Не удалось получить платеж:`, e);
+        }
       }
       
       if (!payment) {
         throw new Error('Платеж не найден');
-      }
-      
-      // Получаем информацию о заказе
-      let order = orders.find(o => o.id === payment.order_id);
-      if (!order && payment.order_id) {
-        try {
-          const orderResponse = await axios.get(`${API_BASE_URL}/orders/${payment.order_id}`);
-          order = orderResponse.data;
-        } catch (e) {
-          console.log('Ошибка при получении информации о заказе:', e);
-        }
       }
       
       const printWindow = window.open('', '_blank');
@@ -693,10 +585,11 @@ const Payments: React.FC = () => {
                 <td width="40%"><strong>Номер платежа:</strong></td>
                 <td>${payment.id}</td>
               </tr>
+              ${payment.order_id ? `
               <tr>
                 <td><strong>Номер заказа:</strong></td>
                 <td>${payment.order_id}</td>
-              </tr>
+              </tr>` : ''}
               <tr>
                 <td><strong>Метод оплаты:</strong></td>
                 <td>${getPaymentMethodText(payment.payment_method)}</td>
@@ -711,7 +604,7 @@ const Payments: React.FC = () => {
               </tr>
               <tr>
                 <td><strong>Плательщик:</strong></td>
-                <td>${payment.payer_name || (order ? order.client_name : '-') || '-'}</td>
+                <td>${payment.payer_name || payment.client_name || '-'}</td>
               </tr>
               <tr>
                 <td><strong>Email плательщика:</strong></td>
@@ -735,36 +628,8 @@ const Payments: React.FC = () => {
           </div>
           
           <div class="receipt-total">
-            Сумма платежа: ${formatPrice(payment.amount || (order ? order.total_price : 0))}
+            Сумма платежа: ${formatPrice(payment.amount || 0)}
           </div>
-          
-          ${order ? `
-          <div class="section">
-            <h2>Информация о заказе</h2>
-            <table>
-              <tr>
-                <td width="40%"><strong>Номер заказа:</strong></td>
-                <td>${order.id}</td>
-              </tr>
-              <tr>
-                <td><strong>Клиент:</strong></td>
-                <td>${order.client_name || 'Не указан'}</td>
-              </tr>
-              <tr>
-                <td><strong>Статус заказа:</strong></td>
-                <td>${getStatusText(order.status)}</td>
-              </tr>
-              <tr>
-                <td><strong>Дата создания:</strong></td>
-                <td>${formatDate(order.created_at)}</td>
-              </tr>
-              <tr>
-                <td><strong>Общая сумма заказа:</strong></td>
-                <td>${formatPrice(order.total_price)}</td>
-              </tr>
-            </table>
-          </div>
-          ` : ''}
           
           <div class="receipt-signature">
             <div>
@@ -816,17 +681,6 @@ const Payments: React.FC = () => {
     }).format(price);
   };
   
-  const getStatusText = (status: string): string => {
-    switch (status) {
-      case DeliveryStatus.PENDING: return 'Ожидает обработки';
-      case DeliveryStatus.PROCESSING: return 'В обработке';
-      case DeliveryStatus.SHIPPED: return 'Отправлен';
-      case DeliveryStatus.DELIVERED: return 'Доставлен';
-      case DeliveryStatus.CANCELLED: return 'Отменен';
-      default: return status || '-';
-    }
-  };
-  
   const getPaymentStatusText = (status: string): string => {
     switch (status) {
       case PaymentStatus.PENDING: return 'Ожидает оплаты';
@@ -852,122 +706,57 @@ const Payments: React.FC = () => {
     }
   };
   
-  // Получение платежей для конкретного заказа
-  const getOrderPayments = (orderId: number): Payment[] => {
-    return payments.filter(payment => payment.order_id === orderId);
-  };
-  
-  // Получение суммы всех платежей для заказа
-  const getOrderTotalPaid = (orderId: number): number => {
-    return getOrderPayments(orderId)
-      .filter(p => p.payment_status === PaymentStatus.COMPLETED)
-      .reduce((sum, payment) => sum + (payment.amount || 0), 0);
-  };
-  
-  // Определение, полностью ли оплачен заказ
-  const isOrderFullyPaid = (order: Order): boolean => {
-    const totalPaid = getOrderTotalPaid(order.id);
-    return totalPaid >= order.total_price;
-  };
-  
-  // Колонки для таблицы заказов
-  const orderColumns = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-      sorter: (a: Order, b: Order) => a.id - b.id
-    },
-    {
-      title: 'Дата',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 160,
-      render: (text: string) => formatDate(text)
-    },
-    {
-      title: 'Клиент',
-      dataIndex: 'client_name',
-      key: 'client_name',
-      render: (text: string, record: Order) => text || `Клиент #${record.user_id}`
-    },
-    {
-      title: 'Статус',
-      dataIndex: 'status',
-      key: 'status',
-      width: 150,
-      render: (status: string) => <OrderStatusBadge status={status} />
-    },
-    {
-      title: 'Сумма',
-      dataIndex: 'total_price',
-      key: 'total_price',
-      width: 140,
-      render: (price: number) => formatPrice(price)
-    },
-    {
-      title: 'Действия',
-      key: 'actions',
-      width: 200,
-      render: (_, record: Order) => (
-        <Space>
-          <Button 
-            type="primary" 
-            icon={<EyeOutlined />} 
-            onClick={() => showOrderDetails(record)}
-            title="Просмотр деталей"
-          />
-          <Button 
-            icon={<EditOutlined />} 
-            onClick={() => showEditOrder(record)}
-            title="Редактировать"
-          />
-          <Button 
-            icon={<PrinterOutlined />} 
-            onClick={() => printOrderDetails(record.id)}
-            loading={printLoading}
-            title="Печать"
-          />
-        </Space>
-      )
-    }
-  ];
-  
-  // Колонки для таблицы платежей
+  // Колонки для таблицы платежей - уменьшенные, для статичной таблицы без прокрутки (колонка СУММА удалена)
   const paymentColumns = [
     {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 80,
+      width: '8%',
+      align: 'center' as 'center',
       sorter: (a: Payment, b: Payment) => a.id - b.id
     },
     {
-      title: 'ID заказа',
-      dataIndex: 'order_id',
-      key: 'order_id',
-      width: 100
-    },
-    {
-      title: 'Дата',
+      title: 'ДАТА',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 160,
+      width: '18%',
+      align: 'center' as 'center',
       render: (text: string) => formatDate(text)
     },
     {
-      title: 'Метод оплаты',
-      dataIndex: 'payment_method',
-      key: 'payment_method',
-      width: 160,
-      render: (method: string) => getPaymentMethodText(method)
+      title: 'ПЛАТЕЛЬЩИК',
+      dataIndex: 'payer_name',
+      key: 'payer_name',
+      width: '25%',
+      render: (text: string, record: Payment) => text || record.client_name || '-'
     },
     {
-      title: 'Статус',
+      title: 'МЕТОД',
+      dataIndex: 'payment_method',
+      key: 'payment_method',
+      width: '18%',
+      align: 'center' as 'center',
+      render: (method: string) => {
+        // Используем более краткие названия для методов оплаты
+        switch (method) {
+          case PaymentMethod.ONLINE_CARD: return 'Онлайн карта';
+          case PaymentMethod.SBP: return 'СБП';
+          case PaymentMethod.CASH: return 'Наличные';
+          case PaymentMethod.CASH_ON_DELIVERY: return 'Нал. платеж';
+          case PaymentMethod.ONLINE_WALLET: return 'Эл. кошелек';
+          case PaymentMethod.BANK_TRANSFER: return 'Банк. перевод';
+          case PaymentMethod.CREDIT_CARD: return 'Кредит. карта';
+          default: return method || '-';
+        }
+      }
+    },
+    {
+      title: 'СТАТУС',
       dataIndex: 'payment_status',
       key: 'payment_status',
-      width: 140,
+      width: '18%',
+      align: 'center' as 'center',
       render: (status: string) => {
         let color = 'default';
         let icon = null;
@@ -993,31 +782,24 @@ const Payments: React.FC = () => {
             break;
         }
         
-        return <Tag color={color} icon={icon}>{getPaymentStatusText(status)}</Tag>;
+        return (
+          <Tag color={color} icon={icon}>{
+            status === PaymentStatus.COMPLETED ? 'Завершен' :
+            status === PaymentStatus.PENDING ? 'Ожидает' :
+            status === PaymentStatus.PROCESSING ? 'В обработке' : 
+            status === PaymentStatus.REFUNDED ? 'Возвращен' :
+            status === PaymentStatus.FAILED ? 'Не удался' :
+            status === PaymentStatus.CANCELLED ? 'Отменен' : status
+          }</Tag>
+        );
       }
     },
     {
-      title: 'Сумма',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 140,
-      render: (amount: number, record: Payment) => {
-        // Если сумма не указана явно, используем сумму заказа
-        const relatedOrder = orders.find(o => o.id === record.order_id);
-        const displayAmount = amount || (relatedOrder ? relatedOrder.total_price : 0);
-        return formatPrice(displayAmount);
-      }
-    },
-    {
-      title: 'ID транзакции',
-      dataIndex: 'transaction_id',
-      key: 'transaction_id',
-      render: (text: string) => text || '-'
-    },
-    {
-      title: 'Действия',
+      title: 'ДЕЙСТВИЯ',
       key: 'actions',
-      width: 200,
+      width: '13%',
+      align: 'center' as 'center',
+      fixed: 'right' as 'right',
       render: (_, record: Payment) => (
         <Space>
           <Button 
@@ -1031,21 +813,15 @@ const Payments: React.FC = () => {
             onClick={() => showEditPayment(record)}
             title="Редактировать"
           />
-          <Button 
-            icon={<PrinterOutlined />} 
-            onClick={() => printPaymentDetails(record.id)}
-            loading={paymentPrintLoading}
-            title="Печать"
-          />
-          {/* Кнопки для изменения статуса платежа */}
           {record.payment_status === PaymentStatus.PENDING && (
             <Button 
-              type="primary"
+              type="default"
               size="small"
-              onClick={() => updatePaymentStatus(record.id, PaymentStatus.COMPLETED)}
+              onClick={() => handleUpdatePaymentStatus(record.id, PaymentStatus.COMPLETED)}
               title="Подтвердить платеж"
+              style={{ backgroundColor: '#52c41a', color: 'white' }}
             >
-              Подтвердить
+              OK
             </Button>
           )}
         </Space>
@@ -1053,267 +829,124 @@ const Payments: React.FC = () => {
     }
   ];
   
-  // Колонки для таблицы платежей в деталях заказа
-  const orderPaymentColumns = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
-      title: 'Дата',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 160,
-      render: (text: string) => formatDate(text)
-    },
-    {
-      title: 'Метод оплаты',
-      dataIndex: 'payment_method',
-      key: 'payment_method',
-      width: 160,
-      render: (method: string) => getPaymentMethodText(method)
-    },
-    {
-      title: 'Статус',
-      dataIndex: 'payment_status',
-      key: 'payment_status',
-      width: 140,
-      render: (status: string) => {
-        let color = 'default';
-        switch (status) {
-          case PaymentStatus.COMPLETED: color = 'success'; break;
-          case PaymentStatus.PENDING: color = 'warning'; break;
-          case PaymentStatus.PROCESSING: color = 'processing'; break;
-          case PaymentStatus.REFUNDED: color = 'cyan'; break;
-          case PaymentStatus.FAILED:
-          case PaymentStatus.CANCELLED: color = 'error'; break;
-        }
-        return <Tag color={color}>{getPaymentStatusText(status)}</Tag>;
-      }
-    },
-    {
-      title: 'Сумма',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 140,
-      render: (amount: number) => formatPrice(amount || (orderDetails ? orderDetails.total_price : 0))
-    },
-    {
-      title: 'ID транзакции',
-      dataIndex: 'transaction_id',
-      key: 'transaction_id',
-      render: (text: string) => text || '-'
-    },
-    {
-      title: 'Действия',
-      key: 'actions',
-      width: 150,
-      render: (_, record: Payment) => (
-        <Space>
-          <Button 
-            icon={<EditOutlined />} 
-            onClick={() => showEditPayment(record)}
-            size="small"
-            title="Редактировать"
-          />
-          <Button 
-            icon={<PrinterOutlined />} 
-            onClick={() => printPaymentDetails(record.id)}
-            size="small"
-            loading={paymentPrintLoading}
-            title="Печать"
-          />
-        </Space>
-      )
-    }
-  ];
-  
   return (
     <div className="payments-page">
-      <Title level={2}>Управление заказами и платежами</Title>
+      <div className="page-header">
+        <Title level={2}>Управление платежами</Title>
+        <Button 
+          type="primary" 
+          size="large"
+          icon={<PlusOutlined />}
+          onClick={() => showNewPayment()}
+          className="create-payment-btn"
+        >
+          Создать новый платеж
+        </Button>
+      </div>
 
       {error && (
-          <div className="error-message">
-            <Alert message="Ошибка" description={error} type="error" showIcon closable />
-          </div>
+        <div className="error-message">
+          <Alert message="Ошибка" description={error} type="error" showIcon closable />
+        </div>
       )}
       
-      <Tabs defaultActiveKey="1" onChange={setActiveTab} activeKey={activeTab}>
-        {/* Вкладка с заказами */}
-        <TabPane tab="Заказы" key="1">
-          <Card className="filter-card">
-            <Row gutter={16} align="middle">
-              <Col span={8}>
-                <Input 
-                  placeholder="Поиск по ID, клиенту или номеру отслеживания" 
-                  value={searchText} 
-                  onChange={(e) => setSearchText(e.target.value)} 
-                  prefix={<SearchOutlined />} 
-                />
-              </Col>
-              <Col span={4}>
-                <Select 
-                  placeholder="Статус заказа"
-                  style={{ width: '100%' }}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  allowClear
+      <Card className="filter-card">
+        <div className="filter-container">
+          <Row gutter={[8, 0]} align="middle" justify="space-between">
+            <Col xs={24} sm={12} md={7} lg={7} xl={7}>
+              <Input 
+                placeholder="Поиск по ID или плательщику" 
+                value={paymentSearchText} 
+                onChange={(e) => setPaymentSearchText(e.target.value)} 
+                prefix={<SearchOutlined />} 
+                size="middle"
+                className="search-input"
+              />
+            </Col>
+            <Col xs={24} sm={12} md={4} lg={4} xl={4}>
+              <Select 
+                placeholder="Статус платежа"
+                style={{ width: '100%' }}
+                value={paymentStatusFilter}
+                onChange={setPaymentStatusFilter}
+                allowClear
+                size="middle"
+                className="status-select"
+              >
+                <Option value="pending">Ожидает оплаты</Option>
+                <Option value="processing">В обработке</Option>
+                <Option value="completed">Завершен</Option>
+                <Option value="refunded">Возвращен</Option>
+                <Option value="failed">Не удался</Option>
+                <Option value="cancelled">Отменен</Option>
+              </Select>
+            </Col>
+            <Col xs={24} sm={14} md={7} lg={7} xl={7}>
+              <RangePicker 
+                style={{ width: '100%' }}
+                onChange={(dates) => setPaymentDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs])}
+                format="DD.MM.YYYY"
+                placeholder={['Дата от', 'Дата до']}
+                size="middle"
+                className="date-picker"
+              />
+            </Col>
+            <Col xs={24} sm={10} md={6} lg={6} xl={6} style={{ textAlign: 'right' }}>
+              <div className="filter-actions">
+                <Button 
+                  icon={<FilterOutlined />} 
+                  onClick={clearPaymentFilters}
+                  title="Сбросить все фильтры"
+                  className="filter-button"
                 >
-                  <Option value="pending">Ожидает обработки</Option>
-                  <Option value="processing">В обработке</Option>
-                  <Option value="shipped">Отправлен</Option>
-                  <Option value="delivered">Доставлен</Option>
-                  <Option value="cancelled">Отменен</Option>
-                </Select>
-              </Col>
-              <Col span={6}>
-                <RangePicker 
-                  style={{ width: '100%' }}
-                  onChange={(dates) => setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs])}
-                  format="DD.MM.YYYY"
-                  placeholder={['Дата от', 'Дата до']}
-                />
-              </Col>
-              <Col span={6}>
-                <Space>
-                  <Button 
-                    icon={<FilterOutlined />} 
-                    onClick={clearFilters}
-                    title="Сбросить все фильтры"
-                  >
-                    Сбросить
-                  </Button>
-                  <Button 
-                    icon={<ReloadOutlined />} 
-                    onClick={fetchOrders}
-                    title="Обновить данные"
-                  >
-                    Обновить
-                  </Button>
-                  <Button 
-                    type="primary" 
-                    icon={<ExportOutlined />}
-                    title="Экспорт в Excel"
-                  >
-                    Экспорт
-                  </Button>
-                  <Button
-                    icon={sortByDate === 'asc' ? <SyncOutlined /> : <SyncOutlined rotate={180} />}
-                    onClick={toggleSortDirection}
-                    title={sortByDate === 'asc' ? 'Сортировать по убыванию' : 'Сортировать по возрастанию'}
-                  >
-                    {sortByDate === 'asc' ? 'По возрастанию' : 'По убыванию'}
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
-          
-          <Card>
-            <Table 
-              dataSource={filteredOrders} 
-              columns={orderColumns}
-              rowKey="id"
-              loading={loading}
-              pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
-              scroll={{ x: 1200 }}
-            />
-          </Card>
-        </TabPane>
-        
-        {/* Вкладка с платежами */}
-        <TabPane tab="Платежи" key="2">
-          <Card className="filter-card">
-            <Row gutter={16} align="middle">
-              <Col span={8}>
-                <Input 
-                  placeholder="Поиск по ID платежа, ID заказа или ID транзакции" 
-                  value={paymentSearchText} 
-                  onChange={(e) => setPaymentSearchText(e.target.value)} 
-                  prefix={<SearchOutlined />} 
-                />
-              </Col>
-              <Col span={4}>
-                <Select 
-                  placeholder="Статус платежа"
-                  style={{ width: '100%' }}
-                  value={paymentStatusFilter}
-                  onChange={setPaymentStatusFilter}
-                  allowClear
+                  Сбросить
+                </Button>
+                <Button 
+                  icon={<ReloadOutlined />} 
+                  onClick={fetchPayments}
+                  title="Обновить данные"
+                  className="filter-button"
                 >
-                  <Option value="pending">Ожидает оплаты</Option>
-                  <Option value="processing">В обработке</Option>
-                  <Option value="completed">Завершен</Option>
-                  <Option value="refunded">Возвращен</Option>
-                  <Option value="failed">Не удался</Option>
-                  <Option value="cancelled">Отменен</Option>
-                </Select>
-              </Col>
-              <Col span={6}>
-                <RangePicker 
-                  style={{ width: '100%' }}
-                  onChange={(dates) => setPaymentDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs])}
-                  format="DD.MM.YYYY"
-                  placeholder={['Дата от', 'Дата до']}
-                />
-              </Col>
-              <Col span={6}>
-                <Space>
-                  <Button 
-                    icon={<FilterOutlined />} 
-                    onClick={clearPaymentFilters}
-                    title="Сбросить все фильтры"
-                  >
-                    Сбросить
-                  </Button>
-                  <Button 
-                    icon={<ReloadOutlined />} 
-                    onClick={fetchPayments}
-                    title="Обновить данные"
-                  >
-                    Обновить
-                  </Button>
-                  <Button 
-                    type="primary" 
-                    icon={<PlusOutlined />}
-                    onClick={() => showNewPayment()}
-                    title="Создать новый платеж"
-                  >
-                    Новый платеж
-                  </Button>
-                  <Button
-                    icon={paymentSortByDate === 'asc' ? <SyncOutlined /> : <SyncOutlined rotate={180} />}
-                    onClick={togglePaymentSortDirection}
-                    title={paymentSortByDate === 'asc' ? 'Сортировать по убыванию' : 'Сортировать по возрастанию'}
-                  >
-                    {paymentSortByDate === 'asc' ? 'По возрастанию' : 'По убыванию'}
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
-          
-          <Card>
-            <Table 
-              dataSource={filteredPayments} 
-              columns={paymentColumns}
-              rowKey="id"
-              loading={loading}
-              pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Всего ${total} записей` }}
-              scroll={{ x: 1200 }}
-            />
-          </Card>
-        </TabPane>
-      </Tabs>
+                  Обновить
+                </Button>
+                <Button
+                  icon={paymentSortByDate === 'asc' ? <SyncOutlined /> : <SyncOutlined rotate={180} />}
+                  onClick={togglePaymentSortDirection}
+                  title={paymentSortByDate === 'asc' ? 'Сортировать по убыванию' : 'Сортировать по возрастанию'}
+                  className="filter-button sort-button"
+                >
+                  По {paymentSortByDate === 'asc' ? 'возр.' : 'убыв.'}
+                </Button>
+              </div>
+            </Col>
+          </Row>
+        </div>
+      </Card>
       
-      {/* Модальное окно с деталями заказа */}
+      <Card className="table-card" bodyStyle={{ padding: '0px' }}>
+        <Table 
+          dataSource={filteredPayments} 
+          columns={paymentColumns}
+          rowKey="id"
+          loading={loading}
+          pagination={{ 
+            pageSize: 10, 
+            showSizeChanger: true, 
+            showTotal: (total) => `Всего ${total} записей`,
+            pageSizeOptions: ['10', '20', '50']
+          }}
+          size="middle"
+          bordered
+          className="payments-table"
+        />
+      </Card>
+      
+      {/* Модальное окно с деталями платежа */}
       <Drawer
-        title={`Заказ №${orderDetails?.id || ''}`}
-        width={700}
+        title={`Детали платежа №${paymentDetails?.id || ''}`}
+        width={600}
         onClose={() => setDetailsVisible(false)}
-        visible={detailsVisible}
+        open={detailsVisible}
         extra={
           <Space>
             <Button 
@@ -1321,204 +954,115 @@ const Payments: React.FC = () => {
               icon={<EditOutlined />}
               onClick={() => {
                 setDetailsVisible(false);
-                if (orderDetails) showEditOrder(orderDetails);
+                if (paymentDetails) showEditPayment(paymentDetails);
               }}
             >
               Редактировать
             </Button>
             <Button 
               icon={<PrinterOutlined />}
-              onClick={() => orderDetails && printOrderDetails(orderDetails.id)}
-              loading={printLoading}
+              onClick={() => paymentDetails && printPaymentDetails(paymentDetails.id)}
+              loading={paymentPrintLoading}
             >
               Печать
             </Button>
           </Space>
         }
-      >
-        {orderDetails && (
-          <Tabs defaultActiveKey="1">
-            <TabPane tab="Информация о заказе" key="1">
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <Card title="Общая информация" size="small">
-                    <p><strong>ID заказа:</strong> {orderDetails.id}</p>
-                    <p><strong>Дата создания:</strong> {formatDate(orderDetails.created_at)}</p>
-                    <p><strong>Статус:</strong> <OrderStatusBadge status={orderDetails.status} /></p>
-                    <p><strong>Клиент:</strong> {orderDetails.client_name || '-'}</p>
-                    <p><strong>ID клиента:</strong> {orderDetails.user_id}</p>
-                    <p><strong>Сумма заказа:</strong> {formatPrice(orderDetails.total_price)}</p>
-                    <p>
-                      <strong>Статус оплаты:</strong>{' '}
-                      {isOrderFullyPaid(orderDetails) ? (
-                        <Tag color="success" icon={<CheckCircleOutlined />}>Оплачен</Tag>
-                      ) : getOrderPayments(orderDetails.id).length > 0 ? (
-                        <Tag color="warning">Частично оплачен</Tag>
-                      ) : (
-                        <Tag color="error" icon={<CloseCircleOutlined />}>Не оплачен</Tag>
-                      )}
-                    </p>
-                  </Card>
-                </Col>
-                <Col span={12}>
-                  <Card title="Информация о доставке" size="small">
-                    <p><strong>Адрес доставки:</strong> {orderDetails.delivery_address || '-'}</p>
-                    <p><strong>Трекинг-номер:</strong> {orderDetails.tracking_number || '-'}</p>
-                    <p><strong>Статус доставки:</strong> {orderDetails.delivery_status ? getStatusText(orderDetails.delivery_status) : '-'}</p>
-                    <p><strong>Курьер:</strong> {orderDetails.courier_name || '-'}</p>
-                    <p><strong>Планируемая доставка:</strong> {formatDate(orderDetails.estimated_delivery)}</p>
-                    <p><strong>Фактическая доставка:</strong> {formatDate(orderDetails.actual_delivery)}</p>
-                    <p><strong>Примечания:</strong> {orderDetails.delivery_notes || '-'}</p>
-                  </Card>
-                  
-                  <div style={{ marginTop: '16px' }}>
-                    <Space>
-                      <Button 
-                        type={orderDetails.status === 'pending' ? 'primary' : 'default'} 
-                        onClick={() => updateOrderStatus(orderDetails.id, 'processing')}
-                        disabled={orderDetails.status === 'cancelled' || orderDetails.status === 'delivered'}
-                      >
-                        В обработку
-                      </Button>
-                      <Button 
-                        type={orderDetails.status === 'processing' ? 'primary' : 'default'}
-                        onClick={() => updateOrderStatus(orderDetails.id, 'shipped')}
-                        disabled={orderDetails.status === 'cancelled' || orderDetails.status === 'delivered' || orderDetails.status === 'pending'}
-                      >
-                        Отправить
-                      </Button>
-                      <Button 
-                        type={orderDetails.status === 'shipped' ? 'primary' : 'default'}
-                        onClick={() => updateOrderStatus(orderDetails.id, 'delivered')}
-                        disabled={orderDetails.status === 'cancelled' || orderDetails.status === 'delivered' || orderDetails.status === 'pending'}
-                      >
-                        Доставлен
-                      </Button>
-                      <Button 
-                        danger
-                        onClick={() => updateOrderStatus(orderDetails.id, 'cancelled')}
-                        disabled={orderDetails.status === 'cancelled' || orderDetails.status === 'delivered'}
-                      >
-                        Отменить
-                      </Button>
-                    </Space>
-                  </div>
-                </Col>
-              </Row>
-              
-              <Divider orientation="left">Товары в заказе</Divider>
-              <OrderItemsTable items={orderDetails.order_items || []} />
-              
-              <Divider orientation="left">Платежи по заказу</Divider>
-              <div style={{ marginBottom: '16px' }}>
-                <Button 
-                  type="primary" 
-                  icon={<PlusOutlined />}
-                  onClick={() => showNewPayment(orderDetails.id)}
-                >
-                  Добавить платеж
-                </Button>
-              </div>
-              <Table 
-                dataSource={getOrderPayments(orderDetails.id)} 
-                columns={orderPaymentColumns}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
-              
-              <div style={{ marginTop: '16px', textAlign: 'right' }}>
-                <p><strong>Сумма заказа:</strong> {formatPrice(orderDetails.total_price)}</p>
-                <p><strong>Оплачено:</strong> {formatPrice(getOrderTotalPaid(orderDetails.id))}</p>
-                <p><strong>Осталось оплатить:</strong> {formatPrice(Math.max(0, orderDetails.total_price - getOrderTotalPaid(orderDetails.id)))}</p>
-              </div>
-            </TabPane>
-            
-            <TabPane tab="История изменений" key="2">
-              <p>История изменений статуса заказа будет отображаться здесь.</p>
-            </TabPane>
-          </Tabs>
-        )}
-      </Drawer>
-      
-      {/* Модальное окно редактирования заказа */}
-      <Drawer
-        title={`Редактирование заказа №${orderDetails?.id || ''}`}
-        width={600}
-        onClose={() => setEditVisible(false)}
-        visible={editVisible}
-        extra={
-          <Button 
-            type="primary" 
-            onClick={() => editForm.submit()}
-          >
-            Сохранить
-          </Button>
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            {paymentDetails && paymentDetails.payment_status === PaymentStatus.PENDING && (
+              <Button 
+                type="primary" 
+                icon={<CheckCircleOutlined />}
+                onClick={() => {
+                  handleUpdatePaymentStatus(paymentDetails.id, PaymentStatus.COMPLETED);
+                  setDetailsVisible(false);
+                }}
+                style={{ marginRight: 8 }}
+              >
+                Подтвердить платеж
+              </Button>
+            )}
+            <Button 
+              danger
+              onClick={() => {
+                if (paymentDetails) {
+                  handleDeletePayment(paymentDetails.id);
+                  setDetailsVisible(false);
+                }
+              }}
+            >
+              Удалить платеж
+            </Button>
+          </div>
         }
       >
-        <Form 
-          form={editForm}
-          layout="vertical"
-          onFinish={handleSaveChanges}
-        >
-          <Form.Item
-            name="status"
-            label="Статус заказа"
-            rules={[{ required: true, message: 'Выберите статус заказа' }]}
-          >
-            <Select>
-            <Option value="pending">Ожидает обработки</Option>
-              <Option value="processing">В обработке</Option>
-              <Option value="shipped">Отправлен</Option>
-              <Option value="delivered">Доставлен</Option>
-              <Option value="cancelled">Отменен</Option>
-            </Select>
-          </Form.Item>
-          
-          <Form.Item
-            name="delivery_status"
-            label="Статус доставки"
-          >
-            <Select allowClear>
-              <Option value="preparing">Подготовка</Option>
-              <Option value="in_transit">В пути</Option>
-              <Option value="delivered">Доставлен</Option>
-              <Option value="failed">Не удалась</Option>
-            </Select>
-          </Form.Item>
-          
-          <Form.Item
-            name="tracking_number"
-            label="Трекинг-номер"
-          >
-            <Input placeholder="Введите трекинг-номер" />
-          </Form.Item>
-          
-          <Form.Item
-            name="courier_name"
-            label="Курьер"
-          >
-            <Input placeholder="Имя курьера" />
-          </Form.Item>
-          
-          <Form.Item
-            name="estimated_delivery"
-            label="Планируемая доставка"
-          >
-            <DatePicker 
-              showTime
-              format="YYYY-MM-DD HH:mm:ss"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-          
-          <Form.Item
-            name="delivery_notes"
-            label="Примечания к доставке"
-          >
-            <Input.TextArea rows={4} placeholder="Дополнительная информация о доставке" />
-          </Form.Item>
-        </Form>
+        {paymentDetails && (
+          <div>
+            <Divider orientation="left">Основная информация</Divider>
+            <Row gutter={[16, 8]}>
+              <Col span={12}><strong>ID платежа:</strong></Col>
+              <Col span={12}>{paymentDetails.id}</Col>
+              
+              {paymentDetails.order_id && (
+                <>
+                  <Col span={12}><strong>ID заказа:</strong></Col>
+                  <Col span={12}>{paymentDetails.order_id}</Col>
+                </>
+              )}
+              
+              <Col span={12}><strong>Дата создания:</strong></Col>
+              <Col span={12}>{formatDate(paymentDetails.created_at)}</Col>
+              
+              {paymentDetails.updated_at && (
+                <>
+                  <Col span={12}><strong>Дата обновления:</strong></Col>
+                  <Col span={12}>{formatDate(paymentDetails.updated_at)}</Col>
+                </>
+              )}
+              
+              <Col span={12}><strong>Статус:</strong></Col>
+              <Col span={12}>
+                <Tag 
+                  color={
+                    paymentDetails.payment_status === PaymentStatus.COMPLETED ? 'success' :
+                    paymentDetails.payment_status === PaymentStatus.PENDING ? 'warning' :
+                    paymentDetails.payment_status === PaymentStatus.PROCESSING ? 'processing' :
+                    paymentDetails.payment_status === PaymentStatus.REFUNDED ? 'cyan' :
+                    'error'
+                  }
+                >
+                  {getPaymentStatusText(paymentDetails.payment_status)}
+                </Tag>
+              </Col>
+              
+              <Col span={12}><strong>Метод оплаты:</strong></Col>
+              <Col span={12}>{getPaymentMethodText(paymentDetails.payment_method)}</Col>
+              
+              <Col span={12}><strong>Сумма:</strong></Col>
+              <Col span={12}>{formatPrice(paymentDetails.amount || 0)}</Col>
+              
+              <Col span={12}><strong>ID транзакции:</strong></Col>
+              <Col span={12}>{paymentDetails.transaction_id || '-'}</Col>
+            </Row>
+            
+            <Divider orientation="left">Информация о плательщике</Divider>
+            <Row gutter={[16, 8]}>
+              <Col span={12}><strong>Имя плательщика:</strong></Col>
+              <Col span={12}>{paymentDetails.payer_name || paymentDetails.client_name || '-'}</Col>
+              
+              <Col span={12}><strong>Email плательщика:</strong></Col>
+              <Col span={12}>{paymentDetails.payer_email || '-'}</Col>
+            </Row>
+            
+            {paymentDetails.payment_details && (
+              <>
+                <Divider orientation="left">Дополнительная информация</Divider>
+                <p>{paymentDetails.payment_details}</p>
+              </>
+            )}
+          </div>
+        )}
       </Drawer>
       
       {/* Модальное окно редактирования платежа */}
@@ -1526,7 +1070,7 @@ const Payments: React.FC = () => {
         title={`Редактирование платежа №${paymentDetails?.id || ''}`}
         width={600}
         onClose={() => setPaymentEditVisible(false)}
-        visible={paymentEditVisible}
+        open={paymentEditVisible}
         extra={
           <Button 
             type="primary" 
@@ -1620,7 +1164,7 @@ const Payments: React.FC = () => {
         title="Создание нового платежа"
         width={600}
         onClose={() => setNewPaymentVisible(false)}
-        visible={newPaymentVisible}
+        open={newPaymentVisible}
         extra={
           <Button 
             type="primary" 
@@ -1636,18 +1180,26 @@ const Payments: React.FC = () => {
           onFinish={handleCreatePayment}
           initialValues={{
             payment_status: 'completed',
-            payment_method: 'online_card'
+            payment_method: 'online_card',
+            payment_date: dayjs(CURRENT_DATE)
           }}
         >
           <Form.Item
             name="order_id"
-            label="ID заказа (необязательно)"
-            tooltip="Оставьте пустым для создания расходного платежа, не связанного с заказом"
+            label="Связанный заказ"
           >
-            <InputNumber 
-              style={{ width: '100%' }}
-              placeholder="Введите ID заказа или оставьте пустым"
-            />
+            <Select
+              placeholder="Выберите заказ"
+              allowClear
+              showSearch
+              optionFilterProp="children"
+            >
+              {ordersData.map(order => (
+                <Option key={order.id} value={order.id}>
+                  Заказ #{order.id} - {order.client_name} ({formatPrice(order.total_price)})
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
           
           <Form.Item
@@ -1657,8 +1209,8 @@ const Payments: React.FC = () => {
             rules={[{ required: true, message: 'Выберите тип платежа' }]}
           >
             <Select>
-              <Option value="income">Доход (оплата заказа)</Option>
-              <Option value="expense">Расход (затраты компании)</Option>
+              <Option value="income">Доход (поступление средств)</Option>
+              <Option value="expense">Расход (затраты)</Option>
               <Option value="refund">Возврат</Option>
             </Select>
           </Form.Item>
@@ -1668,7 +1220,7 @@ const Payments: React.FC = () => {
             label="Категория платежа"
           >
             <Select allowClear>
-              <Option value="order_payment">Оплата заказа</Option>
+              <Option value="order_payment">Оплата товаров/услуг</Option>
               <Option value="salary">Зарплата</Option>
               <Option value="rent">Аренда</Option>
               <Option value="utilities">Коммунальные платежи</Option>
@@ -1763,7 +1315,7 @@ const Payments: React.FC = () => {
           <Form.Item
             name="payment_date"
             label="Дата платежа"
-            initialValue={dayjs()}
+            initialValue={dayjs(CURRENT_DATE)}
           >
             <DatePicker 
               showTime
@@ -1773,6 +1325,92 @@ const Payments: React.FC = () => {
           </Form.Item>
         </Form>
       </Drawer>
+
+      {/* Добавляем CSS для стилизации компонентов */}
+      <style jsx>{`
+        .payments-page {
+          max-width: 100%;
+          padding: 20px;
+          margin: 0 auto;
+          background-color: var(--snow-white);
+        }
+        
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+        
+        .create-payment-btn {
+          background-color: #0e6eab;
+          border-color: #0e6eab;
+        }
+        
+        .filter-card {
+          margin-bottom: 20px;
+          border-radius: 8px;
+        }
+        
+        .filter-container {
+          padding: 5px 0;
+        }
+        
+        .filter-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+        
+        .filter-button {
+          padding: 0 12px;
+          height: 32px;
+          display: inline-flex;
+          align-items: center;
+        }
+        
+        .sort-button {
+          white-space: nowrap;
+        }
+        
+        .table-card {
+          border-radius: 8px;
+        }
+        
+        .payments-table {
+          margin-top: 0;
+        }
+        
+        .search-input, .status-select, .date-picker {
+          width: 100%;
+        }
+        
+        .error-message {
+          margin-bottom: 20px;
+        }
+        
+        /* Адаптивные стили */
+        @media (max-width: 768px) {
+          .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          
+          .create-payment-btn {
+            width: 100%;
+          }
+          
+          .filter-actions {
+            margin-top: 10px;
+            width: 100%;
+          }
+          
+          .filter-button {
+            flex: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 };

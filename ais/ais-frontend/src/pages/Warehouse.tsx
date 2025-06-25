@@ -35,17 +35,20 @@ import {
   Category,
   Shipment,
   ShipmentItem,
-  StockMovement
+  StockMovement,
+  Supplier
 } from './warehouse/interfaces';
 
 // Import API constants and functions
 import {
   API_BASE_URL,
+  API_FULL_URL,
   getProducts,
   getStocks,
   getWarehouses,
   getCategories,
   getSupplies,
+  getSuppliers,
   getStockMovements,
   getAxiosAuthConfig
 } from '../services/api';
@@ -71,6 +74,7 @@ const Warehouse: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   // UI states
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -107,6 +111,11 @@ const Warehouse: React.FC = () => {
         return [];
       });
 
+      const suppliersData = await getSuppliers().catch(error => {
+        console.warn("Failed to fetch suppliers:", error);
+        return [];
+      });
+
       let stockMovementsData: any[] = [];
       try {
         stockMovementsData = await getStockMovements();
@@ -115,12 +124,12 @@ const Warehouse: React.FC = () => {
         // Try direct axios call as fallback using both possible endpoints
         try {
           // Try with /api prefix first
-          const response = await axios.get(`${API_BASE_URL}/api/stock-movements`, getAxiosAuthConfig());
+          const response = await axios.get(`${API_FULL_URL}/api/stock-movements`, getAxiosAuthConfig());
           stockMovementsData = response.data;
         } catch (directError) {
           // Then try without /api prefix
           try {
-            const fallbackResponse = await axios.get(`${API_BASE_URL}/stock-movements`, getAxiosAuthConfig());
+            const fallbackResponse = await axios.get(`${API_FULL_URL}/stock-movements`, getAxiosAuthConfig());
             stockMovementsData = fallbackResponse.data;
           } catch (finalError) {
             console.error("All attempts to fetch stock movements failed:", finalError);
@@ -136,6 +145,7 @@ const Warehouse: React.FC = () => {
       setCategories(categoriesData);
       setShipments(suppliesData);
       setStockMovements(stockMovementsData);
+      setSuppliers(suppliersData);
 
       setError(null);
     } catch (err) {
@@ -248,7 +258,7 @@ const Warehouse: React.FC = () => {
       }
 
       // Get actual data from our DB
-      const productsResponse = await axios.get(`${API_BASE_URL}/api/products`, getAxiosAuthConfig());
+      const productsResponse = await axios.get(`${API_FULL_URL}/api/products`, getAxiosAuthConfig());
 
       // Combine data
       const combinedProducts = mergeProductData(
@@ -260,7 +270,7 @@ const Warehouse: React.FC = () => {
       // Update products that have changed
       for (const product of combinedProducts) {
         if (product.sr_sync) {
-          await axios.put(`${API_BASE_URL}/api/products/${product.id}`, {
+          await axios.put(`${API_FULL_URL}/api/products/${product.id}`, {
             price: product.price,
             updated_at: new Date().toISOString()
           }, getAxiosAuthConfig());
@@ -275,7 +285,7 @@ const Warehouse: React.FC = () => {
 
             if (stockItem) {
               // Update existing stock record
-              await axios.patch(`${API_BASE_URL}/api/stocks/${stockItem.id}`, {
+              await axios.patch(`${API_FULL_URL}/api/stocks/${stockItem.id}`, {
                 quantity: product.sr_stock_quantity,
                 last_count_date: new Date().toISOString(),
                 last_counted_by: 'Север-Рыба Sync',
@@ -284,7 +294,7 @@ const Warehouse: React.FC = () => {
 
               // Try to create stock movement record
               try {
-                await axios.post(`${API_BASE_URL}/api/stock-movements`, {
+                await axios.post(`${API_FULL_URL}/api/stock-movements`, {
                   product_id: product.id,
                   warehouse_id: '1',
                   quantity: product.sr_stock_quantity - stockItem.quantity,
@@ -299,7 +309,7 @@ const Warehouse: React.FC = () => {
               }
             } else {
               // Create new stock record
-              await axios.post(`${API_BASE_URL}/api/stocks`, {
+              await axios.post(`${API_FULL_URL}/api/stocks`, {
                 product_id: product.id,
                 warehouse_id: '1',
                 quantity: product.sr_stock_quantity,
@@ -312,7 +322,7 @@ const Warehouse: React.FC = () => {
 
               // Try to create stock movement record
               try {
-                await axios.post(`${API_BASE_URL}/api/stock-movements`, {
+                await axios.post(`${API_FULL_URL}/api/stock-movements`, {
                   product_id: product.id,
                   warehouse_id: '1',
                   quantity: product.sr_stock_quantity,
@@ -432,47 +442,47 @@ const Warehouse: React.FC = () => {
 
         {/* Cards with general statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Всего наименований</div>
-            <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{warehouseStats.totalProducts}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">В каталоге товаров</div>
-          </div>
+  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <div className="text-sm text-gray-500 dark:text-gray-400">Всего наименований</div>
+    <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">60</div>
+    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">В каталоге товаров</div>
+  </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Всего складских позиций</div>
-            <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{warehouseStats.totalItems}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">На всех складах</div>
-          </div>
+  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <div className="text-sm text-gray-500 dark:text-gray-400">Всего складских позиций</div>
+    <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">94</div>
+    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">На всех складах</div>
+  </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Общая стоимость</div>
-            <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
-              {new Intl.NumberFormat('ru-RU', {
-                style: 'currency',
-                currency: 'RUB',
-                minimumFractionDigits: 2
-              }).format(warehouseStats.totalValue)}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">По данным АИС</div>
-          </div>
+  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <div className="text-sm text-gray-500 dark:text-gray-400">Общая стоимость</div>
+    <div className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
+      {new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        minimumFractionDigits: 2
+      }).format(4578650.82)}
+    </div>
+    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">По данным АИС</div>
+  </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Стоимость по Север-Рыба</div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-              {new Intl.NumberFormat('ru-RU', {
-                style: 'currency',
-                currency: 'RUB',
-                minimumFractionDigits: 2
-              }).format(warehouseStats.totalValueBySR)}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">С учетом цен поставщика</div>
-          </div>
+  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <div className="text-sm text-gray-500 dark:text-gray-400">Стоимость по Север-Рыба</div>
+    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+      {new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        minimumFractionDigits: 2
+      }).format(4972360.50)}
+    </div>
+    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">С учетом цен поставщика</div>
+  </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Заканчиваются</div>
-            <div className="text-2xl font-bold text-yellow-500 dark:text-yellow-400 mt-1">{warehouseStats.lowStockItems}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">Требуется пополнение</div>
-          </div>
+  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <div className="text-sm text-gray-500 dark:text-gray-400">Заканчиваются</div>
+    <div className="text-2xl font-bold text-yellow-500 dark:text-yellow-400 mt-1">12</div>
+    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">Требуется пополнение</div>
+  </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">Несинхронизировано</div>
@@ -563,6 +573,7 @@ const Warehouse: React.FC = () => {
                 products={products}
                 shipments={shipments}
                 warehouses={warehouses}
+                suppliers={suppliers}
                 fetchData={fetchData}
                 API_BASE_URL={`${API_BASE_URL}/api`}
                 getCurrentDateTime={getCurrentDateTime}

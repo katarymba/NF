@@ -9,7 +9,7 @@ from email import encoders
 import logging
 from sqlalchemy.orm import Session
 from app.models import Supplier, Product, PurchaseOrder, PurchaseOrderItem
-from app.config import settings
+from app.utils.config import settings
 
 logger = logging.getLogger("supplier-automation")
 

@@ -98,14 +98,22 @@ export const reconnectRabbitMQ = async (token: string) => {
 // Полная синхронизация данных
 export const runFullSync = async (token: string) => {
   try {
+    // Если токен не предоставлен, попытаемся получить его из локального хранилища
+    const authToken = token || localStorage.getItem('token');
+
+    if (!authToken) {
+      console.error('Authentication token is missing for sync operation');
+      throw new Error('Требуется авторизация для синхронизации');
+    }
+
     const response = await axios.post(
-      `${API_BASE_URL}/api/integration/sync`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
+        `${API_BASE_URL}/api/integration/sync`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          }
         }
-      }
     );
     return response.data;
   } catch (error) {
